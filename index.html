@@ -304,7 +304,16 @@
                     </div>
 
                     <div class="card" style="margin-bottom: var(--spacing-lg); overflow:hidden;">
-                        <h3 style="margin-bottom: 10px; font-size:1.1rem; text-align:center;">Mapa de Distribución del Flujo (Sankey Operativo)</h3>
+                        <div class="is-visible-flex" style="justify-content:space-between; align-items:center; margin-bottom:15px; flex-wrap:wrap; gap:10px;">
+                            <h3 style="margin: 0; font-size:1.1rem;">Mapa de Distribución del Flujo (Sankey Operativo)</h3>
+                            <div class="chart-filters sankey-filter-group" id="filtros-sankey">
+                                <button class="btn--filter active sankey-filter-btn" data-filter="Histórico">Histórico</button>
+                                <button class="btn--filter sankey-filter-btn" data-filter="Anual">Anual</button>
+                                <button class="btn--filter sankey-filter-btn" data-filter="Mensual">Mensual</button>
+                                <button class="btn--filter sankey-filter-btn" data-filter="Semanal">Semanal</button>
+                                <button class="btn--filter sankey-filter-btn" data-filter="Diario">Diario</button>
+                            </div>
+                        </div>
                         <div class="flow-container" id="flow-diagram-container">
                             <div class="flow-node source" id="node-ingreso">
                                 <div class="flow-title">Ingresos Brutos Declarados</div>
