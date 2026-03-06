@@ -57,7 +57,7 @@ function getEmptyStats() {
         crossoverPct: 0, horasLibresRegaladas: 0,
         ventasPorDiaSemana: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 0: 0 },
         termometroDias: {}, puntoEquilibrioHistorico: 0,
-        ventasMensuales: { labels: [], data: [] },
+        ventasMensuales: { labels: [], data: [], dataCostoVida: [] },
 
         xirr: 0, cagr: 0, riesgoConcentracion: { hhi: 0, label: "Sin Datos" },
         riesgo: { sharpe: "0.00", sortino: "0.00", volatilidad: "0.00" },
@@ -90,7 +90,7 @@ function processSingle(m) {
     st.mesesOperativos.add(mesStr);
     
     if (!st.stats.flujoMensual[mesStr]) {
-        st.stats.flujoMensual[mesStr] = { ingresos: 0, cuotas: 0 };
+        st.stats.flujoMensual[mesStr] = { ingresos: 0, cuotas: 0, costoVida: 0 };
     }
 
     if (m.tipo === 'Ahorro' || m.tipo === 'Transferencia Ahorro') {
@@ -186,12 +186,14 @@ function processSingle(m) {
         st.stats.gastosLocal = safeFloat(st.stats.gastosLocal + montoNum);
         st.stats.flowOperativo = safeFloat(st.stats.flowOperativo + montoNum);
         st.stats.gastosPorCategoriaLocal[m.categoria || 'Varios'] = safeFloat((st.stats.gastosPorCategoriaLocal[m.categoria || 'Varios'] || 0) + montoNum);
+        st.stats.flujoMensual[mesStr].costoVida = safeFloat((st.stats.flujoMensual[mesStr].costoVida || 0) + montoNum);
     } 
     else if (m.tipo === 'Gasto Familiar') {
         st.stats.cajaLocal = safeFloat(st.stats.cajaLocal - montoNum);
         st.stats.gastosFamiliar = safeFloat(st.stats.gastosFamiliar + montoNum);
         st.stats.flowVida = safeFloat(st.stats.flowVida + montoNum);
         st.stats.gastosPorCategoriaFamiliar[m.categoria || 'Varios'] = safeFloat((st.stats.gastosPorCategoriaFamiliar[m.categoria || 'Varios'] || 0) + montoNum);
+        st.stats.flujoMensual[mesStr].costoVida = safeFloat((st.stats.flujoMensual[mesStr].costoVida || 0) + montoNum);
     } 
     else if (m.tipo === 'Pago Proveedor') {
         let prov = m.proveedor || 'Desconocido';
@@ -437,12 +439,22 @@ function finalizeMetrics() {
 
     let labelsVentas = [];
     let dataVentas = [];
+    let dataCostoVida = [];
     let mesesOrdenados = Object.keys(st.stats.flujoMensual).sort();
+    
+    let cumulativeVida = 0;
+    let countMeses = 0;
+
     for (let mes of mesesOrdenados) {
         labelsVentas.push(mes);
         dataVentas.push(safeFloat(st.stats.flujoMensual[mes].ingresos));
+        
+        cumulativeVida += safeFloat(st.stats.flujoMensual[mes].costoVida || 0);
+        countMeses++;
+        let promedioVidaHistorico = cumulativeVida / countMeses;
+        dataCostoVida.push(safeFloat(promedioVidaHistorico));
     }
-    st.stats.ventasMensuales = { labels: labelsVentas, data: dataVentas };
+    st.stats.ventasMensuales = { labels: labelsVentas, data: dataVentas, dataCostoVida: dataCostoVida };
 
     let score = 0;
     score += Math.min(300, (st.stats.fondoSupervivenciaMeses / 6) * 300);
