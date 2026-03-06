@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="neonGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00D1FF" />
+      <stop offset="100%" stop-color="#3458EB" />
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="12" result="blur" />
+      <feMerge>
+        <feMergeNode in="blur" />
+        <feMergeNode in="blur" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+  </defs>
+  
+  <rect width="512" height="512" rx="110" fill="#050505" />
+  
+  <path d="M100 380 L200 250 L280 300 L410 150" 
+        fill="none" 
+        stroke="url(#neonGrad)" 
+        stroke-width="45" 
+        stroke-linecap="round" 
+        stroke-linejoin="round" 
+        filter="url(#glow)" />
+        
+  <circle cx="410" cy="150" r="35" fill="#00F5A0" filter="url(#glow)" />
+</svg>

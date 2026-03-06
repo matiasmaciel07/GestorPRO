@@ -1,0 +1,37 @@
+/* Utilidades de Texto y Color con Neon Text-Shadows */
+.texto-verde { color: var(--color-up) !important; font-weight: 900; text-shadow: 0 0 8px rgba(0, 245, 160, 0.4); } 
+.texto-rojo { color: var(--color-down) !important; font-weight: 900; text-shadow: 0 0 8px rgba(255, 0, 92, 0.4); }
+.texto-primario { color: var(--color-primary) !important; font-weight: 900; text-shadow: 0 0 8px rgba(0, 209, 255, 0.4); }
+.texto-accent { color: var(--color-accent) !important; font-weight: 900; text-shadow: 0 0 8px rgba(181, 0, 255, 0.4); }
+.texto-naranja { color: var(--color-orange) !important; font-weight: 900; text-shadow: 0 0 8px rgba(255, 104, 0, 0.4); }
+.texto-warning { color: var(--color-warning) !important; font-weight: 900; text-shadow: 0 0 8px rgba(255, 211, 0, 0.4); }
+
+.data-font { 
+    font-family: 'Roboto Mono', monospace; 
+    font-variant-numeric: tabular-nums;
+}
+
+/* Grillas Básicas */
+.grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(18.75rem, 1fr)); gap: var(--spacing-md); }
+.grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); gap: var(--spacing-md); margin-bottom: var(--spacing-md); }
+.grid-4 { display: grid; grid-template-columns: repeat(auto-fit, minmax(12.5rem, 1fr)); gap: var(--spacing-sm); margin-bottom: var(--spacing-md); }
+
+/* Layout forms */
+.form-row { display: flex; gap: var(--spacing-md); flex-wrap: wrap; } 
+.form-row > div { flex: 1; min-width: 12.5rem; }
+
+/* Control de Visibilidad Estricto */
+.is-hidden { display: none !important; }
+.is-visible-block { display: block !important; }
+.is-visible-flex { display: flex !important; }
+
+/* Etiquetas de Moneda (Tags) */
+.tag--usd { background-color: rgba(0, 245, 160, 0.15); color: var(--color-up); padding: 0.2rem 0.5rem; border-radius: 0.3rem; font-size: 0.75rem; font-weight: 800; border: 1px solid var(--color-up); }
+.tag--ars { background-color: rgba(0, 209, 255, 0.15); color: var(--color-primary); padding: 0.2rem 0.5rem; border-radius: 0.3rem; font-size: 0.75rem; font-weight: 800; border: 1px solid var(--color-primary); }
+
+/* Chips (Para el panel de proveedores) */
+.chip-proveedor { 
+    display: inline-block; font-size: 0.75rem; padding: 6px 10px; background: rgba(255, 211, 0, 0.1); 
+    color: var(--color-warning); border-radius: 6px; margin: 3px; font-weight: 800; 
+    border: 1px solid var(--color-warning); box-shadow: 0 0 5px rgba(255, 211, 0, 0.2);
+}

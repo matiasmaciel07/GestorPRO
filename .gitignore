@@ -1,0 +1,25 @@
+# Dependencias de Node.js
+node_modules/
+npm-debug.log
+yarn-error.log
+yarn-debug.log
+
+# Carpetas de compilación, empaquetado y distribución (Electron)
+dist/
+build/
+out/
+release/
+
+# Archivos de sistema operativo
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Archivos de entorno y configuraciones locales secretas
+.env
+.env.local
+.env.development
+.env.production
+
+# Archivos de logs de la aplicación
+*.log

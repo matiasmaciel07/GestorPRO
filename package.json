@@ -1,0 +1,33 @@
+{
+  "name": "gestor-financiero-pro",
+  "version": "5.0.0",
+  "description": "Programa Institucional de Gestión Financiera y Portfolio Tracker",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder --win"
+  },
+  "author": "Matias Maciel",
+  "license": "ISC",
+  "devDependencies": {
+    "electron": "^29.0.0",
+    "electron-builder": "^24.9.1"
+  },
+  "build": {
+    "appId": "com.gestorpro.desktop",
+    "productName": "Gestor Pro",
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "target": "nsis",
+      "icon": "assets/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    }
+  }
+}
