@@ -139,9 +139,6 @@ export const FinancialMath = {
 
     /**
      * Filtra un conjunto de transacciones basándose en la temporalidad seleccionada.
-     * @param {Array} transacciones - Lista de objetos de transacción.
-     * @param {String} temporalidad - 'Histórico', 'Anual', 'Mensual', 'Semanal'.
-     * @returns {Array} - Array de transacciones que cumplen el criterio de fecha.
      */
     filtrarPorTemporalidad(transacciones, temporalidad) {
         if (!transacciones || transacciones.length === 0) return [];
@@ -154,7 +151,6 @@ export const FinancialMath = {
         const mesActual = ahora.getMonth();
 
         return transacciones.filter(t => {
-            // Soporta distintos nombres de propiedad para la fecha dependiendo de cómo se guarden en el Model
             const fechaStr = t.fecha || t.date || t.timestamp; 
             const fechaTx = new Date(fechaStr);
             
@@ -168,7 +164,6 @@ export const FinancialMath = {
             }
             if (temporalidad.toLowerCase() === 'semanal') {
                 const unDia = 24 * 60 * 60 * 1000;
-                // Diferencia en días redondos
                 const diasDiferencia = Math.round(Math.abs((ahora - fechaTx) / unDia));
                 return diasDiferencia <= 7;
             }
@@ -177,17 +172,84 @@ export const FinancialMath = {
     },
 
     /**
-     * Calcula la distribución sumada de gastos por cada categoría.
-     * Diseñado para generar rápidamente la estructura de datos requerida por Chart.js.
-     * * @param {Array} transacciones - Array completo de gastos.
-     * @param {String} tipoGasto - Filtrar contexto ('Local' o 'Personal'). Puede ser null si el array ya está pre-filtrado.
-     * @param {String} temporalidad - Rango de tiempo ('Histórico', 'Anual', 'Mensual', 'Semanal').
-     * @returns {Object} - Objeto estructurado con labels, data (montos) y el total acumulado.
+     * Calcula los promedios desglosados (Mes, Semana, Día, Hora) de un monto total.
+     * Utilizado para el Mapa de Distribución del Flujo (Sankey) y Estructura de Gastos.
+     */
+    calcularPromediosDesglosados(montoTotal, temporalidad, transacciones = []) {
+        if (montoTotal === 0) return { mes: 0, semana: 0, dia: 0, hora: 0 };
+        
+        let diasDivisor = 1;
+        const ahora = new Date();
+
+        if (temporalidad.toLowerCase() === 'histórico' || temporalidad.toLowerCase() === 'historico') {
+            if (transacciones.length > 0) {
+                const fechas = transacciones.map(t => new Date(t.fecha || t.date).getTime()).filter(f => !isNaN(f));
+                if (fechas.length > 0) {
+                    const minFecha = new Date(Math.min(...fechas));
+                    diasDivisor = Math.max(1, (ahora - minFecha) / (1000 * 3600 * 24));
+                }
+            } else {
+                diasDivisor = 30.4167; // Fallback histórico mensual estándar
+            }
+        } else if (temporalidad.toLowerCase() === 'anual') {
+            const inicioAnio = new Date(ahora.getFullYear(), 0, 1);
+            diasDivisor = Math.max(1, (ahora - inicioAnio) / (1000 * 3600 * 24));
+        } else if (temporalidad.toLowerCase() === 'mensual') {
+            const inicioMes = new Date(ahora.getFullYear(), ahora.getMonth(), 1);
+            diasDivisor = Math.max(1, (ahora - inicioMes) / (1000 * 3600 * 24));
+        } else if (temporalidad.toLowerCase() === 'semanal') {
+            diasDivisor = 7;
+        }
+
+        const montoDiario = montoTotal / diasDivisor;
+
+        return {
+            mes: montoDiario * 30.4167,
+            semana: montoDiario * 7,
+            dia: montoDiario,
+            hora: montoDiario / 24
+        };
+    },
+
+    /**
+     * Realiza la auditoría comercial corrigiendo el Inventario Base.
+     * Deduce pagos a Proveedores y Logística de los Ingresos Brutos Declarados.
+     */
+    calcularAuditoriaComercial(transacciones) {
+        let ingresosBrutos = 0;
+        let costosProveedoresLogistica = 0;
+
+        transacciones.forEach(t => {
+            const monto = Math.abs(parseFloat(t.monto || t.amount || 0));
+            if (monto === 0) return;
+
+            if (t.tipo === 'Ingreso' || t.tipo === 'Venta') {
+                ingresosBrutos += monto;
+            } else if (t.tipo === 'Gasto') {
+                const cat = (t.categoria || "").toLowerCase();
+                if (cat.includes('proveedor') || cat.includes('logística') || cat.includes('logistica') || cat.includes('insumos')) {
+                    costosProveedoresLogistica += monto;
+                }
+            }
+        });
+
+        const inventarioBaseCosto = costosProveedoresLogistica;
+        const ingresosBrutosNetos = Math.max(0, ingresosBrutos - costosProveedoresLogistica);
+
+        return {
+            ingresosBrutosDeclarados: ingresosBrutos,
+            ingresosBrutosNetos: ingresosBrutosNetos,
+            inventarioBaseCosto: inventarioBaseCosto,
+            costoOperativoDeducido: costosProveedoresLogistica
+        };
+    },
+
+    /**
+     * Calcula la distribución sumada de gastos por cada categoría integrando promedios.
      */
     calcularDistribucionGastos(transacciones, tipoGasto, temporalidad) {
         let txsFiltradas = transacciones || [];
 
-        // 1. Filtrado por tipo/contexto de gasto (si se provee el parámetro)
         if (tipoGasto) {
             txsFiltradas = txsFiltradas.filter(t => {
                 const tipo = t.tipo || t.contexto || "";
@@ -195,32 +257,41 @@ export const FinancialMath = {
             });
         }
 
-        // 2. Filtrado por temporalidad delegando en la función especializada
         txsFiltradas = this.filtrarPorTemporalidad(txsFiltradas, temporalidad);
 
-        // 3. Agrupación y sumatoria matemática
         const distribucion = {};
+        const distribucionPromediada = {};
         
         txsFiltradas.forEach(t => {
-            // Aseguramos que el monto sea un valor numérico positivo para el gráfico
             const monto = Math.abs(parseFloat(t.monto || t.amount || 0)); 
             const categoria = t.categoria || t.category || "Sin Categorizar";
 
             if (monto > 0) {
-                if (!distribucion[categoria]) {
-                    distribucion[categoria] = 0;
-                }
+                if (!distribucion[categoria]) distribucion[categoria] = 0;
                 distribucion[categoria] += monto;
             }
         });
 
-        // 4. Estructuración para exportación visual
-        const labels = Object.keys(distribucion);
-        const dataValues = Object.values(distribucion);
+        const esHistorico = !temporalidad || temporalidad.toLowerCase() === 'histórico' || temporalidad.toLowerCase() === 'historico';
+
+        Object.keys(distribucion).forEach(cat => {
+            if (esHistorico) {
+                distribucionPromediada[cat] = distribucion[cat];
+            } else {
+                const promedios = this.calcularPromediosDesglosados(distribucion[cat], temporalidad, txsFiltradas);
+                // Si la temporalidad es Anual, mostramos el promedio mensual; si es Mensual, el promedio semanal; si es Semanal, el diario.
+                if (temporalidad.toLowerCase() === 'anual') distribucionPromediada[cat] = promedios.mes;
+                else if (temporalidad.toLowerCase() === 'mensual') distribucionPromediada[cat] = promedios.semana;
+                else if (temporalidad.toLowerCase() === 'semanal') distribucionPromediada[cat] = promedios.dia;
+            }
+        });
+
+        const labels = Object.keys(distribucionPromediada);
+        const dataValues = Object.values(distribucionPromediada);
         const sumaTotal = dataValues.reduce((acc, val) => acc + val, 0);
 
         return {
-            distribucionBruta: distribucion,
+            distribucionBruta: distribucionPromediada,
             labels: labels,
             data: dataValues,
             total: sumaTotal

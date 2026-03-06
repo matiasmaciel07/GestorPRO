@@ -27,7 +27,12 @@ export const model = {
         dolarBlue: 1000, 
         vistaUSD: false, 
         portafolio: {}, 
-        stats: {}
+        stats: {},
+        uiState: {
+            sankeyTemporalidad: 'Histórico',
+            gastosLocalTemporalidad: 'Histórico',
+            gastosPersonalTemporalidad: 'Histórico'
+        }
     },
     _data: null, 
     cachePrecios: {},
@@ -130,6 +135,11 @@ export const model = {
             const { type, payload } = e.data;
             
             if (type === 'ENGINE_RESULT') {
+                // Auditoría Comercial Correctiva antes de inyectar al estado global
+                const auditoria = FinancialMath.calcularAuditoriaComercial(payload.movimientosOrdenados);
+                payload.stats.ingresosNetosAuditoria = auditoria.ingresosBrutosNetos;
+                payload.stats.inventarioBaseCorregido = auditoria.inventarioBaseCosto;
+
                 this._data.stats = payload.stats;
                 this._data.portafolio = payload.portafolio;
                 this._data.movimientos = payload.movimientosOrdenados;
@@ -256,6 +266,10 @@ export const model = {
 
     toggleMoneda() {
         this._data.vistaUSD = !this._rawData.vistaUSD;
+    },
+
+    setTemporalidadUi(seccion, valor) {
+        this._data.uiState = { ...this._rawData.uiState, [seccion]: valor };
     },
 
     async actualizarPreciosPortafolio(nuevosPrecios) {
