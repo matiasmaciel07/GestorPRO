@@ -1071,7 +1071,9 @@ export const view = {
 
             if (s.ventasMensuales && s.ventasMensuales.labels && s.ventasMensuales.labels.length > 0) {
                 let div = modelData.vistaUSD ? modelData.dolarBlue : 1;
-                ChartRenderer.renderVentasMensuales(s.ventasMensuales.labels, s.ventasMensuales.data.map(v => v / div), 'wrap-ventas-mensuales');
+                let dataIngresos = s.ventasMensuales.data.map(v => v / div);
+                let dataCostoVida = (s.ventasMensuales.dataCostoVida || []).map(v => v / div);
+                ChartRenderer.renderVentasMensuales(s.ventasMensuales.labels, dataIngresos, dataCostoVida, 'wrap-ventas-mensuales');
             }
 
             if(this.DOM.esfuerzoMes && s.esfuerzo) this.DOM.esfuerzoMes.innerHTML = this.zenMode ? "100.0%" : this.fmt(s.esfuerzo.mes, modelData.dolarBlue, modelData.vistaUSD);
@@ -1138,33 +1140,27 @@ export const view = {
                 }
             }
 
-            if(this.DOM.tbodyProveedores) {
+            if (this.DOM.tbodyProveedores) {
                 let statsProvs = s.proveedoresDetalle || {};
                 let provArray = [];
                 
                 for (let pNombre in statsProvs) {
                     provArray.push({ 
                         nombre: pNombre, 
-                        total: statsProvs[pNombre].total, 
-                        meses: statsProvs[pNombre].meses 
+                        total: statsProvs[pNombre].total
                     });
                 }
                 
                 provArray.sort((a,b) => b.total - a.total);
                 
                 let provHtml = [];
-                if(provArray.length === 0) {
-                    provHtml.push('<tr><td colspan="3" style="text-align:center; padding: 40px; color:var(--text-muted);"><svg width="48" height="48" style="margin-bottom:10px; opacity:0.5;"><use href="#icon-empty"></use></svg><br>Sin compras registradas</td></tr>');
+                if (provArray.length === 0) {
+                    provHtml.push('<tr><td colspan="2" style="text-align:center; padding: 40px; color:var(--text-muted);"><svg width="48" height="48" style="margin-bottom:10px; opacity:0.5;"><use href="#icon-empty"></use></svg><br>Sin compras registradas</td></tr>');
                 } else {
                     provArray.forEach(p => {
-                        let mesesStr = Object.entries(p.meses).sort((a,b)=>b[0].localeCompare(a[0])).slice(0,3).map(x => {
-                            return `<span class="chip-proveedor">${x[0].substring(5)}: <span class="privacy-mask">$${this.fmtStr(x[1],1,false)}</span></span>`;
-                        }).join(' ');
-                        
                         provHtml.push(
                             `<tr style="border-bottom: 1px solid var(--border-color);">
                                 <td style="padding: 12px 0;"><strong>${DOMPurify.sanitize(p.nombre)}</strong></td>
-                                <td style="text-align:center; padding: 12px 0;">${mesesStr}</td>
                                 <td class="data-font" style="text-align:right; padding: 12px 0; color:var(--text-main);"><strong class="privacy-mask">${this.zenMode ? '---' : '$' + this.fmtStr(p.total, 1, false)}</strong></td>
                             </tr>`
                         );
@@ -1173,7 +1169,7 @@ export const view = {
                 this.DOM.tbodyProveedores.innerHTML = provHtml.join('');
             }
 
-            if(this.DOM.tbodyPrestamos) {
+            if (this.DOM.tbodyPrestamos) {
                 let prestamos = s.prestamosDetalle || {};
                 let prestamosHtml = [];
                 let pArray = Object.values(prestamos).sort((a,b) => b.fecha.localeCompare(a.fecha));
@@ -1184,7 +1180,7 @@ export const view = {
                     headerElement.innerHTML = `Pasivos y Deudas Activas <span class="data-font texto-rojo privacy-mask" style="float:right; font-size:1rem;">Total: ${this.zenMode ? '---' : '$' + this.fmtStr(totalDeudaActiva, 1, false)}</span>`;
                 }
 
-                if(pArray.length === 0) {
+                if (pArray.length === 0) {
                     prestamosHtml.push('<tr><td colspan="4" style="text-align:center; padding: 40px; color:var(--text-muted);"><svg width="48" height="48" style="margin-bottom:10px; opacity:0.5;"><use href="#icon-empty"></use></svg><br>Libre de deudas</td></tr>');
                 } else {
                     pArray.forEach(p => {
@@ -1223,6 +1219,18 @@ export const view = {
                 let deudas = s.deudaProveedoresDetalle || {};
                 let deudasHtml = [];
                 let dArray = Object.values(deudas).sort((a,b) => b.fecha.localeCompare(a.fecha));
+                let totalDeudaProveedores = 0;
+
+                dArray.forEach(d => {
+                    if (d.activo) {
+                        totalDeudaProveedores += (d.capitalExigibleTotal - d.capitalServido);
+                    }
+                });
+
+                let headerElement = this.DOM.tbodyDeudasProveedores.closest('.card').querySelector('h2');
+                if (headerElement) {
+                    headerElement.innerHTML = `Auditoría de Cuentas Corrientes (Proveedores) <span class="data-font texto-warning privacy-mask" style="float:right; font-size:1rem;">Total Adeudado: ${this.zenMode ? '---' : '$' + this.fmtStr(totalDeudaProveedores, 1, false)}</span>`;
+                }
 
                 if (dArray.length === 0) {
                     deudasHtml.push('<tr><td colspan="4" style="text-align:center; padding: 40px; color:var(--text-muted);"><svg width="48" height="48" style="margin-bottom:10px; opacity:0.5;"><use href="#icon-empty"></use></svg><br>No hay cuentas corrientes pendientes</td></tr>');
@@ -1257,7 +1265,6 @@ export const view = {
             }
         });
     },
-
     renderAjustesInflacion() {
         ErrorHandler.catchBoundary('Ajustes de Inflación', 'lista-inflacion', () => {
             if(!this.currentModelData || !this.currentModelData.inflacion) return;
