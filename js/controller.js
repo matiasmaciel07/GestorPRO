@@ -343,8 +343,18 @@ const controller = {
             if (formData.valorVentaEstimado && formData.valorVentaEstimado > 0) {
                 mov.valorVentaEstimado = formData.valorVentaEstimado;
             }
+            if (formData.estadoPago) {
+                mov.estadoPago = formData.estadoPago;
+            }
             model.guardarProveedor(formData.proveedor);
         } 
+        else if (formData.tipo === 'Amortización Deuda a Proveedor') {
+            if (!formData.deudaAsociadaId) {
+                return events.emit('app:toast', { msg: "Debe seleccionar la deuda a amortizar", type: "error" });
+            }
+            mov.deudaAsociadaId = formData.deudaAsociadaId;
+            mov.proveedor = formData.proveedor;
+        }
         else if (formData.tipo === 'Ajuste Stock Inicial') {
             if (formData.valorVentaEstimado && formData.valorVentaEstimado > 0) {
                 mov.valorVentaEstimado = formData.valorVentaEstimado;
