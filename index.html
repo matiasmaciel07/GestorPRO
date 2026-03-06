@@ -415,10 +415,17 @@
                             </div>
                         </div>
                         <div class="card">
-                            <h2 style="margin-bottom: 15px;">Auditoría de Pasivos Activos</h2>
+                            <h2 style="margin-bottom: 15px;">Auditoría de Pasivos Activos (Bancarios/Préstamos)</h2>
                             <div style="max-height: 250px; overflow-y: auto;">
                                 <table class="dataTable-table"><thead style="background:var(--bg-input);"><tr><th>Obligación (Entidad)</th><th style="text-align:right;">Capital Servido</th><th style="text-align:right;">Capital Exigible Total</th><th>Amortización</th></tr></thead><tbody id="tbody-prestamos"></tbody></table>
                             </div>
+                        </div>
+                    </div>
+
+                    <div class="card" style="margin-top: var(--spacing-lg);">
+                        <h2 style="margin-bottom: 15px;">Auditoría de Cuentas Corrientes (Proveedores)</h2>
+                        <div style="max-height: 250px; overflow-y: auto;">
+                            <table class="dataTable-table"><thead style="background:var(--bg-input);"><tr><th>Obligación (Proveedor)</th><th style="text-align:right;">Capital Servido</th><th style="text-align:right;">Capital Exigible Total</th><th>Amortización</th></tr></thead><tbody id="tbody-deudas-proveedores"></tbody></table>
                         </div>
                     </div>
                 </section>
@@ -480,10 +487,11 @@
                                     <option value="Gasto Local">Egreso Comercial Fijo o Variable</option>
                                     <option value="Gasto Familiar">Egreso Personal (Economía Privada)</option>
                                     <option value="Pago Proveedor">Pago a Proveedores (Alta Inventario)</option>
+                                    <option value="Amortización Deuda a Proveedor">Amortización Deuda a Proveedor</option>
                                     <option value="Ajuste Stock Inicial">Valorización de Stock Preexistente</option>
                                     <option value="Reparto Sociedad">Retribución a Entidad Societaria</option>
                                     <option value="Alta Préstamo">Adquisición de Pasivo (Préstamo)</option>
-                                    <option value="Pago Préstamo">Amortización de Deuda Activa</option>
+                                    <option value="Pago Préstamo">Amortización de Deuda Activa (Préstamo)</option>
                                 </select>
                             </div>
                             <div class="form__group"><label class="form__label">Fecha Contable</label><input type="date" id="eco-fecha"></div>
@@ -499,12 +507,28 @@
                                         <input type="text" id="eco-proveedor" placeholder="Identificador legal o comercial">
                                     </div>
                                 </div>
+                                <div class="form-row is-hidden" id="row-eco-estado-pago" style="margin-top:10px; padding-top:10px; border-top:1px dashed var(--border-color);">
+                                    <div class="form__group" style="margin-bottom:0; width:100%;">
+                                        <label class="form__label texto-warning">Estado Financiero de la Compra</label>
+                                        <select id="eco-estado-pago">
+                                            <option value="Pagado">Pagado al Contado (Descuenta de Caja)</option>
+                                            <option value="Pendiente">Abonar en el Futuro (Cuenta Corriente / Deuda)</option>
+                                        </select>
+                                    </div>
+                                </div>
                                 <div class="form-row is-hidden" id="row-eco-valor-venta" style="margin-top:10px; padding-top:10px; border-top:1px dashed var(--border-color);">
                                     <div class="form__group" style="margin-bottom:0;">
                                         <label class="form__label texto-primario">Proyección de Precio Retail (Liquidación)</label>
                                         <input type="text" id="eco-valor-venta" class="format-number data-font" placeholder="Precio fijado de cara al público">
                                         <small style="color:var(--text-muted); display:block; margin-top:5px;" id="hint-valor-venta">Nota: En caso de omisión, el sistema reconocerá utilidad neutra (Precio de Venta = Costo).</small>
                                     </div>
+                                </div>
+                            </div>
+
+                            <div id="bloque-pago-deuda-proveedor" class="is-hidden" style="padding: var(--spacing-md); background: var(--bg-base); border-radius: 0.5rem; margin-bottom: var(--spacing-md); border: 1px solid var(--border-color);">
+                                <div class="form__group" style="margin-bottom:0;">
+                                    <label class="form__label">Vincular con Cuenta Corriente (Deuda Pendiente)</label>
+                                    <select id="eco-deuda-proveedor-id"></select>
                                 </div>
                             </div>
         
@@ -533,7 +557,7 @@
                             
                             <div id="bloque-prestamos-pago" class="is-hidden" style="padding: var(--spacing-md); background: var(--bg-base); border-radius: 0.5rem; margin-bottom: var(--spacing-md); border: 1px solid var(--border-color);">
                                 <div class="form__group">
-                                    <label class="form__label">Vincular con Deuda Pendiente</label>
+                                    <label class="form__label">Vincular con Deuda Pendiente (Bancaria/Préstamo)</label>
                                     <select id="eco-prestamo-id"></select>
                                 </div>
                             </div>
@@ -744,6 +768,7 @@
                                     <option value="Gasto Local">Egreso Comercial</option>
                                     <option value="Gasto Familiar">Gastos Personales (Vida)</option>
                                     <option value="Pago Proveedor">Transacciones con Proveedores</option>
+                                    <option value="Amortización Deuda a Proveedor">Pagos de Deudas</option>
                                     <option value="Reparto Sociedad">Retiros de Utilidad (Sociedad)</option>
                                     <option value="Compra">Inyección de Capital a Mercado</option>
                                     <option value="Venta">Liquidaciones de Mercado</option>
