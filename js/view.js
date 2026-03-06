@@ -819,6 +819,458 @@ export const view = {
             this.DOM.ecoPrestamoId.innerHTML = optionsHtml;
         }
     },
+    initExportacionPDF() {
+        const btnExportarPdf = document.getElementById('btn-exportar-pdf');
+        if (btnExportarPdf) {
+            btnExportarPdf.addEventListener('click', () => {
+                const filtroTemporalidad = document.getElementById('pdf-filtro-temporalidad')?.value || 'Histórico';
+                const filtroTipo = document.getElementById('pdf-filtro-tipo')?.value || 'Todos';
+
+                events.emit('ui:exportar-pdf', {
+                    temporalidad: filtroTemporalidad,
+                    tipo: filtroTipo
+                });
+            });
+        }
+    },
+
+    getOperacionFormData() {
+        const isBursatil = document.getElementById('btn-toggle-bursatil')?.classList.contains('active') !== false;
+        let formData = {};
+        
+        if (isBursatil) {
+            formData = {
+                tipo: DOMPurify.sanitize(this.DOM.opTipo.value),
+                fecha: DOMPurify.sanitize(this.DOM.opFecha.value),
+                activo: DOMPurify.sanitize(this.DOM.opActivo.value.trim().toUpperCase()),
+                sector: DOMPurify.sanitize(this.DOM.opSector.value.trim()),
+                cant: parseFloat(this.DOM.opCantidad.value) || 0,
+                monto: this.parseNumber(this.DOM.opMonto.value),
+                usd: parseFloat(this.DOM.opUsd.value) || 0
+            };
+        } else {
+            let t = this.DOM.ecoTipo.value;
+            formData = {
+                tipo: DOMPurify.sanitize(t),
+                fecha: DOMPurify.sanitize(this.DOM.ecoFecha.value),
+                monto: this.parseNumber(this.DOM.ecoMonto.value)
+            };
+
+            if (t === 'Gasto Local' || t === 'Gasto Familiar') {
+                formData.categoria = DOMPurify.sanitize(this.DOM.ecoCategoria.value);
+            }
+            if (t === 'Pago Proveedor') {
+                formData.proveedor = DOMPurify.sanitize(this.DOM.ecoProveedor.value.trim());
+                let valVenta = this.parseNumber(this.DOM.ecoValorVenta?.value);
+                if (valVenta > 0) formData.valorVentaEstimado = valVenta;
+                if (this.DOM.ecoEstadoPago) formData.estadoPago = DOMPurify.sanitize(this.DOM.ecoEstadoPago.value);
+            }
+            if (t === 'Amortización Deuda a Proveedor') {
+                formData.deudaAsociadaId = DOMPurify.sanitize(this.DOM.ecoDeudaProveedorId.value);
+                let deudas = this.currentModelData?.stats?.deudaProveedoresDetalle || {};
+                if (deudas[formData.deudaAsociadaId]) {
+                    formData.proveedor = deudas[formData.deudaAsociadaId].proveedor;
+                } else {
+                    formData.proveedor = 'Desconocido';
+                }
+            }
+            if (t === 'Reparto Sociedad') {
+                formData.proveedor = DOMPurify.sanitize(this.DOM.ecoProveedor.value.trim());
+            }
+            if (t === 'Ajuste Stock Inicial') {
+                let valVenta = this.parseNumber(this.DOM.ecoValorVenta?.value);
+                if (valVenta > 0) formData.valorVentaEstimado = valVenta;
+            }
+            if (t === 'Alta Préstamo') {
+                formData.entidad = DOMPurify.sanitize(this.DOM.ecoPrestamoEntidad.value.trim());
+                formData.montoTotalDevolver = this.parseNumber(this.DOM.ecoPrestamoTotal.value);
+            }
+            if (t === 'Pago Préstamo') {
+                formData.prestamoAsociado = parseInt(this.DOM.ecoPrestamoId.value) || 0;
+            }
+        }
+        
+        let notasVal = isBursatil ? this.DOM.opNotas?.value : this.DOM.ecoNotas?.value;
+        if (notasVal && notasVal.trim() !== '') {
+            formData.notas = DOMPurify.sanitize(notasVal.trim());
+        }
+        
+        return formData;
+    },
+
+    poblarFormularioEdicion(mov) {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        
+        if (this.DOM.tituloOperarBursatil) this.DOM.tituloOperarBursatil.innerText = "Editar Inversión";
+        if (this.DOM.tituloOperarEco) this.DOM.tituloOperarEco.innerText = "Editar Movimiento Local";
+        if (this.DOM.tituloConfirmar) this.DOM.tituloConfirmar.innerText = "Guardar Cambios";
+        if (this.DOM.btnGuardarOp) {
+            this.DOM.btnGuardarOp.innerHTML = `<svg width="18" height="18"><use href="#icon-edit"></use></svg> Sobrescribir Registro`;
+            this.DOM.btnGuardarOp.classList.add('btn--warning');
+        }
+        if (this.DOM.btnCancelarEdicion) this.DOM.btnCancelarEdicion.classList.remove('is-hidden');
+        
+        const tiposBursatiles = ['Transferencia Ahorro', 'Compra', 'Venta', 'Rendimiento', 'Dividendo', 'Retiro'];
+        const isBursatil = tiposBursatiles.includes(mov.tipo);
+        
+        if (isBursatil) {
+            this.DOM.btnToggleBursatil.click();
+            this.DOM.opTipo.value = mov.tipo;
+            this.DOM.opFecha.value = mov.fecha;
+            if (mov.activo) this.DOM.opActivo.value = mov.activo;
+            if (mov.sector) this.DOM.opSector.value = mov.sector;
+            if (mov.cantidad) this.DOM.opCantidad.value = mov.cantidad;
+            if (mov.usd) this.DOM.opUsd.value = mov.usd;
+            this.DOM.opMonto.value = this.fmtStr(mov.monto, 1, false);
+            if (this.DOM.opNotas) this.DOM.opNotas.value = mov.notas || '';
+            this.adaptarFormularioOperar();
+        } else {
+            this.DOM.btnToggleEconomia.click();
+            this.DOM.ecoTipo.value = mov.tipo;
+            this.DOM.ecoFecha.value = mov.fecha;
+            setTimeout(() => {
+                if (mov.categoria) this.DOM.ecoCategoria.value = mov.categoria;
+                if (mov.proveedor) this.DOM.ecoProveedor.value = mov.proveedor;
+                if (mov.socio) this.DOM.ecoProveedor.value = mov.socio;
+                if (mov.entidad) this.DOM.ecoPrestamoEntidad.value = mov.entidad;
+                if (mov.montoTotalDevolver) this.DOM.ecoPrestamoTotal.value = this.fmtStr(mov.montoTotalDevolver, 1, false);
+                if (mov.cuotas) {
+                    const cuotasInp = document.getElementById('eco-prestamo-cuotas');
+                    if (cuotasInp) cuotasInp.value = mov.cuotas;
+                }
+                if (mov.prestamoAsociado) this.DOM.ecoPrestamoId.value = mov.prestamoAsociado;
+                
+                if (mov.valorVentaEstimado && this.DOM.ecoValorVenta) {
+                    this.DOM.ecoValorVenta.value = this.fmtStr(mov.valorVentaEstimado, 1, false);
+                }
+                
+                if (mov.estadoPago && this.DOM.ecoEstadoPago) this.DOM.ecoEstadoPago.value = mov.estadoPago;
+                if (mov.deudaAsociadaId && this.DOM.ecoDeudaProveedorId) this.DOM.ecoDeudaProveedorId.value = mov.deudaAsociadaId;
+
+                if (mov.tipo === 'Alta Préstamo' && mov.capital) {
+                    const capInput = document.getElementById('eco-prestamo-capital');
+                    if (capInput) capInput.value = this.fmtStr(mov.capital, 1, false);
+                } else {
+                    this.DOM.ecoMonto.value = this.fmtStr(mov.monto, 1, false);
+                }
+                
+                if (this.DOM.ecoNotas) this.DOM.ecoNotas.value = mov.notas || '';
+            }, 50);
+            this.adaptarFormularioEconomia();
+        }
+    },
+
+    setupSystemListeners() {
+        events.on('app:toast', (data) => this.toast(data.msg, data.type));
+        events.on('ui:poblar-formulario-edicion', (mov) => this.poblarFormularioEdicion(mov));
+
+        events.on('ui:restaurar-estado-formulario', (estado) => {
+            if (estado.tipo === 'Gasto Local' || estado.tipo === 'Gasto Familiar') {
+                if (this.DOM.ecoCategoria) {
+                    this.DOM.ecoCategoria.value = estado.categoria;
+                }
+            }
+        });
+
+        events.on('app:zenMode', (status) => {
+            this.zenMode = status;
+            let btnZen = document.getElementById('btn-zen');
+            if (btnZen) {
+                if (this.zenMode) btnZen.style.color = 'var(--color-primary)';
+                else btnZen.style.color = 'var(--text-muted)';
+            }
+            this.ejecutarRendersActivos();
+            this.toast(this.zenMode ? "Modo Zen Activado (%)" : "Modo Absoluto Activado ($)", "success");
+        });
+
+        events.on('model:updated', (data) => {
+            this.currentModelData = data;
+            this.DOM.btnToggleMoneda.innerText = data.vistaUSD ? 'Ver en ARS' : 'Ver Todo en USD';
+            this.ejecutarRendersActivos();
+        });
+
+        events.on('model:inflacionUpdated', (inf) => {
+            if(this.currentModelData) {
+                this.currentModelData.inflacion = inf;
+                if(this.activeTab === 'ajustes') this.renderAjustesInflacion();
+                if(this.activeTab === 'dashboard') this.renderEvolucion();
+            }
+        });
+
+        events.on('model:preciosUpdated', (nuevosPrecios) => {
+            if(this.currentModelData) this.currentModelData.cachePrecios = nuevosPrecios;
+            if(this.activeTab === 'portafolio') this.renderPortafolioVivo(this.currentModelData);
+        });
+
+        events.on('model:watchlistUpdated', (wlData) => {
+            if(this.activeTab === 'portafolio') this.renderWatchlist(wlData);
+        });
+
+        events.on('state:tabChanged', (tabId) => {
+            this.activeTab = tabId;
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('tab-content--active'));
+            document.querySelectorAll('.nav__item').forEach(b => { 
+                b.classList.remove('nav__item--active');
+                b.setAttribute('aria-selected', 'false');
+            });
+            document.getElementById(tabId)?.classList.add('tab-content--active');
+            let btnNav = document.querySelector(`.nav__item[aria-controls="${tabId}"]`);
+            if(btnNav) { 
+                btnNav.classList.add('nav__item--active');
+                btnNav.setAttribute('aria-selected', 'true');
+            }
+            
+            if(tabId === 'finanza-general') {
+                events.emit('ui:actualizar-distribucion-gastos', { contexto: 'Local', temporalidad: 'Histórico', domId: 'wrap-gastos-local' });
+                events.emit('ui:actualizar-distribucion-gastos', { contexto: 'Personal', temporalidad: 'Histórico', domId: 'wrap-gastos-personal' });
+            }
+
+            this.ejecutarRendersActivos();
+        });
+
+        events.on('state:filtroChanged', (filtro) => {
+            this.activeFilter = filtro;
+            document.querySelectorAll('.btn--filter:not(.gastos-filter-btn)').forEach(b => b.classList.remove('active'));
+            document.querySelector(`.btn--filter:not(.gastos-filter-btn)[data-filter="${filtro}"]`)?.classList.add('active');
+            if(this.currentModelData) this.renderEvolucion();
+        });
+
+        events.on('app:marketStatus', (isOpen) => {
+            let dot = document.getElementById('market-dot');
+            let text = document.getElementById('market-text');
+            if(dot && text) {
+                dot.className = isOpen ? 'market-dot market-dot--open' : 'market-dot market-dot--closed';
+                text.innerText = isOpen ? 'Mercado Abierto' : 'Mercado Cerrado';
+            }
+        });
+
+        events.on('ui:reset-form-operacion', () => {
+            this.DOM.opMonto.value = '';
+            this.DOM.opCantidad.value = '';
+            if (this.DOM.opNotas) this.DOM.opNotas.value = '';
+            
+            if(this.DOM.ecoMonto) {
+                this.DOM.ecoMonto.value = '';
+                if(this.DOM.ecoValorVenta) this.DOM.ecoValorVenta.value = '';
+                if(this.DOM.ecoPrestamoTotal) this.DOM.ecoPrestamoTotal.value = '';
+                if(this.DOM.ecoPrestamoEntidad) this.DOM.ecoPrestamoEntidad.value = '';
+                if(this.DOM.ecoProveedor) this.DOM.ecoProveedor.value = '';
+                if(this.DOM.ecoNotas) this.DOM.ecoNotas.value = '';
+                
+                const capInput = document.getElementById('eco-prestamo-capital');
+                if(capInput) capInput.value = '';
+            }
+
+            if (this.DOM.tituloOperarBursatil) this.DOM.tituloOperarBursatil.innerText = "Operar Inversiones";
+            if (this.DOM.tituloOperarEco) this.DOM.tituloOperarEco.innerText = "Flujo de Caja (Local/Vida)";
+            if (this.DOM.tituloConfirmar) this.DOM.tituloConfirmar.innerText = "Confirmar Transacción";
+            
+            if (this.DOM.btnGuardarOp) {
+                this.DOM.btnGuardarOp.innerHTML = "Registrar en Base de Datos";
+                this.DOM.btnGuardarOp.classList.remove('btn--warning');
+            }
+            if (this.DOM.btnCancelarEdicion) this.DOM.btnCancelarEdicion.classList.add('is-hidden');
+            
+            this.adaptarFormularioEconomia();
+            this.adaptarFormularioOperar();
+        });
+
+        events.on('app:pinStatus', (status) => {
+            const overlay = document.getElementById('pin-overlay');
+            const btnActivar = document.getElementById('btn-activar-pin');
+            const btnBorrar = document.getElementById('btn-borrar-pin');
+            const inputNuevo = document.getElementById('nuevo-pin');
+            
+            if(status === 'LOCKED') {
+                overlay.classList.remove('is-hidden');
+                overlay.classList.add('is-visible-flex');
+                btnActivar.classList.add('is-hidden');
+                btnBorrar.classList.remove('is-hidden');
+                inputNuevo.classList.add('is-hidden');
+            } else if(status === 'UNLOCKED') {
+                overlay.classList.add('is-hidden');
+                overlay.classList.remove('is-visible-flex');
+                document.getElementById('input-pin-login').value = '';
+            } else if (status === 'ERROR') {
+                document.getElementById('input-pin-login').value = '';
+            } else if (status === 'NO_PIN') {
+                btnActivar.classList.remove('is-hidden');
+                btnBorrar.classList.add('is-hidden');
+                inputNuevo.classList.remove('is-hidden');
+            }
+        });
+    },
+
+    ejecutarRendersActivos() {
+        if(!this.currentModelData) return;
+        this.renderDashboardBase(this.currentModelData);
+        if(this.activeTab === 'dashboard') this.renderEvolucion();
+        if(this.activeTab === 'finanza-general') this.renderFinanzaGeneral(this.currentModelData);
+        if(this.activeTab === 'historial') this.renderHistorial(this.currentModelData);
+        if(this.activeTab === 'informes') {
+            this.renderInformesPro(this.currentModelData);
+            this.renderSimuladorWhatIf(this.currentModelData);
+        }
+        if(this.activeTab === 'portafolio') this.renderPortafolioVivo(this.currentModelData);
+        if(this.activeTab === 'calendario') this.renderCalendario(this.currentModelData);
+        if(this.activeTab === 'herramientas') this.calcularInteres();
+        if(this.activeTab === 'ajustes') this.renderAjustesInflacion();
+        if(this.activeTab === 'fire') this.initFIRE(this.currentModelData);
+        
+        if(this.activeTab === 'operar') {
+            if (!this.DOM.btnCancelarEdicion || this.DOM.btnCancelarEdicion.classList.contains('is-hidden')) {
+                this.adaptarFormularioEconomia();
+            }
+        }
+    },
+
+    togglePrivacy() {
+        document.body.classList.toggle('privacy-active');
+        const iconSvg = document.getElementById('icon-privacy-toggle');
+        iconSvg.innerHTML = document.body.classList.contains('privacy-active') ? `<use href="#icon-privacy-off"></use>` : `<use href="#icon-privacy"></use>`;
+    },
+
+    validarVentaRestrictiva() {
+        if(this.DOM.opTipo.value !== 'Venta' || !this.currentModelData) return;
+        const ticker = this.DOM.opActivo.value.trim().toUpperCase();
+        const tenencia = this.currentModelData.portafolio[ticker]?.cant || 0;
+        const inputCant = parseFloat(this.DOM.opCantidad.value) || 0;
+        
+        if (ticker !== '') {
+            this.DOM.hintCantidad.classList.remove('is-hidden');
+            this.DOM.hintCantidad.innerText = `Tenencia actual: ${tenencia}`;
+            const isEditing = !this.DOM.btnCancelarEdicion.classList.contains('is-hidden');
+            if (!isEditing && inputCant > tenencia) {
+                this.DOM.opCantidad.value = tenencia;
+                this.DOM.hintCantidad.innerText = `Máximo alcanzado. Tenencia: ${tenencia}`;
+            }
+        } else {
+            this.DOM.hintCantidad.classList.add('is-hidden');
+        }
+    },
+
+    adaptarFormularioOperar() {
+        let t = this.DOM.opTipo.value;
+        if(this.DOM.hintCantidad) this.DOM.hintCantidad.classList.add('is-hidden');
+        
+        if (['Compra','Venta','Dividendo'].includes(t)) {
+            this.DOM.bloqueActivo.classList.remove('is-hidden');
+        } else {
+            this.DOM.bloqueActivo.classList.add('is-hidden');
+        }
+        
+        if (t === 'Compra') {
+            this.DOM.grupoSector.classList.remove('is-hidden');
+        } else {
+            this.DOM.grupoSector.classList.add('is-hidden');
+        }
+        
+        if (t === 'Transferencia Ahorro' || t === 'Ahorro') {
+            this.DOM.bloqueDolares.classList.remove('is-hidden');
+        } else {
+            this.DOM.bloqueDolares.classList.add('is-hidden');
+        }
+
+        this.DOM.lblMonto.innerText = t === 'Dividendo' ? 'Dividendo Cobrado (ARS)' : 'Monto Total Operado (ARS)';
+    },
+
+    adaptarFormularioEconomia() {
+        let t = this.DOM.ecoTipo.value;
+        let cats = this.currentModelData?.categorias || {};
+        
+        this.DOM.bloqueCategoriasEco.classList.add('is-hidden');
+        this.DOM.bloquePrestamosAlta.classList.add('is-hidden');
+        this.DOM.bloquePrestamosPago.classList.add('is-hidden');
+        this.DOM.grupoEcoCategoria.classList.add('is-hidden');
+        this.DOM.grupoEcoProveedor.classList.add('is-hidden');
+        
+        if (this.DOM.rowEcoValorVenta) this.DOM.rowEcoValorVenta.classList.add('is-hidden');
+        if (this.DOM.rowEcoEstadoPago) this.DOM.rowEcoEstadoPago.classList.add('is-hidden');
+        if (this.DOM.bloquePagoDeudaProveedor) this.DOM.bloquePagoDeudaProveedor.classList.add('is-hidden');
+        
+        if (t === 'Gasto Local' || t === 'Gasto Familiar') {
+            this.DOM.bloqueCategoriasEco.classList.remove('is-hidden');
+            this.DOM.grupoEcoCategoria.classList.remove('is-hidden');
+            
+            let catType = t === 'Gasto Local' ? 'Local' : 'Personal';
+            let listData = cats[catType] || [];
+            
+            let datalistHtml = '<datalist id="lista-categorias-eco">';
+            listData.forEach(c => { datalistHtml += `<option value="${DOMPurify.sanitize(c)}">`; });
+            datalistHtml += '</datalist>';
+            
+            this.DOM.ecoCategoria.outerHTML = `<input type="text" id="eco-categoria" list="lista-categorias-eco" placeholder="Selecciona de la lista o escribe una nueva...">` + datalistHtml;
+            this.DOM.ecoCategoria = document.getElementById('eco-categoria');
+        } 
+        else if (t === 'Pago Proveedor') {
+            this.DOM.bloqueCategoriasEco.classList.remove('is-hidden');
+            this.DOM.grupoEcoProveedor.classList.remove('is-hidden');
+            
+            if (this.DOM.rowEcoEstadoPago) {
+                this.DOM.rowEcoEstadoPago.classList.remove('is-hidden');
+            }
+            if (this.DOM.rowEcoValorVenta) {
+                this.DOM.rowEcoValorVenta.classList.remove('is-hidden');
+                let hint = document.getElementById('hint-valor-venta');
+                if (hint) hint.innerText = "Si se deja en blanco, se suma al costo sin proyectar ganancia.";
+            }
+            
+            let provs = this.currentModelData?.proveedores || [];
+            let datalistHtml = '<datalist id="lista-proveedores">';
+            provs.forEach(p => { datalistHtml += `<option value="${p.nombre}">`; });
+            datalistHtml += '</datalist>';
+            this.DOM.ecoProveedor.outerHTML = `<input type="text" id="eco-proveedor" list="lista-proveedores" placeholder="Ej: Proveedor ABC">` + datalistHtml;
+            this.DOM.ecoProveedor = document.getElementById('eco-proveedor'); 
+        } 
+        else if (t === 'Amortización Deuda a Proveedor') {
+            if (this.DOM.bloquePagoDeudaProveedor) this.DOM.bloquePagoDeudaProveedor.classList.remove('is-hidden');
+            
+            let deudas = this.currentModelData?.stats?.deudaProveedoresDetalle || {};
+            let optionsHtml = '<option value="">-- Seleccionar Deuda Pendiente --</option>';
+            
+            for(let key in deudas) {
+                let d = deudas[key];
+                if(d.activo) {
+                    let pendiente = d.capitalExigibleTotal - d.capitalServido;
+                    optionsHtml += `<option value="${d.id}">${DOMPurify.sanitize(d.proveedor)} (Resta $${this.fmtStr(pendiente, 1, false)}) - ${d.fecha}</option>`;
+                }
+            }
+            if (this.DOM.ecoDeudaProveedorId) this.DOM.ecoDeudaProveedorId.innerHTML = optionsHtml;
+        }
+        else if (t === 'Reparto Sociedad') {
+            this.DOM.bloqueCategoriasEco.classList.remove('is-hidden');
+            this.DOM.grupoEcoProveedor.classList.remove('is-hidden');
+            this.DOM.ecoProveedor.placeholder = "Ej: Nombre del Socio";
+            this.DOM.ecoProveedor.outerHTML = `<input type="text" id="eco-proveedor" placeholder="Ej: Nombre del Socio">`;
+            this.DOM.ecoProveedor = document.getElementById('eco-proveedor');
+        }
+        else if (t === 'Ajuste Stock Inicial') {
+            if (this.DOM.rowEcoValorVenta) {
+                this.DOM.bloqueCategoriasEco.classList.remove('is-hidden');
+                this.DOM.rowEcoValorVenta.classList.remove('is-hidden');
+                let hint = document.getElementById('hint-valor-venta');
+                if (hint) hint.innerText = "Ingresa cuánto dinero obtendrías si vendieras todo este stock histórico al público.";
+            }
+        }
+        else if (t === 'Alta Préstamo') {
+            this.DOM.bloquePrestamosAlta.classList.remove('is-hidden');
+        }
+        else if (t === 'Pago Préstamo') {
+            this.DOM.bloquePrestamosPago.classList.remove('is-hidden');
+            let prestamos = this.currentModelData?.stats?.prestamosDetalle || {};
+            let optionsHtml = '<option value="">-- Seleccionar Préstamo --</option>';
+            
+            for(let key in prestamos) {
+                let p = prestamos[key];
+                if(p.activo) {
+                    let deudaPendiente = p.totalDevolver - p.pagado;
+                    optionsHtml += `<option value="${p.id}">${DOMPurify.sanitize(p.entidad)} (Resta $${this.fmtStr(deudaPendiente, 1, false)})</option>`;
+                }
+            }
+            this.DOM.ecoPrestamoId.innerHTML = optionsHtml;
+        }
+    },
+
     renderSimuladorWhatIf(modelData = this.currentModelData) {
         if (!modelData || !modelData.stats) return;
         const s = modelData.stats;
@@ -1088,7 +1540,6 @@ export const view = {
                 ChartRenderer.renderVentasMensuales(s.ventasMensuales.labels, dataIngresos, dataCostoVida, 'wrap-ventas-mensuales');
             }
 
-            // Llamada dinámica a la actualización de rentabilidad (Neto por defecto o según estado del toggle)
             const isBrutaActiva = document.getElementById('btn-rentabilidad-bruta')?.classList.contains('active') || false;
             this.actualizarRentabilidadFisica(s, isBrutaActiva);
 
@@ -1127,7 +1578,6 @@ export const view = {
                 else this.DOM.metSupervivencia.className = "stat__value data-font texto-rojo";
             }
 
-            // NUEVO: Umbral Conservador del 15% para Carga Financiera
             if (this.DOM.metCargaPct && this.DOM.barCarga && this.DOM.lblCargaEstado) {
                 let carga = s.cargaFinancieraPct || 0;
                 this.DOM.metCargaPct.innerText = carga.toFixed(1) + "%";
@@ -1181,16 +1631,44 @@ export const view = {
                 this.DOM.tbodyProveedores.innerHTML = provHtml.join('');
             }
 
-            // NUEVO: Modificación Tabla Préstamos (Total Pedido, Tasa Int., Cuota Mensual)
+            // CORRECCIÓN APLICADA: Inyección del Sub-Dashboard Global de Pasivos
             if (this.DOM.tbodyPrestamos) {
                 let prestamos = s.prestamosDetalle || {};
                 let prestamosHtml = [];
                 let pArray = Object.values(prestamos).sort((a,b) => b.fecha.localeCompare(a.fecha));
-                let totalDeudaActiva = s.deudaActiva || 0;
                 
                 let headerElement = this.DOM.tbodyPrestamos.closest('.card').querySelector('h2');
                 if (headerElement) {
-                    headerElement.innerHTML = `Auditoría de Pasivos Activos (Bancarios/Préstamos) <span class="data-font texto-rojo privacy-mask" style="float:right; font-size:1rem;">Total Exigible: ${this.zenMode ? '---' : '$' + this.fmtStr(totalDeudaActiva, 1, false)}</span>`;
+                    headerElement.innerHTML = `Auditoría de Pasivos Activos (Bancarios/Préstamos)`;
+                    
+                    let oldSubDash = headerElement.nextElementSibling;
+                    if(oldSubDash && oldSubDash.classList.contains('pasivos-subdash')) {
+                        oldSubDash.remove();
+                    }
+
+                    let subDash = document.createElement('div');
+                    subDash.className = 'pasivos-subdash grid-4';
+                    subDash.style.gap = '10px';
+                    subDash.style.marginBottom = '15px';
+                    subDash.innerHTML = `
+                        <div style="background:var(--bg-input); padding:10px; border-radius:6px; text-align:center;">
+                            <div style="font-size:10px; color:var(--text-muted); text-transform:uppercase;">Total Pedido (Capital)</div>
+                            <div class="data-font privacy-mask" style="font-size:1.1rem; color:var(--text-main); font-weight:bold;">${this.zenMode ? '---' : '$' + this.fmtStr(s.totalPedidoPrestamos || 0, 1, false)}</div>
+                        </div>
+                        <div style="background:var(--bg-input); padding:10px; border-radius:6px; text-align:center; border: 1px solid var(--color-down);">
+                            <div style="font-size:10px; color:var(--text-muted); text-transform:uppercase;">Total Exigible (Deuda)</div>
+                            <div class="data-font texto-rojo privacy-mask" style="font-size:1.1rem; font-weight:bold;">${this.zenMode ? '---' : '$' + this.fmtStr(s.totalDevolverPrestamos || 0, 1, false)}</div>
+                        </div>
+                        <div style="background:var(--bg-input); padding:10px; border-radius:6px; text-align:center;">
+                            <div style="font-size:10px; color:var(--text-muted); text-transform:uppercase;">Cuota Mensual Global</div>
+                            <div class="data-font texto-warning privacy-mask" style="font-size:1.1rem; font-weight:bold;">${this.zenMode ? '---' : '$' + this.fmtStr(s.totalCuotaMensualPrestamos || 0, 1, false)}</div>
+                        </div>
+                        <div style="background:var(--bg-input); padding:10px; border-radius:6px; text-align:center;">
+                            <div style="font-size:10px; color:var(--text-muted); text-transform:uppercase;">Tasa de Interés Promedio</div>
+                            <div class="data-font texto-primario privacy-mask" style="font-size:1.1rem; font-weight:bold;">${(s.tasaPromedioPrestamos || 0).toFixed(1)}%</div>
+                        </div>
+                    `;
+                    headerElement.parentNode.insertBefore(subDash, headerElement.nextSibling);
                 }
 
                 if (pArray.length === 0) {
