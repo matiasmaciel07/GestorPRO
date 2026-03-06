@@ -819,7 +819,6 @@ export const view = {
             this.DOM.ecoPrestamoId.innerHTML = optionsHtml;
         }
     },
-
     renderSimuladorWhatIf(modelData = this.currentModelData) {
         if (!modelData || !modelData.stats) return;
         const s = modelData.stats;
@@ -977,6 +976,19 @@ export const view = {
         });
     },
 
+    actualizarRentabilidadFisica(stats, esBruta = false) {
+        if(!this.DOM.esfuerzoMes || !this.DOM.esfuerzoSemana || !this.DOM.esfuerzoDia || !this.DOM.esfuerzoHora) return;
+        
+        let fuenteDatos = esBruta && stats.esfuerzoBruto ? stats.esfuerzoBruto : stats.esfuerzo;
+        
+        if(fuenteDatos) {
+            this.DOM.esfuerzoMes.innerHTML = this.zenMode ? "100.0%" : this.fmt(fuenteDatos.mes, this.currentModelData?.dolarBlue, this.currentModelData?.vistaUSD);
+            this.DOM.esfuerzoSemana.innerHTML = this.zenMode ? "25.0%" : this.fmt(fuenteDatos.semana, this.currentModelData?.dolarBlue, this.currentModelData?.vistaUSD);
+            this.DOM.esfuerzoDia.innerHTML = this.zenMode ? "4.1%" : this.fmt(fuenteDatos.dia, this.currentModelData?.dolarBlue, this.currentModelData?.vistaUSD);
+            this.DOM.esfuerzoHora.innerHTML = this.zenMode ? "0.3%" : this.fmt(fuenteDatos.hora, this.currentModelData?.dolarBlue, this.currentModelData?.vistaUSD);
+        }
+    },
+
     renderFinanzaGeneral(modelData) {
         ErrorHandler.catchBoundary('Finanzas Generales', 'finanza-general', () => {
             let s = modelData.stats;
@@ -987,7 +999,7 @@ export const view = {
             if (this.DOM.metSweepMonto) this.DOM.metSweepMonto.innerHTML = this.zenMode ? "- %" : this.fmt(s.sweepSugerido, modelData.dolarBlue, modelData.vistaUSD);
 
             if (this.DOM.metEquilibrioDia && this.DOM.barEquilibrio) {
-                let diaEq = s.diaEquilibrio || 30;
+                let diaEq = s.puntoEquilibrioHistorico || 30;
                 this.DOM.metEquilibrioDia.innerText = `Día ${diaEq}`;
                 let pctEq = (diaEq / 30) * 100;
                 this.DOM.barEquilibrio.style.width = Math.min(100, pctEq) + "%";
@@ -1076,10 +1088,9 @@ export const view = {
                 ChartRenderer.renderVentasMensuales(s.ventasMensuales.labels, dataIngresos, dataCostoVida, 'wrap-ventas-mensuales');
             }
 
-            if(this.DOM.esfuerzoMes && s.esfuerzo) this.DOM.esfuerzoMes.innerHTML = this.zenMode ? "100.0%" : this.fmt(s.esfuerzo.mes, modelData.dolarBlue, modelData.vistaUSD);
-            if(this.DOM.esfuerzoSemana && s.esfuerzo) this.DOM.esfuerzoSemana.innerHTML = this.zenMode ? "25.0%" : this.fmt(s.esfuerzo.semana, modelData.dolarBlue, modelData.vistaUSD);
-            if(this.DOM.esfuerzoDia && s.esfuerzo) this.DOM.esfuerzoDia.innerHTML = this.zenMode ? "4.1%" : this.fmt(s.esfuerzo.dia, modelData.dolarBlue, modelData.vistaUSD);
-            if(this.DOM.esfuerzoHora && s.esfuerzo) this.DOM.esfuerzoHora.innerHTML = this.zenMode ? "0.3%" : this.fmt(s.esfuerzo.hora, modelData.dolarBlue, modelData.vistaUSD);
+            // Llamada dinámica a la actualización de rentabilidad (Neto por defecto o según estado del toggle)
+            const isBrutaActiva = document.getElementById('btn-rentabilidad-bruta')?.classList.contains('active') || false;
+            this.actualizarRentabilidadFisica(s, isBrutaActiva);
 
             if(this.DOM.flowValIngreso) {
                 this.DOM.flowValIngreso.innerHTML = this.zenMode ? "100%" : this.fmt(s.flowIngreso, modelData.dolarBlue, modelData.vistaUSD);
@@ -1116,6 +1127,7 @@ export const view = {
                 else this.DOM.metSupervivencia.className = "stat__value data-font texto-rojo";
             }
 
+            // NUEVO: Umbral Conservador del 15% para Carga Financiera
             if (this.DOM.metCargaPct && this.DOM.barCarga && this.DOM.lblCargaEstado) {
                 let carga = s.cargaFinancieraPct || 0;
                 this.DOM.metCargaPct.innerText = carga.toFixed(1) + "%";
@@ -1125,11 +1137,11 @@ export const view = {
                     this.DOM.barCarga.style.backgroundColor = "var(--color-up)";
                     this.DOM.lblCargaEstado.innerText = "Sin deudas activas este mes";
                     this.DOM.metCargaPct.style.color = "var(--color-up)";
-                } else if (carga <= 30) {
+                } else if (carga <= 15) {
                     this.DOM.barCarga.style.backgroundColor = "var(--color-up)";
                     this.DOM.lblCargaEstado.innerText = "Saludable (Bajo control)";
                     this.DOM.metCargaPct.style.color = "var(--color-up)";
-                } else if (carga <= 50) {
+                } else if (carga <= 30) {
                     this.DOM.barCarga.style.backgroundColor = "#f59e0b";
                     this.DOM.lblCargaEstado.innerText = "Precaución (Carga elevada)";
                     this.DOM.metCargaPct.style.color = "#f59e0b";
@@ -1169,6 +1181,7 @@ export const view = {
                 this.DOM.tbodyProveedores.innerHTML = provHtml.join('');
             }
 
+            // NUEVO: Modificación Tabla Préstamos (Total Pedido, Tasa Int., Cuota Mensual)
             if (this.DOM.tbodyPrestamos) {
                 let prestamos = s.prestamosDetalle || {};
                 let prestamosHtml = [];
@@ -1177,11 +1190,11 @@ export const view = {
                 
                 let headerElement = this.DOM.tbodyPrestamos.closest('.card').querySelector('h2');
                 if (headerElement) {
-                    headerElement.innerHTML = `Pasivos y Deudas Activas <span class="data-font texto-rojo privacy-mask" style="float:right; font-size:1rem;">Total: ${this.zenMode ? '---' : '$' + this.fmtStr(totalDeudaActiva, 1, false)}</span>`;
+                    headerElement.innerHTML = `Auditoría de Pasivos Activos (Bancarios/Préstamos) <span class="data-font texto-rojo privacy-mask" style="float:right; font-size:1rem;">Total Exigible: ${this.zenMode ? '---' : '$' + this.fmtStr(totalDeudaActiva, 1, false)}</span>`;
                 }
 
                 if (pArray.length === 0) {
-                    prestamosHtml.push('<tr><td colspan="4" style="text-align:center; padding: 40px; color:var(--text-muted);"><svg width="48" height="48" style="margin-bottom:10px; opacity:0.5;"><use href="#icon-empty"></use></svg><br>Libre de deudas</td></tr>');
+                    prestamosHtml.push('<tr><td colspan="7" style="text-align:center; padding: 40px; color:var(--text-muted);"><svg width="48" height="48" style="margin-bottom:10px; opacity:0.5;"><use href="#icon-empty"></use></svg><br>Libre de deudas</td></tr>');
                 } else {
                     pArray.forEach(p => {
                         let pct = Math.min(100, (p.pagado / p.totalDevolver) * 100);
@@ -1189,15 +1202,19 @@ export const view = {
                         let statusLabel = p.activo ? 'Deuda Activa' : 'Saldado ✔️';
                         let cuotaActual = Math.min((p.cuotasPagadas || 0) + 1, p.cuotasTotales || 1);
                         let cuotaStr = p.activo ? `Cuota ${cuotaActual} de ${p.cuotasTotales || 1}` : `Saldado en ${p.cuotasTotales || 1} cuotas`;
-                        let tasaStr = (p.tasaInteres !== undefined && p.tasaInteres >= 0) ? ` | Interés: ${p.tasaInteres.toFixed(1)}%` : '';
+                        let tasaInteres = p.tasaInteres || 0;
+                        let cuotaMesCalculada = p.totalDevolver / (p.cuotasTotales || 1);
                         
                         prestamosHtml.push(
                             `<tr style="border-bottom: 1px solid var(--border-color); opacity: ${p.activo ? '1' : '0.6'}; transition: opacity 0.3s;">
                                 <td style="padding: 12px 0;">
                                     <strong>${DOMPurify.sanitize(p.entidad)}</strong><br>
                                     <span style="font-size:11px; color:var(--text-muted);">${p.fecha} | ${statusLabel}</span><br>
-                                    <span style="font-size:11px; color:var(--color-accent); font-weight:600;">${cuotaStr}${tasaStr}</span>
+                                    <span style="font-size:11px; color:var(--color-accent); font-weight:600;">${cuotaStr}</span>
                                 </td>
+                                <td class="data-font privacy-mask" style="text-align:right; padding: 12px 0; color:var(--text-muted);">${this.zenMode ? '---' : '$' + this.fmtStr(p.capital, 1, false)}</td>
+                                <td class="data-font" style="text-align:right; padding: 12px 0; color:var(--color-warning);">${tasaInteres.toFixed(1)}%</td>
+                                <td class="data-font privacy-mask" style="text-align:right; padding: 12px 0; color:var(--color-primary);">${this.zenMode ? '---' : '$' + this.fmtStr(cuotaMesCalculada, 1, false)}</td>
                                 <td class="data-font privacy-mask" style="text-align:right; padding: 12px 0; color:var(--color-up);">${this.zenMode ? '---' : '$' + this.fmtStr(p.pagado, 1, false)}</td>
                                 <td class="data-font privacy-mask" style="text-align:right; padding: 12px 0;">${this.zenMode ? '---' : '$' + this.fmtStr(p.totalDevolver, 1, false)}</td>
                                 <td style="vertical-align:middle; padding: 12px 0 12px 15px;">
@@ -1265,6 +1282,7 @@ export const view = {
             }
         });
     },
+    
     renderAjustesInflacion() {
         ErrorHandler.catchBoundary('Ajustes de Inflación', 'lista-inflacion', () => {
             if(!this.currentModelData || !this.currentModelData.inflacion) return;
