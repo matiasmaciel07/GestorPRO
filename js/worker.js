@@ -38,6 +38,9 @@ function getEmptyStats() {
         prestamosDetalle: {}, proveedoresMensual: {}, proveedoresDetalle: {},
         deudaProveedoresDetalle: {},
         
+        totalPedidoPrestamos: 0, totalDevolverPrestamos: 0, 
+        totalCuotaMensualPrestamos: 0, tasaPromedioPrestamos: 0,
+
         historyPatrimonio: [], historyPatrimonioConStock: [],
         historyLiquidez: [], historyInvertido: [], historyCajaLocal: [], 
         historyIngresosLocal: [], historyFlujoNeto: [], historyFechas: [],
@@ -50,6 +53,7 @@ function getEmptyStats() {
         numMesesOperativos: 0, tasaAhorroReal: 0, fondoSupervivenciaMeses: 0, cargaFinancieraPct: 0,
         gananciaNetaTotal: 0,
         esfuerzo: { mes: 0, semana: 0, dia: 0, hora: 0 },
+        esfuerzoBruto: { mes: 0, semana: 0, dia: 0, hora: 0 },
         gastoPersonalPromedioMes: 0,
         
         flowIngreso: 0, flowOperativo: 0, flowProveedores: 0, flowVida: 0, flowAhorro: 0, flowSociedad: 0,
@@ -176,7 +180,8 @@ function processSingle(m) {
         st.stats.stockCosto = safeFloat(Math.max(0, st.stats.stockCosto - costoVendidoEstimado));
         st.stats.stockValorVenta = safeFloat(Math.max(0, st.stats.stockValorVenta - montoNum));
         
-        let d = new Date(m.fecha + "T00:00:00");
+        let [y, mo, da] = m.fecha.split('-');
+        let d = new Date(parseInt(y, 10), parseInt(mo, 10) - 1, parseInt(da, 10));
         let dayOfWeek = d.getDay();
         st.stats.ventasPorDiaSemana[dayOfWeek] = safeFloat(st.stats.ventasPorDiaSemana[dayOfWeek] + montoNum);
         st.diasOperadosPorDiaSemana[dayOfWeek].add(m.fecha);
@@ -384,6 +389,25 @@ function finalizeMetrics() {
         let riskMetrics = FinancialMath.calcularRiesgoTWR(retornosDiarios, 0.05);
         st.stats.riesgo = { sharpe: riskMetrics.sharpe.toFixed(2), sortino: riskMetrics.sortino.toFixed(2), volatilidad: (riskMetrics.volatilidad * 100).toFixed(2) };
     }
+
+    // Cálculos y agregaciones para la tabla de Préstamos
+    st.stats.totalPedidoPrestamos = 0;
+    st.stats.totalDevolverPrestamos = 0;
+    st.stats.totalCuotaMensualPrestamos = 0;
+    let sumTasaActiva = 0;
+    let countPrestamosActivos = 0;
+
+    for (let key in st.stats.prestamosDetalle) {
+        let p = st.stats.prestamosDetalle[key];
+        if (p.activo) {
+            st.stats.totalPedidoPrestamos += safeFloat(p.capital);
+            st.stats.totalDevolverPrestamos += safeFloat(p.totalDevolver - p.pagado);
+            st.stats.totalCuotaMensualPrestamos += safeFloat(p.totalDevolver / (p.cuotasTotales || 1));
+            sumTasaActiva += safeFloat(p.tasaInteres);
+            countPrestamosActivos++;
+        }
+    }
+    st.stats.tasaPromedioPrestamos = countPrestamosActivos > 0 ? safeFloat(sumTasaActiva / countPrestamosActivos) : 0;
     
     let numMeses = st.mesesOperativos.size || 1;
     st.stats.numMesesOperativos = numMeses;
@@ -409,6 +433,9 @@ function finalizeMetrics() {
     let gananciaNetaMensualPromedio = safeFloat(st.stats.gananciaNetaTotal / numMeses);
     st.stats.esfuerzo = FinancialMath.calcularEsfuerzoFisico(gananciaNetaMensualPromedio);
 
+    let gananciaBrutaMensualPromedio = safeFloat(st.stats.ingresosLocal / numMeses);
+    st.stats.esfuerzoBruto = FinancialMath.calcularEsfuerzoFisico(gananciaBrutaMensualPromedio);
+
     st.stats.fugaCapitalMonto = safeFloat(st.stats.gastosFamiliar); 
     if (st.stats.gananciaNetaTotal > 0) {
         st.stats.fugaPersonalPct = safeFloat((st.stats.gastosFamiliar / st.stats.gananciaNetaTotal) * 100);
@@ -417,18 +444,18 @@ function finalizeMetrics() {
     }
     
     let gastoOperativoMensualPuro = egresoComercialPuro / numMeses;
-    let ingresosDiariosPromedio = st.stats.ingresosLocal / (numMeses * 26); 
+    let ingresosDiariosPromedio = st.stats.ingresosLocal / (numMeses * 30.44); 
     st.stats.puntoEquilibrioHistorico = ingresosDiariosPromedio > 0 ? Math.min(30, Math.ceil(gastoOperativoMensualPuro / ingresosDiariosPromedio)) : 0;
 
     let cajaMinimaSegura = gastoOperativoMensualPuro * 1.5; 
-    if (gananciaNetaMensualPromedio > 0 && st.stats.cajaLocal > cajaMinimaSegura) {
+    if (st.stats.cajaLocal > cajaMinimaSegura) {
         st.stats.sweepSugerido = safeFloat(st.stats.cajaLocal - cajaMinimaSegura);
     } else {
         st.stats.sweepSugerido = 0; 
     }
     
     let ingresosPasivosMensual = safeFloat(st.stats.rendExtra / numMeses);
-    st.stats.crossoverPct = gananciaNetaMensualPromedio > 0 ? safeFloat((ingresosPasivosMensual / gananciaNetaMensualPromedio) * 100) : 0;
+    st.stats.crossoverPct = st.stats.gastoPersonalPromedioMes > 0 ? safeFloat((ingresosPasivosMensual / st.stats.gastoPersonalPromedioMes) * 100) : 0;
     st.stats.horasLibresRegaladas = st.stats.esfuerzo.hora > 0 ? safeFloat(ingresosPasivosMensual / st.stats.esfuerzo.hora) : 0;
 
     for(let i=0; i<=6; i++) {
