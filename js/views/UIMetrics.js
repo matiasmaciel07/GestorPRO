@@ -66,13 +66,19 @@ export const UIMetrics = {
         link.href = `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
     },
 
+    /**
+     * Renderiza la lista de gastos desglosada por categorías.
+     * Sincronizado con la temporalidad del controlador.
+     */
     renderListaGastos(datosGenerados, domId, divisor, isUSD) {
         const container = document.getElementById(domId);
         if (!container) return;
 
         container.innerHTML = '';
-        if (datosGenerados.labels.length === 0) {
-            container.innerHTML = `<div class="empty-state"><p>No hay datos registrados en esta temporalidad.</p></div>`;
+        if (!datosGenerados.labels || datosGenerados.labels.length === 0) {
+            container.innerHTML = `<div class="empty-state" style="padding: 20px; text-align: center; color: var(--text-muted); font-size: 12px;">
+                <p>No hay registros para este periodo.</p>
+            </div>`;
             return;
         }
 
@@ -85,15 +91,24 @@ export const UIMetrics = {
 
         const ul = document.createElement('ul');
         ul.className = 'lista-gastos-desglose';
+        ul.style.listStyle = 'none';
+        ul.style.padding = '0';
+        ul.style.margin = '0';
 
         combinedData.forEach(item => {
             const li = document.createElement('li');
+            li.style.display = 'flex';
+            li.style.justifyContent = 'space-between';
+            li.style.alignItems = 'center';
+            li.style.padding = '10px 0';
+            li.style.borderBottom = '1px solid var(--border-color)';
+            
             li.innerHTML = `
-                <div class="gasto-info">
-                    <span class="gasto-cat">${item.categoria}</span>
-                    <span class="gasto-pct data-font">${item.porcentaje}%</span>
+                <div class="gasto-info" style="display: flex; flex-direction: column; gap: 2px;">
+                    <span class="gasto-cat" style="font-size: 13px; font-weight: 600; color: var(--text-main);">${item.categoria}</span>
+                    <span class="gasto-pct data-font" style="font-size: 10px; color: var(--color-primary);">${item.porcentaje}% del total</span>
                 </div>
-                <div class="gasto-monto">${this.fmt(item.monto, divisor, isUSD)}</div>
+                <div class="gasto-monto" style="text-align: right;">${this.fmt(item.monto, divisor, isUSD)}</div>
             `;
             ul.appendChild(li);
         });
@@ -104,15 +119,12 @@ export const UIMetrics = {
     actualizarAuditoriaComercial(stats, divisor, isUSD) {
         const safeEl = (id, val) => { const e = document.getElementById(id); if (e) e.innerHTML = val; };
         
-        // Inyectar Ingresos Brutos (Histórico Absoluto)
         let ingresosDeclarados = stats.ingresosLocal || 0;
         safeEl('val-ingresos-brutos-declarados', this.fmt(ingresosDeclarados, divisor, isUSD));
 
-        // Inyectar Ingresos Netos Corregidos
         let ingresosNetos = stats.ingresosNetosAuditoria !== undefined ? stats.ingresosNetosAuditoria : ingresosDeclarados;
         safeEl('val-ingresos-brutos-netos', this.fmt(ingresosNetos, divisor, isUSD));
 
-        // Inyectar el Inventario Base Real (Costos de Proveedores deducidos)
         let inventarioBase = stats.inventarioBaseCorregido !== undefined ? stats.inventarioBaseCorregido : 0;
         safeEl('val-inventario-base-corregido', this.fmt(inventarioBase, divisor, isUSD));
     },
@@ -138,7 +150,7 @@ export const UIMetrics = {
             ChartRenderer.renderVentasMensuales(s.ventasMensuales.labels, s.ventasMensuales.data.map(v => v / div), 'wrap-ventas-mensuales');
         }
 
-        // Valor del Esfuerzo Físico Limpio (Con soporte temporal dinámico por modelo)
+        // Valor del Esfuerzo Físico Limpio
         if (s.esfuerzo) {
             safeEl('esfuerzo-mes', this.fmt(s.esfuerzo.mes, div, isUSD));
             safeEl('esfuerzo-semana', this.fmt(s.esfuerzo.semana, div, isUSD));
@@ -146,7 +158,7 @@ export const UIMetrics = {
             safeEl('esfuerzo-hora', this.fmt(s.esfuerzo.hora, div, isUSD));
         }
 
-        // Volatilidad y Riesgo (Ya depurados por el motor)
+        // Volatilidad y Riesgo
         if (s.riesgo) {
             safeEl('info-sharpe', `<span class="data-font privacy-mask">${s.riesgo.sharpe}</span>`);
             safeEl('info-sortino', `<span class="data-font privacy-mask">${s.riesgo.sortino}</span>`);

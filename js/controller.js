@@ -83,17 +83,17 @@ const controller = {
         events.on('model:updated', () => {
             UIMetrics.inyectarMetricasFase6(model.data);
             
-            // Actualizar Estructuras de Gastos con el estado actual
             const uiState = model.data.uiState;
+            // Alineación de punteros con el DOM real (wrap-gastos-...)
             events.emit('ui:actualizar-distribucion-gastos', { 
                 contexto: 'Local', 
                 temporalidad: uiState.gastosLocalTemporalidad, 
-                domId: 'grafico-gastos-local' 
+                domId: 'wrap-gastos-local' 
             });
             events.emit('ui:actualizar-distribucion-gastos', { 
                 contexto: 'Personal', 
                 temporalidad: uiState.gastosPersonalTemporalidad, 
-                domId: 'grafico-gastos-personal' 
+                domId: 'wrap-gastos-personal' 
             });
 
             if(TabFSM.state === 'informes') this.actualizarSimuladorWhatIf();
@@ -218,7 +218,7 @@ const controller = {
             events.emit('ui:actualizar-distribucion-gastos', { 
                 contexto: 'Local', 
                 temporalidad: temporalidad, 
-                domId: 'grafico-gastos-local' 
+                domId: 'wrap-gastos-local' 
             });
         });
 
@@ -227,7 +227,7 @@ const controller = {
             events.emit('ui:actualizar-distribucion-gastos', { 
                 contexto: 'Personal', 
                 temporalidad: temporalidad, 
-                domId: 'grafico-gastos-personal' 
+                domId: 'wrap-gastos-personal' 
             });
         });
 
@@ -241,6 +241,7 @@ const controller = {
             if (typeof ChartRenderer !== 'undefined' && ChartRenderer.renderDistribucionGastos) {
                 ChartRenderer.renderDistribucionGastos(datosGenerados, config.domId);
             }
+            // Actualización de la lista de desglose porcentual
             UIMetrics.renderListaGastos(datosGenerados, config.domId + '-lista', model.data.vistaUSD ? model.data.dolarBlue : 1, model.data.vistaUSD);
         });
 
@@ -287,7 +288,6 @@ const controller = {
             }
         });
 
-        // Toggle de Valoración Productiva
         const btnRentNeta = document.getElementById('btn-rentabilidad-neta');
         const btnRentBruta = document.getElementById('btn-rentabilidad-bruta');
         
