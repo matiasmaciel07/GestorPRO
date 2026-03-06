@@ -29,7 +29,8 @@ const controller = {
     state: { 
         filtroEvolucion: 'MAX',
         editingId: null,
-        zenMode: false
+        zenMode: false,
+        vistaRentabilidadBruta: false
     },
 
     async init() {
@@ -82,6 +83,11 @@ const controller = {
         events.on('model:updated', () => {
             UIMetrics.inyectarMetricasFase6(model.data);
             if(TabFSM.state === 'informes') this.actualizarSimuladorWhatIf();
+            
+            // Si el modelo se actualiza (ej. nueva operación), forzamos a refrescar la rentabilidad si estamos en esa vista
+            if (model.data && model.data.stats && view.actualizarRentabilidadFisica) {
+                 view.actualizarRentabilidadFisica(model.data.stats, this.state.vistaRentabilidadBruta);
+            }
         });
 
         events.on('ui:toggle-moneda', () => model.toggleMoneda());
@@ -191,6 +197,7 @@ const controller = {
             ChartRenderer.renderDistribucionGastos(datosGenerados, config.domId);
         });
 
+        // Event Listeners Dinámicos del DOM
         document.getElementById('eco-prestamo-id')?.addEventListener('change', (e) => {
             const id = e.target.value;
             if (id && model.data.stats.prestamosDetalle && model.data.stats.prestamosDetalle[id]) {
@@ -232,6 +239,30 @@ const controller = {
                 }
             }
         });
+
+        // Toggle de Valoración Productiva (Fase 3)
+        const btnRentNeta = document.getElementById('btn-rentabilidad-neta');
+        const btnRentBruta = document.getElementById('btn-rentabilidad-bruta');
+        
+        if (btnRentNeta && btnRentBruta) {
+            btnRentNeta.addEventListener('click', () => {
+                this.state.vistaRentabilidadBruta = false;
+                btnRentNeta.classList.add('active');
+                btnRentBruta.classList.remove('active');
+                if (model.data && model.data.stats && view.actualizarRentabilidadFisica) {
+                    view.actualizarRentabilidadFisica(model.data.stats, this.state.vistaRentabilidadBruta);
+                }
+            });
+            
+            btnRentBruta.addEventListener('click', () => {
+                this.state.vistaRentabilidadBruta = true;
+                btnRentBruta.classList.add('active');
+                btnRentNeta.classList.remove('active');
+                if (model.data && model.data.stats && view.actualizarRentabilidadFisica) {
+                    view.actualizarRentabilidadFisica(model.data.stats, this.state.vistaRentabilidadBruta);
+                }
+            });
+        }
     },
 
     actualizarSimuladorWhatIf() {
