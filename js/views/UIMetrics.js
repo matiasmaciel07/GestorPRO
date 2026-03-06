@@ -66,6 +66,57 @@ export const UIMetrics = {
         link.href = `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
     },
 
+    renderListaGastos(datosGenerados, domId, divisor, isUSD) {
+        const container = document.getElementById(domId);
+        if (!container) return;
+
+        container.innerHTML = '';
+        if (datosGenerados.labels.length === 0) {
+            container.innerHTML = `<div class="empty-state"><p>No hay datos registrados en esta temporalidad.</p></div>`;
+            return;
+        }
+
+        let total = datosGenerados.total;
+        let combinedData = datosGenerados.labels.map((label, index) => ({
+            categoria: label,
+            monto: datosGenerados.data[index],
+            porcentaje: total > 0 ? ((datosGenerados.data[index] / total) * 100).toFixed(1) : 0
+        })).sort((a, b) => b.monto - a.monto);
+
+        const ul = document.createElement('ul');
+        ul.className = 'lista-gastos-desglose';
+
+        combinedData.forEach(item => {
+            const li = document.createElement('li');
+            li.innerHTML = `
+                <div class="gasto-info">
+                    <span class="gasto-cat">${item.categoria}</span>
+                    <span class="gasto-pct data-font">${item.porcentaje}%</span>
+                </div>
+                <div class="gasto-monto">${this.fmt(item.monto, divisor, isUSD)}</div>
+            `;
+            ul.appendChild(li);
+        });
+
+        container.appendChild(ul);
+    },
+
+    actualizarAuditoriaComercial(stats, divisor, isUSD) {
+        const safeEl = (id, val) => { const e = document.getElementById(id); if (e) e.innerHTML = val; };
+        
+        // Inyectar Ingresos Brutos (Histórico Absoluto)
+        let ingresosDeclarados = stats.ingresosLocal || 0;
+        safeEl('val-ingresos-brutos-declarados', this.fmt(ingresosDeclarados, divisor, isUSD));
+
+        // Inyectar Ingresos Netos Corregidos
+        let ingresosNetos = stats.ingresosNetosAuditoria !== undefined ? stats.ingresosNetosAuditoria : ingresosDeclarados;
+        safeEl('val-ingresos-brutos-netos', this.fmt(ingresosNetos, divisor, isUSD));
+
+        // Inyectar el Inventario Base Real (Costos de Proveedores deducidos)
+        let inventarioBase = stats.inventarioBaseCorregido !== undefined ? stats.inventarioBaseCorregido : 0;
+        safeEl('val-inventario-base-corregido', this.fmt(inventarioBase, divisor, isUSD));
+    },
+
     inyectarMetricasFase6(modelData) {
         if (!modelData || !modelData.stats) return;
         const s = modelData.stats;
@@ -73,6 +124,9 @@ export const UIMetrics = {
         const div = isUSD ? modelData.dolarBlue : 1;
 
         const safeEl = (id, val) => { const e = document.getElementById(id); if (e) e.innerHTML = val; };
+
+        // Auditoría Comercial Constante
+        this.actualizarAuditoriaComercial(s, div, isUSD);
 
         // Dólar Promedio Histórico
         const lblInvSub1 = document.getElementById('lbl-inv-sub1');
@@ -84,7 +138,7 @@ export const UIMetrics = {
             ChartRenderer.renderVentasMensuales(s.ventasMensuales.labels, s.ventasMensuales.data.map(v => v / div), 'wrap-ventas-mensuales');
         }
 
-        // Valor del Esfuerzo Físico Limpio
+        // Valor del Esfuerzo Físico Limpio (Con soporte temporal dinámico por modelo)
         if (s.esfuerzo) {
             safeEl('esfuerzo-mes', this.fmt(s.esfuerzo.mes, div, isUSD));
             safeEl('esfuerzo-semana', this.fmt(s.esfuerzo.semana, div, isUSD));

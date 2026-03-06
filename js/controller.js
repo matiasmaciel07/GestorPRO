@@ -82,11 +82,28 @@ const controller = {
 
         events.on('model:updated', () => {
             UIMetrics.inyectarMetricasFase6(model.data);
+            
+            // Actualizar Estructuras de Gastos con el estado actual
+            const uiState = model.data.uiState;
+            events.emit('ui:actualizar-distribucion-gastos', { 
+                contexto: 'Local', 
+                temporalidad: uiState.gastosLocalTemporalidad, 
+                domId: 'grafico-gastos-local' 
+            });
+            events.emit('ui:actualizar-distribucion-gastos', { 
+                contexto: 'Personal', 
+                temporalidad: uiState.gastosPersonalTemporalidad, 
+                domId: 'grafico-gastos-personal' 
+            });
+
             if(TabFSM.state === 'informes') this.actualizarSimuladorWhatIf();
             
-            // Si el modelo se actualiza (ej. nueva operación), forzamos a refrescar la rentabilidad si estamos en esa vista
             if (model.data && model.data.stats && view.actualizarRentabilidadFisica) {
                  view.actualizarRentabilidadFisica(model.data.stats, this.state.vistaRentabilidadBruta);
+            }
+            
+            if (model.data && model.data.stats && view.actualizarSankey) {
+                view.actualizarSankey(model.data.stats, uiState.sankeyTemporalidad);
             }
         });
 
@@ -188,13 +205,43 @@ const controller = {
             PDFGenerator.exportarLibroMayor(datosFiltrados, filtros);
         });
 
+        // Eventos para Cambio de Temporalidad Modular
+        events.on('ui:cambio-temporalidad-sankey', (temporalidad) => {
+            model.setTemporalidadUi('sankeyTemporalidad', temporalidad);
+            if (model.data && model.data.stats && view.actualizarSankey) {
+                view.actualizarSankey(model.data.stats, temporalidad);
+            }
+        });
+
+        events.on('ui:cambio-temporalidad-gastos-local', (temporalidad) => {
+            model.setTemporalidadUi('gastosLocalTemporalidad', temporalidad);
+            events.emit('ui:actualizar-distribucion-gastos', { 
+                contexto: 'Local', 
+                temporalidad: temporalidad, 
+                domId: 'grafico-gastos-local' 
+            });
+        });
+
+        events.on('ui:cambio-temporalidad-gastos-personal', (temporalidad) => {
+            model.setTemporalidadUi('gastosPersonalTemporalidad', temporalidad);
+            events.emit('ui:actualizar-distribucion-gastos', { 
+                contexto: 'Personal', 
+                temporalidad: temporalidad, 
+                domId: 'grafico-gastos-personal' 
+            });
+        });
+
         events.on('ui:actualizar-distribucion-gastos', (config) => {
             const datosGenerados = FinancialMath.calcularDistribucionGastos(
                 model._rawData.movimientos, 
                 config.contexto, 
                 config.temporalidad
             );
-            ChartRenderer.renderDistribucionGastos(datosGenerados, config.domId);
+            
+            if (typeof ChartRenderer !== 'undefined' && ChartRenderer.renderDistribucionGastos) {
+                ChartRenderer.renderDistribucionGastos(datosGenerados, config.domId);
+            }
+            UIMetrics.renderListaGastos(datosGenerados, config.domId + '-lista', model.data.vistaUSD ? model.data.dolarBlue : 1, model.data.vistaUSD);
         });
 
         // Event Listeners Dinámicos del DOM
@@ -240,7 +287,7 @@ const controller = {
             }
         });
 
-        // Toggle de Valoración Productiva (Fase 3)
+        // Toggle de Valoración Productiva
         const btnRentNeta = document.getElementById('btn-rentabilidad-neta');
         const btnRentBruta = document.getElementById('btn-rentabilidad-bruta');
         
@@ -365,8 +412,6 @@ const controller = {
         }
         else if (['Gasto Local', 'Gasto Familiar'].includes(formData.tipo)) {
             mov.categoria = formData.categoria;
-            
-            // LÓGICA DE APRENDIZAJE: Guardado dinámico de nuevas categorías en el Modelo
             model.guardarCategoria(formData.tipo, formData.categoria);
         } 
         else if (formData.tipo === 'Pago Proveedor') {
