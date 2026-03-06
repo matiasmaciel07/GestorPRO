@@ -371,10 +371,10 @@
                             <div class="stat__value data-font" id="met-supervivencia">0.0 Meses</div>
                         </div>
                         <div class="card">
-                            <h3 style="margin-bottom: 10px; font-size:1rem;" data-tooltip="Proporción del ingreso mensual comprometida estrictamente al servicio de pasivos y obligaciones crediticias. Niveles superiores al 30% representan exposición crítica.">Apalancamiento (Carga Financiera)</h3>
+                            <h3 style="margin-bottom: 10px; font-size:1rem;" data-tooltip="Proporción del ingreso mensual comprometida estrictamente al servicio de pasivos y obligaciones crediticias. Niveles superiores al 15% representan exposición crítica.">Apalancamiento (Carga Financiera)</h3>
                             <div class="is-visible-flex" style="justify-content:space-between; margin-bottom:5px;">
                                 <span class="data-font" id="met-carga-pct" style="font-weight:900;">0%</span>
-                                <span style="color:var(--text-muted); font-size:0.8rem;">Límite Conservador: 30%</span>
+                                <span style="color:var(--text-muted); font-size:0.8rem;">Límite Conservador: 15%</span>
                             </div>
                             <div style="width: 100%; height: 8px; background: var(--bg-input); border-radius: 4px; overflow: hidden; margin-top: 5px;">
                                 <div id="bar-carga" style="height: 100%; background: var(--color-up); transition: width 0.4s ease, background-color 0.4s ease; width:0%;"></div>
@@ -384,9 +384,15 @@
                     </div>
 
                     <div class="card" style="margin-bottom: var(--spacing-lg);">
-                        <h3 style="margin-bottom: 20px; font-size:1.1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;" data-tooltip="Determinación del rendimiento real de la actividad física comercial. Depurada de impuestos, costos operativos fijos y retiros de terceros. Representa la métrica final de productividad de la actividad principal.">
-                            Valoración Neta de la Capacidad Productiva (Rentabilidad Física)
-                        </h3>
+                        <div class="is-visible-flex" style="justify-content:space-between; align-items:center; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; margin-bottom: 20px;">
+                            <h3 style="margin: 0; font-size:1.1rem;" data-tooltip="Determinación del rendimiento de la actividad física comercial. Permite alternar entre la valoración neta (depurada de impuestos, costos fijos y retiros) y la valoración bruta.">
+                                Valoración de la Capacidad Productiva (Rentabilidad Física)
+                            </h3>
+                            <div class="toggle-container" style="margin:0; background: var(--bg-input); display: inline-flex; border-radius: 6px; padding: 2px;">
+                                <button class="toggle-btn active" id="btn-rentabilidad-neta" data-view="neta" style="padding: 0.3rem 0.8rem; font-size: 0.8rem;">Neta</button>
+                                <button class="toggle-btn" id="btn-rentabilidad-bruta" data-view="bruta" style="padding: 0.3rem 0.8rem; font-size: 0.8rem;">Bruta</button>
+                            </div>
+                        </div>
                         <div class="grid-4" style="gap:10px; margin-bottom: 0;">
                             <div style="background:var(--bg-input); padding:15px; border-radius:8px; text-align:center;">
                                 <div class="stat__title" style="font-size:11px;">Rendimiento Promedio MENSUAL</div>
@@ -417,7 +423,7 @@
                         <div class="card">
                             <h2 style="margin-bottom: 15px;">Auditoría de Pasivos Activos (Bancarios/Préstamos)</h2>
                             <div style="max-height: 250px; overflow-y: auto;">
-                                <table class="dataTable-table"><thead style="background:var(--bg-input);"><tr><th>Obligación (Entidad)</th><th style="text-align:right;">Capital Servido</th><th style="text-align:right;">Capital Exigible Total</th><th>Amortización</th></tr></thead><tbody id="tbody-prestamos"></tbody></table>
+                                <table class="dataTable-table"><thead style="background:var(--bg-input);"><tr><th>Obligación (Entidad)</th><th style="text-align:right;">Total Pedido</th><th style="text-align:right;">Tasa Int.</th><th style="text-align:right;">Cuota / Mes</th><th style="text-align:right;">Servido</th><th style="text-align:right;">Exigible Total</th><th>Amortización</th></tr></thead><tbody id="tbody-prestamos"></tbody></table>
                             </div>
                         </div>
                     </div>
