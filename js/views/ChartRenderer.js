@@ -1,5 +1,6 @@
 "use strict";
 import { UIMetrics } from './UIMetrics.js';
+import { FinancialMath } from '../utils/financial.js'; // Importado para acceder a los cálculos temporales
 
 // -----------------------------------------------------------------------------
 // CONFIGURACIÓN GLOBAL PROFESIONAL PARA TODOS LOS GRÁFICOS (UI Unificada)
@@ -460,6 +461,115 @@ export const ChartRenderer = {
                 }
             }
         });
+    },
+
+    /**
+     * Dibuja el Sankey Operativo adaptándose a la temporalidad seleccionada.
+     */
+    renderSankeyOperativo(stats, temporalidad, isUSD, dBlue) {
+        const wrap = document.getElementById('sankey-wrap');
+        if (!wrap) return;
+        
+        let canvas = wrap.querySelector('canvas');
+        if (!canvas) {
+            wrap.innerHTML = '<canvas id="chartSankey"></canvas>';
+            canvas = wrap.querySelector('canvas');
+        }
+
+        const ctx = canvas.getContext('2d');
+        if (chartInstances['chartSankey']) chartInstances['chartSankey'].destroy();
+
+        // 1. Obtener valores brutos históricos desde las estadísticas (Fase 1 y 2)
+        const div = isUSD ? dBlue : 1;
+        let ingresosBrutos = (stats.ingresosLocal || 0) / div;
+        let gastosLocales = (stats.gastosLocal || 0) / div;
+        let pagosProv = (stats.pagosProveedores || 0) / div;
+        let gastosPersonales = (stats.gastosFamiliar || 0) / div;
+        let inver = (stats.totalAhorrado || 0) / div;
+        
+        // 2. Aplicar cálculo de promedios según la temporalidad
+        const aplicarPromedio = (monto) => {
+            const prom = FinancialMath.calcularPromediosDesglosados(monto * div, temporalidad, []); // Pasamos el monto original temporalmente
+            let val;
+            if (temporalidad.toLowerCase() === 'anual') val = prom.mes / div;
+            else if (temporalidad.toLowerCase() === 'mensual') val = prom.semana / div;
+            else if (temporalidad.toLowerCase() === 'semanal') val = prom.dia / div;
+            else if (temporalidad.toLowerCase() === 'diario') val = prom.hora / div;
+            else val = monto; // Histórico
+            return Math.max(0, val);
+        };
+
+        ingresosBrutos = aplicarPromedio(ingresosBrutos);
+        gastosLocales = aplicarPromedio(gastosLocales);
+        pagosProv = aplicarPromedio(pagosProv);
+        gastosPersonales = aplicarPromedio(gastosPersonales);
+        inver = aplicarPromedio(inver);
+
+        const costosOperativos = gastosLocales + pagosProv;
+        let flujoLibre = ingresosBrutos - costosOperativos;
+        if (flujoLibre < 0) flujoLibre = 0;
+
+        // 3. Renderizar el flujo solo si hay datos en la temporalidad seleccionada
+        if (ingresosBrutos === 0) {
+            wrap.innerHTML = '<div style="display:flex; height:100%; align-items:center; justify-content:center; color:var(--text-muted);"><svg width="48" height="48" style="margin-bottom:10px; opacity:0.5;"><use href="#icon-empty"></use></svg><span>Sin flujo financiero en esta temporalidad</span></div>';
+            return;
+        }
+
+        const getCSS = (varName, fallBack) => getComputedStyle(document.documentElement).getPropertyValue(varName).trim() || fallBack;
+        
+        const nodes = [
+            { id: 'Ingresos', color: getCSS('--color-primary', '#00F5A0') },
+            { id: 'Costos Op.', color: getCSS('--color-down', '#FF005C') },
+            { id: 'Flujo Libre', color: getCSS('--color-up', '#10b981') },
+            { id: 'G. Personal', color: getCSS('--color-warning', '#f59e0b') },
+            { id: 'Inversión', color: getCSS('--color-accent', '#8b5cf6') }
+        ];
+
+        const links = [
+            { source: 'Ingresos', target: 'Costos Op.', value: costosOperativos },
+            { source: 'Ingresos', target: 'Flujo Libre', value: flujoLibre },
+            { source: 'Flujo Libre', target: 'G. Personal', value: gastosPersonales },
+            { source: 'Flujo Libre', target: 'Inversión', value: inver }
+        ];
+
+        const data = {
+            datasets: [{
+                label: `Distribución del Flujo (${temporalidad})`,
+                data: links,
+                colorFrom: (c) => c.dataset.data[c.dataIndex].source,
+                colorTo: (c) => c.dataset.data[c.dataIndex].target,
+                colorMode: 'gradient',
+                alpha: 0.6,
+                labels: nodes.reduce((acc, n) => { acc[n.id] = n.id; return acc; }, {}),
+                nodeColors: nodes.reduce((acc, n) => { acc[n.id] = n.color; return acc; }, {}),
+                borderWidth: 0,
+                nodeBorderWidth: 1,
+                nodeBorderColor: 'rgba(255,255,255,0.1)'
+            }]
+        };
+
+        const sankeyConfig = {
+            type: 'sankey',
+            data: data,
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                font: { family: "'Inter', sans-serif", size: 11, color: '#f8fafc' },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const l = context.raw;
+                                return `${l.source} → ${l.target}: $${l.value.toLocaleString('es-AR', {minimumFractionDigits:0, maximumFractionDigits:0})}`;
+                            }
+                        }
+                    }
+                }
+            }
+        };
+
+        chartInstances['chartSankey'] = new Chart(ctx, sankeyConfig);
     },
 
     renderDrawdown(dataFechas, dataDD) {
