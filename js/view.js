@@ -39,6 +39,7 @@ export const view = {
             case 'Gasto Local': return 'bg-gasto-local';
             case 'Gasto Familiar': return 'bg-gasto-vida';
             case 'Pago Proveedor': return 'bg-proveedor';
+            case 'Amortización Deuda a Proveedor': return 'bg-proveedor';
             case 'Reparto Sociedad': return 'bg-sociedad';
             case 'Ajuste Stock Inicial': return 'bg-ahorro-transf';
             case 'Alta Préstamo': return 'bg-prestamo-alta';
@@ -136,14 +137,19 @@ export const view = {
             grupoEcoProveedor: document.getElementById('grupo-eco-proveedor'),
             ecoProveedor: document.getElementById('eco-proveedor'),
             ecoNotas: document.getElementById('eco-notas'),
+            rowEcoEstadoPago: document.getElementById('row-eco-estado-pago'),
+            ecoEstadoPago: document.getElementById('eco-estado-pago'),
             rowEcoValorVenta: document.getElementById('row-eco-valor-venta'),
             ecoValorVenta: document.getElementById('eco-valor-venta'),
+            bloquePagoDeudaProveedor: document.getElementById('bloque-pago-deuda-proveedor'),
+            ecoDeudaProveedorId: document.getElementById('eco-deuda-proveedor-id'),
             bloquePrestamosAlta: document.getElementById('bloque-prestamos-alta'),
             bloquePrestamosPago: document.getElementById('bloque-prestamos-pago'),
             ecoPrestamoEntidad: document.getElementById('eco-prestamo-entidad'),
             ecoPrestamoTotal: document.getElementById('eco-prestamo-total'),
             ecoPrestamoId: document.getElementById('eco-prestamo-id'),
             tbodyProveedores: document.getElementById('tbody-proveedores'),
+            tbodyDeudasProveedores: document.getElementById('tbody-deudas-proveedores'),
             tbodyPrestamos: document.getElementById('tbody-prestamos'),
             ecoMonto: document.getElementById('eco-monto'),
             lblMontoEco: document.getElementById('lbl-monto-eco'),
@@ -406,6 +412,16 @@ export const view = {
                 formData.proveedor = DOMPurify.sanitize(this.DOM.ecoProveedor.value.trim());
                 let valVenta = this.parseNumber(this.DOM.ecoValorVenta?.value);
                 if (valVenta > 0) formData.valorVentaEstimado = valVenta;
+                if (this.DOM.ecoEstadoPago) formData.estadoPago = DOMPurify.sanitize(this.DOM.ecoEstadoPago.value);
+            }
+            if (t === 'Amortización Deuda a Proveedor') {
+                formData.deudaAsociadaId = DOMPurify.sanitize(this.DOM.ecoDeudaProveedorId.value);
+                let deudas = this.currentModelData?.stats?.deudaProveedoresDetalle || {};
+                if (deudas[formData.deudaAsociadaId]) {
+                    formData.proveedor = deudas[formData.deudaAsociadaId].proveedor;
+                } else {
+                    formData.proveedor = 'Desconocido';
+                }
             }
             if (t === 'Reparto Sociedad') {
                 formData.proveedor = DOMPurify.sanitize(this.DOM.ecoProveedor.value.trim());
@@ -477,6 +493,9 @@ export const view = {
                     this.DOM.ecoValorVenta.value = this.fmtStr(mov.valorVentaEstimado, 1, false);
                 }
                 
+                if (mov.estadoPago && this.DOM.ecoEstadoPago) this.DOM.ecoEstadoPago.value = mov.estadoPago;
+                if (mov.deudaAsociadaId && this.DOM.ecoDeudaProveedorId) this.DOM.ecoDeudaProveedorId.value = mov.deudaAsociadaId;
+
                 if (mov.tipo === 'Alta Préstamo' && mov.capital) {
                     const capInput = document.getElementById('eco-prestamo-capital');
                     if (capInput) capInput.value = this.fmtStr(mov.capital, 1, false);
@@ -704,9 +723,6 @@ export const view = {
         this.DOM.lblMonto.innerText = t === 'Dividendo' ? 'Dividendo Cobrado (ARS)' : 'Monto Total Operado (ARS)';
     },
 
-    // -------------------------------------------------------------------------
-    // LÓGICA CENTRAL MODIFICADA: Transformación dinámica del SELECT a INPUT DATALIST
-    // -------------------------------------------------------------------------
     adaptarFormularioEconomia() {
         let t = this.DOM.ecoTipo.value;
         let cats = this.currentModelData?.categorias || {};
@@ -716,7 +732,10 @@ export const view = {
         this.DOM.bloquePrestamosPago.classList.add('is-hidden');
         this.DOM.grupoEcoCategoria.classList.add('is-hidden');
         this.DOM.grupoEcoProveedor.classList.add('is-hidden');
+        
         if (this.DOM.rowEcoValorVenta) this.DOM.rowEcoValorVenta.classList.add('is-hidden');
+        if (this.DOM.rowEcoEstadoPago) this.DOM.rowEcoEstadoPago.classList.add('is-hidden');
+        if (this.DOM.bloquePagoDeudaProveedor) this.DOM.bloquePagoDeudaProveedor.classList.add('is-hidden');
         
         if (t === 'Gasto Local' || t === 'Gasto Familiar') {
             this.DOM.bloqueCategoriasEco.classList.remove('is-hidden');
@@ -729,7 +748,6 @@ export const view = {
             listData.forEach(c => { datalistHtml += `<option value="${DOMPurify.sanitize(c)}">`; });
             datalistHtml += '</datalist>';
             
-            // Sustitución directa del select por un input con datalist para permitir autocompletado y escritura libre
             this.DOM.ecoCategoria.outerHTML = `<input type="text" id="eco-categoria" list="lista-categorias-eco" placeholder="Selecciona de la lista o escribe una nueva...">` + datalistHtml;
             this.DOM.ecoCategoria = document.getElementById('eco-categoria');
         } 
@@ -737,6 +755,9 @@ export const view = {
             this.DOM.bloqueCategoriasEco.classList.remove('is-hidden');
             this.DOM.grupoEcoProveedor.classList.remove('is-hidden');
             
+            if (this.DOM.rowEcoEstadoPago) {
+                this.DOM.rowEcoEstadoPago.classList.remove('is-hidden');
+            }
             if (this.DOM.rowEcoValorVenta) {
                 this.DOM.rowEcoValorVenta.classList.remove('is-hidden');
                 let hint = document.getElementById('hint-valor-venta');
@@ -750,6 +771,21 @@ export const view = {
             this.DOM.ecoProveedor.outerHTML = `<input type="text" id="eco-proveedor" list="lista-proveedores" placeholder="Ej: Proveedor ABC">` + datalistHtml;
             this.DOM.ecoProveedor = document.getElementById('eco-proveedor'); 
         } 
+        else if (t === 'Amortización Deuda a Proveedor') {
+            if (this.DOM.bloquePagoDeudaProveedor) this.DOM.bloquePagoDeudaProveedor.classList.remove('is-hidden');
+            
+            let deudas = this.currentModelData?.stats?.deudaProveedoresDetalle || {};
+            let optionsHtml = '<option value="">-- Seleccionar Deuda Pendiente --</option>';
+            
+            for(let key in deudas) {
+                let d = deudas[key];
+                if(d.activo) {
+                    let pendiente = d.capitalExigibleTotal - d.capitalServido;
+                    optionsHtml += `<option value="${d.id}">${DOMPurify.sanitize(d.proveedor)} (Resta $${this.fmtStr(pendiente, 1, false)}) - ${d.fecha}</option>`;
+                }
+            }
+            if (this.DOM.ecoDeudaProveedorId) this.DOM.ecoDeudaProveedorId.innerHTML = optionsHtml;
+        }
         else if (t === 'Reparto Sociedad') {
             this.DOM.bloqueCategoriasEco.classList.remove('is-hidden');
             this.DOM.grupoEcoProveedor.classList.remove('is-hidden');
@@ -1103,15 +1139,17 @@ export const view = {
             }
 
             if(this.DOM.tbodyProveedores) {
-                let provs = modelData.proveedores || [];
-                let provArray = [];
                 let statsProvs = s.proveedoresDetalle || {};
+                let provArray = [];
                 
-                provs.forEach(p => {
-                    if(statsProvs[p.nombre]) {
-                        provArray.push({ nombre: p.nombre, total: statsProvs[p.nombre].total, meses: statsProvs[p.nombre].meses });
-                    }
-                });
+                for (let pNombre in statsProvs) {
+                    provArray.push({ 
+                        nombre: pNombre, 
+                        total: statsProvs[pNombre].total, 
+                        meses: statsProvs[pNombre].meses 
+                    });
+                }
+                
                 provArray.sort((a,b) => b.total - a.total);
                 
                 let provHtml = [];
@@ -1179,6 +1217,43 @@ export const view = {
                     });
                 }
                 this.DOM.tbodyPrestamos.innerHTML = prestamosHtml.join('');
+            }
+            
+            if (this.DOM.tbodyDeudasProveedores) {
+                let deudas = s.deudaProveedoresDetalle || {};
+                let deudasHtml = [];
+                let dArray = Object.values(deudas).sort((a,b) => b.fecha.localeCompare(a.fecha));
+
+                if (dArray.length === 0) {
+                    deudasHtml.push('<tr><td colspan="4" style="text-align:center; padding: 40px; color:var(--text-muted);"><svg width="48" height="48" style="margin-bottom:10px; opacity:0.5;"><use href="#icon-empty"></use></svg><br>No hay cuentas corrientes pendientes</td></tr>');
+                } else {
+                    dArray.forEach(d => {
+                        let pct = Math.min(100, d.amortizacionPct || 0);
+                        let statusColor = d.activo ? 'var(--color-warning)' : 'var(--color-up)';
+                        let statusLabel = d.activo ? 'Deuda Pendiente' : 'Saldado ✔️';
+
+                        deudasHtml.push(
+                            `<tr style="border-bottom: 1px solid var(--border-color); opacity: ${d.activo ? '1' : '0.6'}; transition: opacity 0.3s;">
+                                <td style="padding: 12px 0;">
+                                    <strong>${DOMPurify.sanitize(d.proveedor)}</strong><br>
+                                    <span style="font-size:11px; color:var(--text-muted);">${d.fecha} | ${statusLabel}</span><br>
+                                    <span style="font-size:11px; color:var(--text-muted);">ID: ${d.id}</span>
+                                </td>
+                                <td class="data-font privacy-mask" style="text-align:right; padding: 12px 0; color:var(--color-up);">${this.zenMode ? '---' : '$' + this.fmtStr(d.capitalServido, 1, false)}</td>
+                                <td class="data-font privacy-mask" style="text-align:right; padding: 12px 0;">${this.zenMode ? '---' : '$' + this.fmtStr(d.capitalExigibleTotal, 1, false)}</td>
+                                <td style="vertical-align:middle; padding: 12px 0 12px 15px;">
+                                    <div style="display:flex; align-items:center; gap:8px;">
+                                        <div style="flex:1; height:6px; background:var(--bg-base); border-radius:3px; overflow:hidden;">
+                                            <div style="height:100%; width:${pct}%; background:${statusColor}; border-radius:3px;"></div>
+                                        </div>
+                                        <span style="font-size:11px; width: 30px; text-align:right;" class="data-font">${pct.toFixed(0)}%</span>
+                                    </div>
+                                </td>
+                            </tr>`
+                        );
+                    });
+                }
+                this.DOM.tbodyDeudasProveedores.innerHTML = deudasHtml.join('');
             }
         });
     },
