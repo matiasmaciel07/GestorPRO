@@ -1,6 +1,6 @@
 "use strict";
 import { UIMetrics } from './UIMetrics.js';
-import { FinancialMath } from '../utils/financial.js'; // Importado para acceder a los cálculos temporales
+import { FinancialMath } from '../utils/financial.js';
 
 // -----------------------------------------------------------------------------
 // CONFIGURACIÓN GLOBAL PROFESIONAL PARA TODOS LOS GRÁFICOS (UI Unificada)
@@ -101,7 +101,7 @@ export const ChartRenderer = {
                         pointRadius: 2,
                         pointBackgroundColor: colorWarning,
                         tension: 0.3,
-                        order: 1 // Asegura que la línea se dibuje por encima de las barras
+                        order: 1
                     },
                     {
                         type: 'bar',
@@ -116,10 +116,7 @@ export const ChartRenderer = {
             },
             options: {
                 responsive: true, maintainAspectRatio: false,
-                interaction: {
-                    mode: 'index',
-                    intersect: false,
-                },
+                interaction: { mode: 'index', intersect: false },
                 animation: { duration: 800, easing: 'easeOutQuart' },
                 plugins: { 
                     legend: { 
@@ -262,10 +259,7 @@ export const ChartRenderer = {
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    interaction: {
-                        mode: 'index',
-                        intersect: false,
-                    },
+                    interaction: { mode: 'index', intersect: false },
                     animation: { duration: 800, easing: 'easeOutQuart' },
                     plugins: {
                         legend: { display: false },
@@ -325,7 +319,7 @@ export const ChartRenderer = {
             { index: 2, label: 'Capital Invertido Bursátil', color: getCSS('--color-accent', 'hsl(283, 100%, 50%)'), hidden: false, tooltip: 'El valor actual de mercado de todos los activos en el portafolio de inversión.' },
             { index: 3, label: 'Liquidez en Caja', color: getCSS('--color-up', 'hsl(159, 100%, 48%)'), hidden: false, tooltip: 'Capital circulante no invertido, disponible para cobertura de pasivos operativos.' },
             { index: 4, label: 'Costo de Vida Acumulado', color: getCSS('--color-down', 'hsl(338, 100%, 50%)'), hidden: true, tooltip: 'Sumatoria histórica de todos los egresos personales y comerciales.' },
-            { index: 5, label: 'Media Móvil Costo Vida', color: getCSS('--color-warning', 'hsl(50, 100%, 50%)'), hidden: true, tooltip: 'Promedio móvil mensual del índice de egresos generales.' },
+            { index: 5, label: 'Media Móvil Costo Vida', color: getCSS('--color-warning', 'hsl(50, 100%, 50%)'), hidden: true, tooltip: 'Promedio móvil mensual del índice de egresos generales calculado sobre el histórico.' },
             { index: 6, label: 'Inflación Proyectada', color: getCSS('--color-orange', 'hsl(24, 100%, 50%)'), hidden: true, tooltip: 'Índice base estadístico para el cálculo del rendimiento real del patrimonio neto.' }
         ];
 
@@ -335,14 +329,50 @@ export const ChartRenderer = {
                 <div class="custom-legend-item" data-index="${item.index}" style="display: flex; align-items: center; gap: 8px; cursor: pointer; opacity: ${item.hidden ? 0.4 : 1}; transition: opacity 0.2s;">
                     <div class="legend-color-box" style="width: 14px; height: 14px; border-radius: 4px; background-color: ${item.color}; border: 1px solid rgba(255,255,255,0.1); pointer-events: none;"></div>
                     <span class="legend-text" style="font-size: 11px; color: var(--text-main); font-weight: 600; pointer-events: none;">${item.label}</span>
-                    <span data-tooltip-title="Detalle del Indicador" data-tooltip-desc="${item.tooltip}" class="legend-tooltip-icon custom-tooltip-trigger" style="color: var(--color-primary); background: var(--bg-input); border-radius: 50%; width: 18px; height: 18px; display: inline-flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 900; border: 1px solid var(--border-color); z-index: 10;">?</span>
+                    <span data-tooltip-title="${item.label}" data-tooltip-desc="${item.tooltip}" class="legend-tooltip-icon custom-tooltip-trigger" style="color: var(--color-primary); background: var(--bg-input); border-radius: 50%; width: 18px; height: 18px; display: inline-flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 900; border: 1px solid var(--border-color); z-index: 10;">?</span>
                 </div>
             `;
         });
 
         legendContainer.innerHTML = html;
 
+        // Inyectar Estilos de Tooltip Flotante si no existen
+        if (!document.getElementById('custom-legend-styles')) {
+            const style = document.createElement('style');
+            style.id = 'custom-legend-styles';
+            style.innerHTML = `
+                .floating-legend-tooltip {
+                    position: absolute; background: rgba(15, 23, 42, 0.98); color: #f8fafc; padding: 12px; border-radius: 8px;
+                    font-size: 11px; line-height: 1.5; border: 1px solid var(--border-color); box-shadow: 0 10px 15px -3px rgba(0,0,0,0.5);
+                    z-index: 9999; pointer-events: none; width: 220px; transition: opacity 0.2s; opacity: 0;
+                }
+                .floating-legend-tooltip strong { color: var(--color-primary); display: block; margin-bottom: 4px; font-family: 'Inter', sans-serif; text-transform: uppercase; letter-spacing: 0.5px; }
+            `;
+            document.head.appendChild(style);
+        }
+
+        const floatingTooltip = document.createElement('div');
+        floatingTooltip.className = 'floating-legend-tooltip';
+        document.body.appendChild(floatingTooltip);
+
         legendContainer.querySelectorAll('.custom-legend-item').forEach(item => {
+            const helpIcon = item.querySelector('.legend-tooltip-icon');
+
+            helpIcon.addEventListener('mouseenter', (e) => {
+                const title = helpIcon.getAttribute('data-tooltip-title');
+                const desc = helpIcon.getAttribute('data-tooltip-desc');
+                floatingTooltip.innerHTML = `<strong>${title}</strong>${desc}`;
+                floatingTooltip.style.opacity = '1';
+                
+                const rect = helpIcon.getBoundingClientRect();
+                floatingTooltip.style.left = `${rect.left + window.scrollX - 110 + (rect.width/2)}px`;
+                floatingTooltip.style.top = `${rect.top + window.scrollY - floatingTooltip.offsetHeight - 10}px`;
+            });
+
+            helpIcon.addEventListener('mouseleave', () => {
+                floatingTooltip.style.opacity = '0';
+            });
+
             item.addEventListener('click', function(e) {
                 if(e.target.classList.contains('legend-tooltip-icon')) return;
                 
@@ -465,6 +495,7 @@ export const ChartRenderer = {
 
     /**
      * Dibuja el Sankey Operativo adaptándose a la temporalidad seleccionada.
+     * Implementa Motor de Conservación de Energía (Balanceo de Flujo).
      */
     renderSankeyOperativo(stats, temporalidad, isUSD, dBlue) {
         const wrap = document.getElementById('sankey-wrap');
@@ -479,40 +510,43 @@ export const ChartRenderer = {
         const ctx = canvas.getContext('2d');
         if (chartInstances['chartSankey']) chartInstances['chartSankey'].destroy();
 
-        // 1. Obtener valores brutos históricos desde las estadísticas (Fase 1 y 2)
         const div = isUSD ? dBlue : 1;
-        let ingresosBrutos = (stats.ingresosLocal || 0) / div;
-        let gastosLocales = (stats.gastosLocal || 0) / div;
-        let pagosProv = (stats.pagosProveedores || 0) / div;
-        let gastosPersonales = (stats.gastosFamiliar || 0) / div;
-        let inver = (stats.totalAhorrado || 0) / div;
         
-        // 2. Aplicar cálculo de promedios según la temporalidad
+        // 1. Coeficientes Temporales
         const aplicarPromedio = (monto) => {
-            const prom = FinancialMath.calcularPromediosDesglosados(monto * div, temporalidad, []); // Pasamos el monto original temporalmente
+            const prom = FinancialMath.calcularPromediosDesglosados(monto * div, temporalidad, []);
             let val;
             if (temporalidad.toLowerCase() === 'anual') val = prom.mes / div;
             else if (temporalidad.toLowerCase() === 'mensual') val = prom.semana / div;
             else if (temporalidad.toLowerCase() === 'semanal') val = prom.dia / div;
             else if (temporalidad.toLowerCase() === 'diario') val = prom.hora / div;
-            else val = monto; // Histórico
+            else val = monto;
             return Math.max(0, val);
         };
 
-        ingresosBrutos = aplicarPromedio(ingresosBrutos);
-        gastosLocales = aplicarPromedio(gastosLocales);
-        pagosProv = aplicarPromedio(pagosProv);
-        gastosPersonales = aplicarPromedio(gastosPersonales);
-        inver = aplicarPromedio(inver);
+        const ingresosBrutos = aplicarPromedio((stats.ingresosLocal || 0) / div);
+        const gastosLocales = aplicarPromedio((stats.gastosLocal || 0) / div);
+        const pagosProv = aplicarPromedio((stats.pagosProveedores || 0) / div);
+        const gastosPersonales = aplicarPromedio((stats.gastosFamiliar || 0) / div);
+        const inver = aplicarPromedio((stats.totalAhorrado || 0) / div);
 
-        const costosOperativos = gastosLocales + pagosProv;
-        let flujoLibre = ingresosBrutos - costosOperativos;
-        if (flujoLibre < 0) flujoLibre = 0;
-
-        // 3. Renderizar el flujo solo si hay datos en la temporalidad seleccionada
         if (ingresosBrutos === 0) {
             wrap.innerHTML = '<div style="display:flex; height:100%; align-items:center; justify-content:center; color:var(--text-muted);"><svg width="48" height="48" style="margin-bottom:10px; opacity:0.5;"><use href="#icon-empty"></use></svg><span>Sin flujo financiero en esta temporalidad</span></div>';
             return;
+        }
+
+        // 2. Lógica de Conservación de Energía (Balanceo)
+        const costosOperativos = gastosLocales + pagosProv;
+        const flujoLibreReal = Math.max(0, ingresosBrutos - costosOperativos);
+        const sumatoriaSalidas = gastosPersonales + inver;
+        
+        let deficit = 0;
+        let excedente = 0;
+
+        if (sumatoriaSalidas > flujoLibreReal) {
+            deficit = sumatoriaSalidas - flujoLibreReal;
+        } else {
+            excedente = flujoLibreReal - sumatoriaSalidas;
         }
 
         const getCSS = (varName, fallBack) => getComputedStyle(document.documentElement).getPropertyValue(varName).trim() || fallBack;
@@ -527,34 +561,39 @@ export const ChartRenderer = {
 
         const links = [
             { source: 'Ingresos', target: 'Costos Op.', value: costosOperativos },
-            { source: 'Ingresos', target: 'Flujo Libre', value: flujoLibre },
-            { source: 'Flujo Libre', target: 'G. Personal', value: gastosPersonales },
-            { source: 'Flujo Libre', target: 'Inversión', value: inver }
+            { source: 'Ingresos', target: 'Flujo Libre', value: flujoLibreReal }
         ];
 
-        const data = {
-            datasets: [{
-                label: `Distribución del Flujo (${temporalidad})`,
-                data: links,
-                colorFrom: (c) => c.dataset.data[c.dataIndex].source,
-                colorTo: (c) => c.dataset.data[c.dataIndex].target,
-                colorMode: 'gradient',
-                alpha: 0.6,
-                labels: nodes.reduce((acc, n) => { acc[n.id] = n.id; return acc; }, {}),
-                nodeColors: nodes.reduce((acc, n) => { acc[n.id] = n.color; return acc; }, {}),
-                borderWidth: 0,
-                nodeBorderWidth: 1,
-                nodeBorderColor: 'rgba(255,255,255,0.1)'
-            }]
-        };
+        if (deficit > 0) {
+            nodes.push({ id: 'Ahorros Previos', color: '#64748b' });
+            links.push({ source: 'Ahorros Previos', target: 'Flujo Libre', value: deficit });
+        }
+
+        links.push({ source: 'Flujo Libre', target: 'G. Personal', value: gastosPersonales });
+        links.push({ source: 'Flujo Libre', target: 'Inversión', value: inver });
+
+        if (excedente > 0) {
+            nodes.push({ id: 'Excedente Líquido', color: '#0ea5e9' });
+            links.push({ source: 'Flujo Libre', target: 'Excedente Líquido', value: excedente });
+        }
 
         const sankeyConfig = {
             type: 'sankey',
-            data: data,
+            data: {
+                datasets: [{
+                    label: `Balance del Flujo (${temporalidad})`,
+                    data: links,
+                    colorFrom: (c) => c.dataset.data[c.dataIndex].source,
+                    colorTo: (c) => c.dataset.data[c.dataIndex].target,
+                    colorMode: 'gradient', alpha: 0.6,
+                    labels: nodes.reduce((acc, n) => { acc[n.id] = n.id; return acc; }, {}),
+                    nodeColors: nodes.reduce((acc, n) => { acc[n.id] = n.color; return acc; }, {}),
+                    borderWidth: 0, nodeBorderWidth: 1, nodeBorderColor: 'rgba(255,255,255,0.1)'
+                }]
+            },
             options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                font: { family: "'Inter', sans-serif", size: 11, color: '#f8fafc' },
+                responsive: true, maintainAspectRatio: false,
+                font: { family: "'Inter', sans-serif", size: 11 },
                 plugins: {
                     legend: { display: false },
                     tooltip: {
