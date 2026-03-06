@@ -37,7 +37,6 @@ export const model = {
     _engineResolver: null,
     _proxyDebounce: null,
     
-    // Manejador temporal de estado para UI (Persistencia de Formularios)
     _lastFormState: {
         contexto: 'Local',
         categoria: ''
@@ -74,7 +73,6 @@ export const model = {
         
         const cats = await storage.get('gfp_categorias');
         if(cats) {
-            // Migración de claves viejas a las nuevas ('Local' y 'Personal')
             let migratedCats = { Local: [], Personal: [] };
             
             if (cats['Operativo Local']) migratedCats.Local = cats['Operativo Local'];
@@ -83,13 +81,11 @@ export const model = {
             if (cats['Economía Personal']) migratedCats.Personal = cats['Economía Personal'];
             else if (cats['Personal']) migratedCats.Personal = cats['Personal'];
 
-            // Renombrar 'Proveedores' a 'Insumos Menores' si existe como en versiones anteriores
             const idx = migratedCats.Local.indexOf('Proveedores');
             if (idx !== -1) migratedCats.Local[idx] = 'Insumos Menores';
 
             this._data.categorias = migratedCats;
         } else {
-            // Carga predefinida de 20 categorías profesionales iniciales
             this._data.categorias = {
                 'Local': [
                     "Alquiler de Inmueble", 
@@ -172,6 +168,8 @@ export const model = {
             if (isNaN(mov.monto)) mov.monto = 0;
             if (mov.activo) mov.activo = mov.activo.toString().trim().toUpperCase();
             if (mov.tipo === 'Compra' && !mov.sector) mov.sector = 'Otro';
+            if (mov.tipo === 'Pago Proveedor' && !mov.estadoPago) mov.estadoPago = 'Pagado';
+            if (mov.deudaAsociadaId === undefined) mov.deudaAsociadaId = null;
             return mov;
         });
     },
@@ -190,13 +188,11 @@ export const model = {
         }
     },
     
-    // MÉTODO NUEVO: Guardado dinámico de categorías ingresadas por el usuario
     async guardarCategoria(contexto, nombreCategoria) {
         if (!nombreCategoria || typeof nombreCategoria !== 'string') return;
         const nombreLimpio = nombreCategoria.trim();
         if (!nombreLimpio) return;
 
-        // Normalizamos el contexto para que siempre encaje en Local o Personal
         let ctx = contexto;
         if (contexto === 'Gasto Local') ctx = 'Local';
         if (contexto === 'Gasto Familiar' || contexto === 'Gasto Personal') ctx = 'Personal';
@@ -205,7 +201,6 @@ export const model = {
             this._rawData.categorias[ctx] = [];
         }
 
-        // Revisamos de manera insensible a mayúsculas si la categoría ya se encuentra en la base
         const existe = this._rawData.categorias[ctx].find(c => c.toLowerCase() === nombreLimpio.toLowerCase());
         
         if (!existe) {
@@ -290,9 +285,6 @@ export const model = {
         });
     },
 
-    // -----------------------------------------------------------------
-    // MANEJO DE ESTADO TEMPORAL PARA FORMULARIOS
-    // -----------------------------------------------------------------
     setLastExpenseState(contexto, categoria) {
         this._lastFormState = { contexto, categoria };
     },
@@ -301,9 +293,6 @@ export const model = {
         return this._lastFormState;
     },
 
-    // -----------------------------------------------------------------
-    // EXTRACCIÓN Y FILTRADO DE DATOS PARA LIBRO MAYOR (PDF)
-    // -----------------------------------------------------------------
     getLibroMayorData(filtros = { temporalidad: 'Histórico', tipo: 'Todos' }) {
         let movimientosBase = [...this._rawData.movimientos];
 

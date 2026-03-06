@@ -35,7 +35,8 @@ function getEmptyStats() {
         stockCosto: 0, stockValorVenta: 0, markupPromedio: 1,
         liquidezAcida: 0, liquidezCorriente: 0,
         
-        prestamosDetalle: {}, proveedoresMensual: {},
+        prestamosDetalle: {}, proveedoresMensual: {}, proveedoresDetalle: {},
+        deudaProveedoresDetalle: {},
         
         historyPatrimonio: [], historyPatrimonioConStock: [],
         historyLiquidez: [], historyInvertido: [], historyCajaLocal: [], 
@@ -71,7 +72,7 @@ function sortMovimientos(arr) {
             const peso = { 
                 'Ingreso Local': 1, 'Alta Préstamo': 2, 'Ajuste Stock Inicial': 2.5, 'Ahorro': 3, 'Transferencia Ahorro': 4,
                 'Compra': 5, 'Rendimiento': 6, 'Dividendo': 7, 
-                'Gasto Local': 8, 'Gasto Familiar': 9, 'Pago Proveedor': 10, 'Reparto Sociedad': 10.5, 'Pago Préstamo': 11, 
+                'Gasto Local': 8, 'Gasto Familiar': 9, 'Pago Proveedor': 10, 'Amortización Deuda a Proveedor': 10.1, 'Reparto Sociedad': 10.5, 'Pago Préstamo': 11, 
                 'Venta': 12, 'Retiro': 13 
             };
             return (peso[a.tipo] || 15) - (peso[b.tipo] || 15);
@@ -193,18 +194,55 @@ function processSingle(m) {
         st.stats.gastosPorCategoriaFamiliar[m.categoria || 'Varios'] = safeFloat((st.stats.gastosPorCategoriaFamiliar[m.categoria || 'Varios'] || 0) + montoNum);
     } 
     else if (m.tipo === 'Pago Proveedor') {
+        let prov = m.proveedor || 'Desconocido';
+        let valorVentaInput = m.valorVentaEstimado ? safeFloat(m.valorVentaEstimado) : montoNum;
+        
+        st.stats.stockCosto = safeFloat(st.stats.stockCosto + montoNum);
+        st.stats.stockValorVenta = safeFloat(st.stats.stockValorVenta + valorVentaInput);
+        
+        if (!st.stats.proveedoresDetalle[prov]) st.stats.proveedoresDetalle[prov] = { total: 0, meses: {} };
+        st.stats.proveedoresDetalle[prov].total = safeFloat(st.stats.proveedoresDetalle[prov].total + montoNum);
+        st.stats.proveedoresDetalle[prov].meses[mesStr] = safeFloat((st.stats.proveedoresDetalle[prov].meses[mesStr] || 0) + montoNum);
+
+        if (m.estadoPago === 'Pendiente') {
+            let deudaId = m.deudaAsociadaId || ('PROV-' + m.id);
+            st.stats.deudaProveedoresDetalle[deudaId] = {
+                id: deudaId,
+                proveedor: prov,
+                fecha: m.fecha,
+                capitalExigibleTotal: montoNum,
+                capitalServido: 0,
+                amortizacionPct: 0,
+                activo: true
+            };
+        } else {
+            st.stats.cajaLocal = safeFloat(st.stats.cajaLocal - montoNum);
+            st.stats.pagosProveedores = safeFloat(st.stats.pagosProveedores + montoNum);
+            st.stats.flowProveedores = safeFloat(st.stats.flowProveedores + montoNum);
+            st.stats.gastosPorProveedor[prov] = safeFloat((st.stats.gastosPorProveedor[prov] || 0) + montoNum);
+            if (!st.stats.proveedoresMensual[prov]) st.stats.proveedoresMensual[prov] = {};
+            st.stats.proveedoresMensual[prov][mesStr] = safeFloat((st.stats.proveedoresMensual[prov][mesStr] || 0) + montoNum);
+        }
+    } 
+    else if (m.tipo === 'Amortización Deuda a Proveedor') {
         st.stats.cajaLocal = safeFloat(st.stats.cajaLocal - montoNum);
         st.stats.pagosProveedores = safeFloat(st.stats.pagosProveedores + montoNum);
         st.stats.flowProveedores = safeFloat(st.stats.flowProveedores + montoNum);
+        
         let prov = m.proveedor || 'Desconocido';
         st.stats.gastosPorProveedor[prov] = safeFloat((st.stats.gastosPorProveedor[prov] || 0) + montoNum);
         if (!st.stats.proveedoresMensual[prov]) st.stats.proveedoresMensual[prov] = {};
         st.stats.proveedoresMensual[prov][mesStr] = safeFloat((st.stats.proveedoresMensual[prov][mesStr] || 0) + montoNum);
-
-        let valorVentaInput = m.valorVentaEstimado ? safeFloat(m.valorVentaEstimado) : montoNum;
-        st.stats.stockCosto = safeFloat(st.stats.stockCosto + montoNum);
-        st.stats.stockValorVenta = safeFloat(st.stats.stockValorVenta + valorVentaInput);
-    } 
+        
+        if (m.deudaAsociadaId && st.stats.deudaProveedoresDetalle[m.deudaAsociadaId]) {
+            let deuda = st.stats.deudaProveedoresDetalle[m.deudaAsociadaId];
+            deuda.capitalServido = safeFloat(deuda.capitalServido + montoNum);
+            deuda.amortizacionPct = safeFloat((deuda.capitalServido / deuda.capitalExigibleTotal) * 100);
+            if (deuda.capitalServido >= deuda.capitalExigibleTotal) {
+                deuda.activo = false;
+            }
+        }
+    }
     else if (m.tipo === 'Ajuste Stock Inicial') {
         let valorVentaInput = m.valorVentaEstimado ? safeFloat(m.valorVentaEstimado) : montoNum;
         st.stats.stockCosto = safeFloat(st.stats.stockCosto + montoNum);
@@ -429,7 +467,6 @@ function runFullProcess(movimientosArray, inflacionINDEC = {}) {
     sortMovimientos(st.movimientos);
     st.movimientos.forEach(processSingle);
     
-    // ANCLAJE TEMPORAL: Limitar la proyección estrictamente al día actual eliminando el mes vacío.
     if (st.lastDate) {
         let todayDateStr = new Date().toISOString().split('T')[0];
         
@@ -445,7 +482,6 @@ function runFullProcess(movimientosArray, inflacionINDEC = {}) {
             st.stats.historyFechas.push(todayDateStr);
             st.stats.historyInflacion.push(safeFloat(finalInf));
             
-            // Mantenemos los valores de línea plana hasta el día de la consulta
             st.stats.historyMediaVida.push(st.stats.historyMediaVida[lastIdx]);
             st.stats.historyPatrimonio.push(st.stats.historyPatrimonio[lastIdx]);
             st.stats.historyPatrimonioConStock.push(st.stats.historyPatrimonioConStock[lastIdx]);
