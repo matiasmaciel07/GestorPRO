@@ -55,7 +55,7 @@ export const ChartRenderer = {
         return gradient;
     },
 
-    renderVentasMensuales(labels, data, wrapDOMId) {
+    renderVentasMensuales(labels, dataIngresos, dataCostoVida, wrapDOMId) {
         const wrap = document.getElementById(wrapDOMId);
         if (!wrap) return;
 
@@ -73,6 +73,7 @@ export const ChartRenderer = {
         const ctx = canvas.getContext('2d');
         const getCSS = (varName, fallBack) => getComputedStyle(document.documentElement).getPropertyValue(varName).trim() || fallBack;
         const colorUp = getCSS('--color-up', '#00F5A0');
+        const colorWarning = getCSS('--color-warning', 'hsl(50, 100%, 50%)');
         
         if (chartInstances[wrapDOMId]) chartInstances[wrapDOMId].destroy();
 
@@ -87,23 +88,49 @@ export const ChartRenderer = {
             type: 'bar',
             data: {
                 labels: displayLabels,
-                datasets: [{
-                    label: 'Ingreso Operativo Total',
-                    data: data,
-                    backgroundColor: colorUp,
-                    borderRadius: 4,
-                    borderWidth: 0
-                }]
+                datasets: [
+                    {
+                        type: 'line',
+                        label: 'Promedio Costo de Vida',
+                        data: dataCostoVida,
+                        borderColor: colorWarning,
+                        backgroundColor: 'transparent',
+                        borderWidth: 2,
+                        borderDash: [4, 4],
+                        pointRadius: 2,
+                        pointBackgroundColor: colorWarning,
+                        tension: 0.3,
+                        order: 1 // Asegura que la línea se dibuje por encima de las barras
+                    },
+                    {
+                        type: 'bar',
+                        label: 'Ingreso Operativo Total',
+                        data: dataIngresos,
+                        backgroundColor: colorUp,
+                        borderRadius: 4,
+                        borderWidth: 0,
+                        order: 2
+                    }
+                ]
             },
             options: {
                 responsive: true, maintainAspectRatio: false,
+                interaction: {
+                    mode: 'index',
+                    intersect: false,
+                },
                 animation: { duration: 800, easing: 'easeOutQuart' },
                 plugins: { 
-                    legend: { display: false },
+                    legend: { 
+                        display: true,
+                        position: 'top',
+                        labels: { usePointStyle: true, boxWidth: 8, font: {size: 11} }
+                    },
                     tooltip: {
                         callbacks: {
                             label: function(context) {
-                                return ' $ ' + context.parsed.y.toLocaleString('es-AR', {minimumFractionDigits:0, maximumFractionDigits:0});
+                                let label = context.dataset.label || '';
+                                return ` ${label}: $` + context.parsed.y.toLocaleString('es-AR', {minimumFractionDigits:0, maximumFractionDigits:0});
                             }
                         }
                     }
@@ -206,7 +233,6 @@ export const ChartRenderer = {
             { label: 'Inflación Proyectada', data: dInf, borderColor: colors.colorInf, backgroundColor: 'transparent', borderWidth: 2, borderDash: [5, 5], fill: false, order: 7, hidden: true, spanGaps: true }
         ];
 
-        // Lógica de Renderizado en el Main Thread (Soporta Tooltips Nativos)
         if (chartInstances['chartEvolucion']) {
             const chart = chartInstances['chartEvolucion'];
             chart.data.labels = fFiltradas;
@@ -214,7 +240,6 @@ export const ChartRenderer = {
                 chart.data.datasets[idx].data = ds.data;
             });
             
-            // Actualización dinámica del formateador de moneda si se cambió la vista a USD
             chart.options.plugins.tooltip.callbacks.label = function(context) {
                 if (context.parsed.y === null) return null; 
                 let label = context.dataset.label || '';
@@ -316,7 +341,6 @@ export const ChartRenderer = {
 
         legendContainer.innerHTML = html;
 
-        // Asignación directa de eventos a la instancia de Chart sin pasar por Worker
         legendContainer.querySelectorAll('.custom-legend-item').forEach(item => {
             item.addEventListener('click', function(e) {
                 if(e.target.classList.contains('legend-tooltip-icon')) return;
