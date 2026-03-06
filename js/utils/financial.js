@@ -180,16 +180,21 @@ export const FinancialMath = {
         
         let diasDivisor = 1;
         const ahora = new Date();
+        
+        let minFecha = null;
+        if (transacciones && transacciones.length > 0) {
+            const fechas = transacciones.map(t => new Date(t.fecha || t.date || t.timestamp).getTime()).filter(f => !isNaN(f));
+            if (fechas.length > 0) {
+                minFecha = new Date(Math.min(...fechas));
+            }
+        }
 
-        if (temporalidad.toLowerCase() === 'histórico' || temporalidad.toLowerCase() === 'historico') {
-            if (transacciones.length > 0) {
-                const fechas = transacciones.map(t => new Date(t.fecha || t.date).getTime()).filter(f => !isNaN(f));
-                if (fechas.length > 0) {
-                    const minFecha = new Date(Math.min(...fechas));
-                    diasDivisor = Math.max(1, (ahora - minFecha) / (1000 * 3600 * 24));
-                }
+        if (!temporalidad || temporalidad.toLowerCase() === 'histórico' || temporalidad.toLowerCase() === 'historico') {
+            if (minFecha) {
+                // Se calcula el delta real en días desde la primera transacción registrada
+                diasDivisor = Math.max(1, (ahora - minFecha) / (1000 * 3600 * 24));
             } else {
-                diasDivisor = 30.4167; // Fallback histórico mensual estándar
+                diasDivisor = 30.41; // Fallback ante ausencia de fechas válidas
             }
         } else if (temporalidad.toLowerCase() === 'anual') {
             const inicioAnio = new Date(ahora.getFullYear(), 0, 1);
@@ -204,7 +209,7 @@ export const FinancialMath = {
         const montoDiario = montoTotal / diasDivisor;
 
         return {
-            mes: montoDiario * 30.4167,
+            mes: montoDiario * 30.41,
             semana: montoDiario * 7,
             dia: montoDiario,
             hora: montoDiario / 24
@@ -223,11 +228,16 @@ export const FinancialMath = {
             const monto = Math.abs(parseFloat(t.monto || t.amount || 0));
             if (monto === 0) return;
 
-            if (t.tipo === 'Ingreso' || t.tipo === 'Venta') {
+            const tipoStr = (t.tipo || "").toLowerCase().trim();
+            const catStr = (t.categoria || "").toLowerCase().trim();
+
+            if (tipoStr === 'ingreso' || tipoStr === 'venta') {
                 ingresosBrutos += monto;
-            } else if (t.tipo === 'Gasto') {
-                const cat = (t.categoria || "").toLowerCase();
-                if (cat.includes('proveedor') || cat.includes('logística') || cat.includes('logistica') || cat.includes('insumos')) {
+            } else {
+                const esGastoLogistica = tipoStr === 'gasto' && (catStr.includes('proveedor') || catStr.includes('logística') || catStr.includes('logistica') || catStr.includes('insumos'));
+                const esPagoDirecto = tipoStr === 'pago proveedor' || tipoStr === 'amortización deuda a proveedor' || tipoStr === 'amortizacion deuda a proveedor';
+
+                if (esGastoLogistica || esPagoDirecto) {
                     costosProveedoresLogistica += monto;
                 }
             }
@@ -279,7 +289,6 @@ export const FinancialMath = {
                 distribucionPromediada[cat] = distribucion[cat];
             } else {
                 const promedios = this.calcularPromediosDesglosados(distribucion[cat], temporalidad, txsFiltradas);
-                // Si la temporalidad es Anual, mostramos el promedio mensual; si es Mensual, el promedio semanal; si es Semanal, el diario.
                 if (temporalidad.toLowerCase() === 'anual') distribucionPromediada[cat] = promedios.mes;
                 else if (temporalidad.toLowerCase() === 'mensual') distribucionPromediada[cat] = promedios.semana;
                 else if (temporalidad.toLowerCase() === 'semanal') distribucionPromediada[cat] = promedios.dia;
