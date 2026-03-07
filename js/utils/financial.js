@@ -173,7 +173,7 @@ export const FinancialMath = {
 
     /**
      * Calcula los promedios desglosados (Mes, Semana, Día, Hora) de un monto total.
-     * Utilizado para el Mapa de Distribución del Flujo (Sankey) y Estructura de Gastos.
+     * Implementa el delta real en días desde la primera transacción para precisión absoluta.
      */
     calcularPromediosDesglosados(montoTotal, temporalidad, transacciones = []) {
         if (montoTotal === 0) return { mes: 0, semana: 0, dia: 0, hora: 0 };
@@ -183,18 +183,24 @@ export const FinancialMath = {
         
         let minFecha = null;
         if (transacciones && transacciones.length > 0) {
-            const fechas = transacciones.map(t => new Date(t.fecha || t.date || t.timestamp).getTime()).filter(f => !isNaN(f));
+            const fechas = transacciones
+                .map(t => new Date(t.fecha || t.date || t.timestamp).getTime())
+                .filter(f => !isNaN(f));
+                
             if (fechas.length > 0) {
                 minFecha = new Date(Math.min(...fechas));
             }
         }
 
-        if (!temporalidad || temporalidad.toLowerCase() === 'histórico' || temporalidad.toLowerCase() === 'historico') {
+        const isHistorico = !temporalidad || temporalidad.toLowerCase() === 'histórico' || temporalidad.toLowerCase() === 'historico';
+
+        if (isHistorico) {
             if (minFecha) {
-                // Se calcula el delta real en días desde la primera transacción registrada
-                diasDivisor = Math.max(1, (ahora - minFecha) / (1000 * 3600 * 24));
+                // Cálculo del delta real en días desde el primer registro histórico hasta hoy
+                const diferenciaMs = ahora - minFecha;
+                diasDivisor = Math.max(1, diferenciaMs / (1000 * 3600 * 24));
             } else {
-                diasDivisor = 30.41; // Fallback ante ausencia de fechas válidas
+                diasDivisor = 30.41; // Fallback estandarizado
             }
         } else if (temporalidad.toLowerCase() === 'anual') {
             const inicioAnio = new Date(ahora.getFullYear(), 0, 1);
@@ -206,8 +212,10 @@ export const FinancialMath = {
             diasDivisor = 7;
         }
 
+        // Obtención del flujo diario purificado
         const montoDiario = montoTotal / diasDivisor;
 
+        // Proyección exacta mediante coeficientes
         return {
             mes: montoDiario * 30.41,
             semana: montoDiario * 7,
@@ -218,7 +226,7 @@ export const FinancialMath = {
 
     /**
      * Realiza la auditoría comercial corrigiendo el Inventario Base.
-     * Deduce pagos a Proveedores y Logística de los Ingresos Brutos Declarados.
+     * Deduce pagos a Proveedores, Amortizaciones y Logística de los Ingresos Brutos Declarados.
      */
     calcularAuditoriaComercial(transacciones) {
         let ingresosBrutos = 0;
@@ -234,8 +242,13 @@ export const FinancialMath = {
             if (tipoStr === 'ingreso' || tipoStr === 'venta') {
                 ingresosBrutos += monto;
             } else {
+                // Validación estricta para inyecciones de costo de inventario
                 const esGastoLogistica = tipoStr === 'gasto' && (catStr.includes('proveedor') || catStr.includes('logística') || catStr.includes('logistica') || catStr.includes('insumos'));
-                const esPagoDirecto = tipoStr === 'pago proveedor' || tipoStr === 'amortización deuda a proveedor' || tipoStr === 'amortizacion deuda a proveedor';
+                
+                const esPagoDirecto = tipoStr === 'pago proveedor' || 
+                                      tipoStr === 'pago a proveedor' || 
+                                      tipoStr === 'amortización deuda a proveedor' || 
+                                      tipoStr === 'amortizacion deuda a proveedor';
 
                 if (esGastoLogistica || esPagoDirecto) {
                     costosProveedoresLogistica += monto;
