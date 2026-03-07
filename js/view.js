@@ -836,7 +836,7 @@ export const view = {
             this.DOM.ecoPrestamoId.innerHTML = optionsHtml;
         }
     },
-    renderSimuladorWhatIf(modelData = this.currentModelData) {
+renderSimuladorWhatIf(modelData = this.currentModelData) {
         if (!modelData || !modelData.stats) return;
         const s = modelData.stats;
         
