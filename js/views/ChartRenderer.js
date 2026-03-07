@@ -329,22 +329,25 @@ export const ChartRenderer = {
                 <div class="custom-legend-item" data-index="${item.index}" style="display: flex; align-items: center; gap: 8px; cursor: pointer; opacity: ${item.hidden ? 0.4 : 1}; transition: opacity 0.2s;">
                     <div class="legend-color-box" style="width: 14px; height: 14px; border-radius: 4px; background-color: ${item.color}; border: 1px solid rgba(255,255,255,0.1); pointer-events: none;"></div>
                     <span class="legend-text" style="font-size: 11px; color: var(--text-main); font-weight: 600; pointer-events: none;">${item.label}</span>
-                    <span data-tooltip-title="${item.label}" data-tooltip-desc="${item.tooltip}" class="legend-tooltip-icon custom-tooltip-trigger" style="color: var(--color-primary); background: var(--bg-input); border-radius: 50%; width: 18px; height: 18px; display: inline-flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 900; border: 1px solid var(--border-color); z-index: 10;">?</span>
+                    <span data-tooltip-title="${item.label}" data-tooltip-desc="${item.tooltip}" class="legend-tooltip-icon custom-tooltip-trigger" style="color: var(--color-primary); background: var(--bg-input); border-radius: 50%; width: 18px; height: 18px; display: inline-flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 900; border: 1px solid var(--border-color); z-index: 10; cursor: help;">?</span>
                 </div>
             `;
         });
 
         legendContainer.innerHTML = html;
 
-        // Inyectar Estilos de Tooltip Flotante si no existen
+        // Inyección dinámica de Estilos de Tooltip Flotante para escritorio y móvil
         if (!document.getElementById('custom-legend-styles')) {
             const style = document.createElement('style');
             style.id = 'custom-legend-styles';
             style.innerHTML = `
                 .floating-legend-tooltip {
                     position: absolute; background: rgba(15, 23, 42, 0.98); color: #f8fafc; padding: 12px; border-radius: 8px;
-                    font-size: 11px; line-height: 1.5; border: 1px solid var(--border-color); box-shadow: 0 10px 15px -3px rgba(0,0,0,0.5);
-                    z-index: 9999; pointer-events: none; width: 220px; transition: opacity 0.2s; opacity: 0;
+                    font-size: 11px; line-height: 1.5; border: 1px solid var(--border-color); box-shadow: 0 10px 20px -3px rgba(0,0,0,0.7);
+                    z-index: 9999; pointer-events: none; width: 240px; transition: opacity 0.2s, transform 0.2s; opacity: 0; transform: translateY(5px);
+                }
+                .floating-legend-tooltip.active {
+                    opacity: 1; transform: translateY(0);
                 }
                 .floating-legend-tooltip strong { color: var(--color-primary); display: block; margin-bottom: 4px; font-family: 'Inter', sans-serif; text-transform: uppercase; letter-spacing: 0.5px; }
             `;
@@ -355,26 +358,56 @@ export const ChartRenderer = {
         floatingTooltip.className = 'floating-legend-tooltip';
         document.body.appendChild(floatingTooltip);
 
+        let hideTimeout;
+
+        const showTooltip = (helpIcon, title, desc) => {
+            clearTimeout(hideTimeout);
+            floatingTooltip.innerHTML = `<strong>${title}</strong>${desc}`;
+            
+            // Calculo seguro de colisión con los bordes de la pantalla (Lógica responsiva)
+            const rect = helpIcon.getBoundingClientRect();
+            let leftPos = rect.left + window.scrollX - (240 / 2) + (rect.width / 2);
+            const topPos = rect.top + window.scrollY - 10;
+
+            if (leftPos < 10) leftPos = 10;
+            if (leftPos + 240 > window.innerWidth - 10) leftPos = window.innerWidth - 250;
+
+            floatingTooltip.style.left = `${leftPos}px`;
+            
+            // Forzamos un micro-retraso para leer la altura renderizada y alinear correctamente arriba
+            requestAnimationFrame(() => {
+                floatingTooltip.style.top = `${topPos - floatingTooltip.offsetHeight}px`;
+                floatingTooltip.classList.add('active');
+            });
+        };
+
+        const hideTooltip = () => {
+            hideTimeout = setTimeout(() => {
+                floatingTooltip.classList.remove('active');
+            }, 100);
+        };
+
+        // Lógica de Eventos Multidispositivo (Hover y Touch)
         legendContainer.querySelectorAll('.custom-legend-item').forEach(item => {
             const helpIcon = item.querySelector('.legend-tooltip-icon');
+            const title = helpIcon.getAttribute('data-tooltip-title');
+            const desc = helpIcon.getAttribute('data-tooltip-desc');
 
-            helpIcon.addEventListener('mouseenter', (e) => {
-                const title = helpIcon.getAttribute('data-tooltip-title');
-                const desc = helpIcon.getAttribute('data-tooltip-desc');
-                floatingTooltip.innerHTML = `<strong>${title}</strong>${desc}`;
-                floatingTooltip.style.opacity = '1';
-                
-                const rect = helpIcon.getBoundingClientRect();
-                floatingTooltip.style.left = `${rect.left + window.scrollX - 110 + (rect.width/2)}px`;
-                floatingTooltip.style.top = `${rect.top + window.scrollY - floatingTooltip.offsetHeight - 10}px`;
-            });
+            helpIcon.addEventListener('mouseenter', () => showTooltip(helpIcon, title, desc));
+            helpIcon.addEventListener('mouseleave', hideTooltip);
 
-            helpIcon.addEventListener('mouseleave', () => {
-                floatingTooltip.style.opacity = '0';
+            helpIcon.addEventListener('touchstart', (e) => {
+                e.preventDefault(); 
+                e.stopPropagation();
+                if (floatingTooltip.classList.contains('active')) {
+                    hideTooltip();
+                } else {
+                    showTooltip(helpIcon, title, desc);
+                }
             });
 
             item.addEventListener('click', function(e) {
-                if(e.target.classList.contains('legend-tooltip-icon')) return;
+                if (e.target.classList.contains('legend-tooltip-icon')) return;
                 
                 let idx = parseInt(this.getAttribute('data-index'));
                 const chart = chartInstances['chartEvolucion'];
@@ -387,6 +420,12 @@ export const ChartRenderer = {
                 }
             });
         });
+
+        // Ocultar tooltip al hacer scroll o tocar fuera
+        window.addEventListener('scroll', hideTooltip, { passive: true });
+        document.addEventListener('touchstart', (e) => {
+            if (!e.target.classList.contains('legend-tooltip-icon')) hideTooltip();
+        }, { passive: true });
     },
 
     renderDona(sectorData, actData) {
@@ -495,7 +534,7 @@ export const ChartRenderer = {
 
     /**
      * Dibuja el Sankey Operativo adaptándose a la temporalidad seleccionada.
-     * Implementa Motor de Conservación de Energía (Balanceo de Flujo).
+     * Implementa Motor de Conservación de Energía Estricto (Balanceo Matemático Perfilado).
      */
     renderSankeyOperativo(stats, temporalidad, isUSD, dBlue) {
         const wrap = document.getElementById('sankey-wrap');
@@ -512,7 +551,6 @@ export const ChartRenderer = {
 
         const div = isUSD ? dBlue : 1;
         
-        // 1. Coeficientes Temporales
         const aplicarPromedio = (monto) => {
             const prom = FinancialMath.calcularPromediosDesglosados(monto * div, temporalidad, []);
             let val;
@@ -530,52 +568,62 @@ export const ChartRenderer = {
         const gastosPersonales = aplicarPromedio((stats.gastosFamiliar || 0) / div);
         const inver = aplicarPromedio((stats.totalAhorrado || 0) / div);
 
-        if (ingresosBrutos === 0) {
+        if (ingresosBrutos === 0 && gastosLocales === 0 && pagosProv === 0) {
             wrap.innerHTML = '<div style="display:flex; height:100%; align-items:center; justify-content:center; color:var(--text-muted);"><svg width="48" height="48" style="margin-bottom:10px; opacity:0.5;"><use href="#icon-empty"></use></svg><span>Sin flujo financiero en esta temporalidad</span></div>';
             return;
         }
 
-        // 2. Lógica de Conservación de Energía (Balanceo)
+        // 2. Motor de Conservación de Energía (Balanceo Algorítmico)
         const costosOperativos = gastosLocales + pagosProv;
-        const flujoLibreReal = Math.max(0, ingresosBrutos - costosOperativos);
         const sumatoriaSalidas = gastosPersonales + inver;
         
-        let deficit = 0;
+        let flujoLibreReal = 0;
+        let deficitOperativo = 0;
+        let deficitEstructural = 0;
         let excedente = 0;
 
+        const links = [];
+
+        // Fase de Ingresos y Costos Operativos
+        if (ingresosBrutos >= costosOperativos) {
+            flujoLibreReal = ingresosBrutos - costosOperativos;
+            if (costosOperativos > 0) links.push({ source: 'Ingresos', target: 'Costos Op.', value: costosOperativos });
+            if (flujoLibreReal > 0) links.push({ source: 'Ingresos', target: 'Flujo Libre', value: flujoLibreReal });
+        } else {
+            deficitOperativo = costosOperativos - ingresosBrutos;
+            if (ingresosBrutos > 0) links.push({ source: 'Ingresos', target: 'Costos Op.', value: ingresosBrutos });
+            links.push({ source: 'Ahorros Previos', target: 'Costos Op.', value: deficitOperativo });
+        }
+
+        // Fase de Distribución de Flujo Libre hacia Egresos Finales
         if (sumatoriaSalidas > flujoLibreReal) {
-            deficit = sumatoriaSalidas - flujoLibreReal;
+            deficitEstructural = sumatoriaSalidas - flujoLibreReal;
+            if (deficitEstructural > 0) links.push({ source: 'Ahorros Previos', target: 'Flujo Libre', value: deficitEstructural });
+            if (gastosPersonales > 0) links.push({ source: 'Flujo Libre', target: 'G. Personal', value: gastosPersonales });
+            if (inver > 0) links.push({ source: 'Flujo Libre', target: 'Inversión', value: inver });
         } else {
             excedente = flujoLibreReal - sumatoriaSalidas;
+            if (gastosPersonales > 0) links.push({ source: 'Flujo Libre', target: 'G. Personal', value: gastosPersonales });
+            if (inver > 0) links.push({ source: 'Flujo Libre', target: 'Inversión', value: inver });
+            if (excedente > 0) links.push({ source: 'Flujo Libre', target: 'Excedente Líquido', value: excedente });
         }
 
         const getCSS = (varName, fallBack) => getComputedStyle(document.documentElement).getPropertyValue(varName).trim() || fallBack;
-        
-        const nodes = [
-            { id: 'Ingresos', color: getCSS('--color-primary', '#00F5A0') },
-            { id: 'Costos Op.', color: getCSS('--color-down', '#FF005C') },
-            { id: 'Flujo Libre', color: getCSS('--color-up', '#10b981') },
-            { id: 'G. Personal', color: getCSS('--color-warning', '#f59e0b') },
-            { id: 'Inversión', color: getCSS('--color-accent', '#8b5cf6') }
-        ];
+        const baseColors = {
+            'Ingresos': getCSS('--color-primary', '#00F5A0'),
+            'Costos Op.': getCSS('--color-down', '#FF005C'),
+            'Flujo Libre': getCSS('--color-up', '#10b981'),
+            'G. Personal': getCSS('--color-warning', '#f59e0b'),
+            'Inversión': getCSS('--color-accent', '#8b5cf6'),
+            'Ahorros Previos': '#64748b',
+            'Excedente Líquido': '#0ea5e9'
+        };
 
-        const links = [
-            { source: 'Ingresos', target: 'Costos Op.', value: costosOperativos },
-            { source: 'Ingresos', target: 'Flujo Libre', value: flujoLibreReal }
-        ];
-
-        if (deficit > 0) {
-            nodes.push({ id: 'Ahorros Previos', color: '#64748b' });
-            links.push({ source: 'Ahorros Previos', target: 'Flujo Libre', value: deficit });
-        }
-
-        links.push({ source: 'Flujo Libre', target: 'G. Personal', value: gastosPersonales });
-        links.push({ source: 'Flujo Libre', target: 'Inversión', value: inver });
-
-        if (excedente > 0) {
-            nodes.push({ id: 'Excedente Líquido', color: '#0ea5e9' });
-            links.push({ source: 'Flujo Libre', target: 'Excedente Líquido', value: excedente });
-        }
+        const uniqueNodeIds = [...new Set(links.flatMap(l => [l.source, l.target]))];
+        const nodesData = uniqueNodeIds.reduce((acc, id) => {
+            acc[id] = baseColors[id] || '#cbd5e1';
+            return acc;
+        }, {});
 
         const sankeyConfig = {
             type: 'sankey',
@@ -586,8 +634,8 @@ export const ChartRenderer = {
                     colorFrom: (c) => c.dataset.data[c.dataIndex].source,
                     colorTo: (c) => c.dataset.data[c.dataIndex].target,
                     colorMode: 'gradient', alpha: 0.6,
-                    labels: nodes.reduce((acc, n) => { acc[n.id] = n.id; return acc; }, {}),
-                    nodeColors: nodes.reduce((acc, n) => { acc[n.id] = n.color; return acc; }, {}),
+                    labels: uniqueNodeIds.reduce((acc, id) => { acc[id] = id; return acc; }, {}),
+                    nodeColors: nodesData,
                     borderWidth: 0, nodeBorderWidth: 1, nodeBorderColor: 'rgba(255,255,255,0.1)'
                 }]
             },
