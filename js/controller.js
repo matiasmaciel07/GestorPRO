@@ -84,15 +84,15 @@ const controller = {
             UIMetrics.inyectarMetricasFase6(model.data);
             
             const uiState = model.data.uiState;
-            // Alineación de punteros con el DOM real (wrap-gastos-...)
+            
             events.emit('ui:actualizar-distribucion-gastos', { 
                 contexto: 'Local', 
-                temporalidad: uiState.gastosLocalTemporalidad, 
+                temporalidad: uiState.gastosLocalTemporalidad || 'Mensual', 
                 domId: 'wrap-gastos-local' 
             });
             events.emit('ui:actualizar-distribucion-gastos', { 
                 contexto: 'Personal', 
-                temporalidad: uiState.gastosPersonalTemporalidad, 
+                temporalidad: uiState.gastosPersonalTemporalidad || 'Mensual', 
                 domId: 'wrap-gastos-personal' 
             });
 
@@ -241,11 +241,15 @@ const controller = {
             if (typeof ChartRenderer !== 'undefined' && ChartRenderer.renderDistribucionGastos) {
                 ChartRenderer.renderDistribucionGastos(datosGenerados, config.domId);
             }
-            // Actualización de la lista de desglose porcentual
-            UIMetrics.renderListaGastos(datosGenerados, config.domId + '-lista', model.data.vistaUSD ? model.data.dolarBlue : 1, model.data.vistaUSD);
+            
+            UIMetrics.renderListaGastos(
+                datosGenerados, 
+                config.domId + '-lista', 
+                model.data.vistaUSD ? model.data.dolarBlue : 1, 
+                model.data.vistaUSD
+            );
         });
 
-        // Event Listeners Dinámicos del DOM
         document.getElementById('eco-prestamo-id')?.addEventListener('change', (e) => {
             const id = e.target.value;
             if (id && model.data.stats.prestamosDetalle && model.data.stats.prestamosDetalle[id]) {

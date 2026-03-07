@@ -67,8 +67,8 @@ export const UIMetrics = {
     },
 
     /**
-     * Renderiza la lista de gastos desglosada por categorías.
-     * Sincronizado con la temporalidad del controlador.
+     * Renderiza la lista de gastos desglosada por categorías en el contenedor asociado.
+     * Vinculado dinámicamente con las métricas recalculadas según la temporalidad.
      */
     renderListaGastos(datosGenerados, domId, divisor, isUSD) {
         const container = document.getElementById(domId);
