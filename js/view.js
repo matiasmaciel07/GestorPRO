@@ -372,7 +372,6 @@ export const view = {
             if(e.target.files.length > 0) events.emit('ui:importar-backup', e.target.files[0]);
         });
     },
-    
 
     initFiltrosTemporales() {
         const attachGastos = (containerId, contexto, targetDomId) => {
@@ -1442,7 +1441,6 @@ export const view = {
         ErrorHandler.catchBoundary('Portafolio Bursátil', 'portafolio', () => {
             this.DOM.tbodyPortafolio.innerHTML = '';
             if(Object.keys(modelData.portafolio).length === 0) {
-                // Ajustado el colspan a 7 y limpiado el texto
                 this.DOM.tbodyPortafolio.innerHTML = `<tr><td colspan="7" style="text-align:center; padding: 60px; color:var(--text-muted); font-size: 1.1rem; font-weight: 800;"><svg width="64" height="64" style="margin-bottom:15px; opacity:0.5;"><use href="#icon-empty"></use></svg><br>Sin instrumentos en cartera. Registre operaciones para iniciar la auditoría.</td></tr>`;
                 if (this.DOM.divBar) this.DOM.divBar.innerHTML = '';
                 if (this.DOM.divLabels) this.DOM.divLabels.innerHTML = '';
@@ -1600,550 +1598,550 @@ export const view = {
     },
 
     renderHistorial(modelData) {
-            ErrorHandler.catchBoundary('Libro Mayor', 'historial', () => {
-                if(!modelData) return;
-                
-                const s = modelData.stats;
-                this.DOM.histAhorroTotal.innerHTML = this.zenMode ? "---" : this.fmt(s.totalAhorrado, modelData.dolarBlue, modelData.vistaUSD);
-                this.DOM.histRetiroTotal.innerHTML = this.zenMode ? "---" : this.fmt(s.totalRetirado, modelData.dolarBlue, modelData.vistaUSD);
-                this.DOM.histNeto.innerHTML = this.zenMode ? "---" : this.fmt(s.flujoNeto, modelData.dolarBlue, modelData.vistaUSD);
-                
-                let filtrados = FinancialMath.filtrarHistorialAvanzado(modelData.movimientos, this.historialFiltros);
-                this.historialData = filtrados;
-                
-                if (this.historialData.length === 0) {
-                    this.DOM.vsTbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 60px; color:var(--text-muted); font-size: 1.1rem; font-weight: 800;"><svg width="64" height="64" style="margin-bottom:15px; opacity:0.5;"><use href="#icon-empty"></use></svg><br>Auditoría en cero. Sin asientos contables registrados.</td></tr>';
-                    this.DOM.vsSpacer.style.height = '0px';
-                    return;
-                }
-
-                this.DOM.vsSpacer.style.height = (this.historialData.length * this.vsRowHeight) + 'px';
-                this.renderVirtualScroll();
-            });
-        },
-
-        aplicarFiltrosHistorial(filtros) {
-            this.historialFiltros = filtros;
-            this.DOM.vsViewport.scrollTop = 0;
-            this.renderHistorial(this.currentModelData);
-        },
-
-        renderVirtualScroll() {
-            if (this.historialData.length === 0) return;
-
-            const scrollTop = this.DOM.vsViewport.scrollTop;
-            const viewportHeight = this.DOM.vsViewport.clientHeight;
+        ErrorHandler.catchBoundary('Libro Mayor', 'historial', () => {
+            if(!modelData) return;
             
-            let startIndex = Math.floor(scrollTop / this.vsRowHeight);
-            let endIndex = startIndex + Math.ceil(viewportHeight / this.vsRowHeight) + 2;
+            const s = modelData.stats;
+            this.DOM.histAhorroTotal.innerHTML = this.zenMode ? "---" : this.fmt(s.totalAhorrado, modelData.dolarBlue, modelData.vistaUSD);
+            this.DOM.histRetiroTotal.innerHTML = this.zenMode ? "---" : this.fmt(s.totalRetirado, modelData.dolarBlue, modelData.vistaUSD);
+            this.DOM.histNeto.innerHTML = this.zenMode ? "---" : this.fmt(s.flujoNeto, modelData.dolarBlue, modelData.vistaUSD);
             
-            startIndex = Math.max(0, startIndex - 2);
-            endIndex = Math.min(this.historialData.length, endIndex);
+            let filtrados = FinancialMath.filtrarHistorialAvanzado(modelData.movimientos, this.historialFiltros);
+            this.historialData = filtrados;
             
-            const visibleData = this.historialData.slice(startIndex, endIndex);
-            const template = this.DOM.tplHistorial.content;
-            const fragment = document.createDocumentFragment();
-            const div = this.currentModelData.vistaUSD ? this.currentModelData.dolarBlue : 1;
-            const isUSD = this.currentModelData.vistaUSD;
+            if (this.historialData.length === 0) {
+                this.DOM.vsTbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 60px; color:var(--text-muted); font-size: 1.1rem; font-weight: 800;"><svg width="64" height="64" style="margin-bottom:15px; opacity:0.5;"><use href="#icon-empty"></use></svg><br>Auditoría en cero. Sin asientos contables registrados.</td></tr>';
+                this.DOM.vsSpacer.style.height = '0px';
+                return;
+            }
 
-            visibleData.forEach((mov) => {
-                const row = document.importNode(template, true);
-                const tr = row.querySelector('tr');
-                tr.style.height = this.vsRowHeight + 'px';
-                
-                let tagClass = this.getBadgeClass(mov.tipo);
-                let displayTipo = this.getDisplayTipo(mov.tipo);
+            this.DOM.vsSpacer.style.height = (this.historialData.length * this.vsRowHeight) + 'px';
+            this.renderVirtualScroll();
+        });
+    },
 
-                let desc = '';
-                if(['Compra','Venta','Dividendo'].includes(mov.tipo)) desc = `${DOMPurify.sanitize(mov.activo)} ${mov.cantidad ? '('+mov.cantidad+' nom)' : ''}`;
-                else if (mov.tipo === 'Gasto Local' || mov.tipo === 'Gasto Familiar') desc = DOMPurify.sanitize(mov.categoria || 'Sin clasificar');
-                else if (mov.tipo === 'Pago Proveedor' || mov.tipo === 'Amortización Deuda a Proveedor') desc = DOMPurify.sanitize(mov.proveedor || 'No especificado');
-                else if (mov.tipo === 'Reparto Sociedad') desc = `Socio: ${DOMPurify.sanitize(mov.socio || 'No especificado')}`;
-                else if (mov.tipo === 'Alta Préstamo' || mov.tipo === 'Pago Préstamo') desc = `Entidad: ${DOMPurify.sanitize(mov.entidad || 'Financiera')}`;
-                
-                let monto = mov.monto;
-                if (['Transferencia Ahorro', 'Ahorro'].includes(mov.tipo) && mov.usd > 0 && isUSD) monto = mov.usd;
-                else monto = monto / div;
+    aplicarFiltrosHistorial(filtros) {
+        this.historialFiltros = filtros;
+        this.DOM.vsViewport.scrollTop = 0;
+        this.renderHistorial(this.currentModelData);
+    },
 
-                let colorMonto = 'var(--text-main)';
-                let sign = '';
-                if (['Ingreso Local', 'Ahorro', 'Transferencia Ahorro', 'Venta', 'Dividendo', 'Rendimiento', 'Alta Préstamo'].includes(mov.tipo)) {
-                    colorMonto = 'var(--color-up)';
-                    sign = '+';
-                } else if (['Gasto Local', 'Gasto Familiar', 'Pago Proveedor', 'Amortización Deuda a Proveedor', 'Reparto Sociedad', 'Compra', 'Retiro', 'Pago Préstamo'].includes(mov.tipo)) {
-                    colorMonto = 'var(--color-down)';
-                    sign = '-';
+    renderVirtualScroll() {
+        if (this.historialData.length === 0) return;
+
+        const scrollTop = this.DOM.vsViewport.scrollTop;
+        const viewportHeight = this.DOM.vsViewport.clientHeight;
+        
+        let startIndex = Math.floor(scrollTop / this.vsRowHeight);
+        let endIndex = startIndex + Math.ceil(viewportHeight / this.vsRowHeight) + 2;
+        
+        startIndex = Math.max(0, startIndex - 2);
+        endIndex = Math.min(this.historialData.length, endIndex);
+        
+        const visibleData = this.historialData.slice(startIndex, endIndex);
+        const template = this.DOM.tplHistorial.content;
+        const fragment = document.createDocumentFragment();
+        const div = this.currentModelData.vistaUSD ? this.currentModelData.dolarBlue : 1;
+        const isUSD = this.currentModelData.vistaUSD;
+
+        visibleData.forEach((mov) => {
+            const row = document.importNode(template, true);
+            const tr = row.querySelector('tr');
+            tr.style.height = this.vsRowHeight + 'px';
+            
+            let tagClass = this.getBadgeClass(mov.tipo);
+            let displayTipo = this.getDisplayTipo(mov.tipo);
+
+            let desc = '';
+            if(['Compra','Venta','Dividendo'].includes(mov.tipo)) desc = `${DOMPurify.sanitize(mov.activo)} ${mov.cantidad ? '('+mov.cantidad+' nom)' : ''}`;
+            else if (mov.tipo === 'Gasto Local' || mov.tipo === 'Gasto Familiar') desc = DOMPurify.sanitize(mov.categoria || 'Sin clasificar');
+            else if (mov.tipo === 'Pago Proveedor' || mov.tipo === 'Amortización Deuda a Proveedor') desc = DOMPurify.sanitize(mov.proveedor || 'No especificado');
+            else if (mov.tipo === 'Reparto Sociedad') desc = `Socio: ${DOMPurify.sanitize(mov.socio || 'No especificado')}`;
+            else if (mov.tipo === 'Alta Préstamo' || mov.tipo === 'Pago Préstamo') desc = `Entidad: ${DOMPurify.sanitize(mov.entidad || 'Financiera')}`;
+            
+            let monto = mov.monto;
+            if (['Transferencia Ahorro', 'Ahorro'].includes(mov.tipo) && mov.usd > 0 && isUSD) monto = mov.usd;
+            else monto = monto / div;
+
+            let colorMonto = 'var(--text-main)';
+            let sign = '';
+            if (['Ingreso Local', 'Ahorro', 'Transferencia Ahorro', 'Venta', 'Dividendo', 'Rendimiento', 'Alta Préstamo'].includes(mov.tipo)) {
+                colorMonto = 'var(--color-up)';
+                sign = '+';
+            } else if (['Gasto Local', 'Gasto Familiar', 'Pago Proveedor', 'Amortización Deuda a Proveedor', 'Reparto Sociedad', 'Compra', 'Retiro', 'Pago Préstamo'].includes(mov.tipo)) {
+                colorMonto = 'var(--color-down)';
+                sign = '-';
+            }
+
+            row.querySelector('.td-fecha').innerText = mov.fecha;
+            row.querySelector('.td-tipo').innerHTML = `<span class="badge ${tagClass}">${displayTipo}</span>`;
+            row.querySelector('.td-desc').innerHTML = desc !== '' ? desc : '<span style="color:var(--text-muted);">-</span>';
+            
+            if(mov.notas) {
+                row.querySelector('.td-desc').innerHTML += ` <span data-tooltip="${DOMPurify.sanitize(mov.notas)}" style="margin-left:8px; color:var(--color-primary); cursor:help;"><svg width="14" height="14" style="vertical-align:middle;"><use href="#icon-note"></use></svg></span>`;
+            }
+
+            row.querySelector('.td-flujo').innerHTML = `<strong style="color: ${colorMonto};">${sign}${this.zenMode ? '---' : this.fmt(monto, 1, isUSD)}</strong>`;
+
+            let tagHtml = isUSD ? `<span class="tag--usd" style="padding:2px 4px; font-size:10px;">USD</span>` : `<span class="tag--ars" style="padding:2px 4px; font-size:10px;">ARS</span>`;
+            row.querySelector('.td-res').innerHTML = this.zenMode ? '---' : tagHtml;
+
+            row.querySelector('.td-acc').innerHTML = `
+                <div style="display:flex; gap:8px; justify-content:center;">
+                    <button class="btn--icon" data-action="editar-operacion" data-id="${mov.id}" title="Editar Registro"><svg width="16" height="16"><use href="#icon-edit"></use></svg></button>
+                    <button class="btn--icon" style="color:var(--color-down)!important; background:rgba(247,23,53,0.1);" data-action="borrar-operacion" data-id="${mov.id}" title="Eliminar Registro"><svg width="16" height="16"><use href="#icon-trash"></use></svg></button>
+                </div>
+            `;
+
+            fragment.appendChild(row);
+        });
+
+        this.DOM.vsTbody.innerHTML = '';
+        this.DOM.vsTbody.appendChild(fragment);
+        this.DOM.vsTable.style.transform = `translateY(${startIndex * this.vsRowHeight}px)`;
+    },
+
+    renderInformesPro(modelData) {
+        ErrorHandler.catchBoundary('Informes Avanzados', 'informes', () => {
+            const s = modelData.stats;
+
+            if (this.DOM.infoHoldingPeriod) this.DOM.infoHoldingPeriod.innerText = `${s.holdingPeriodDias} Días`;
+            
+            if (this.DOM.infoSharpe) {
+                this.DOM.infoSharpe.innerText = (s.sharpeRatio || 0).toFixed(2);
+                this.DOM.infoSharpe.className = `stat__value data-font ${s.sharpeRatio >= 1 ? 'texto-verde' : (s.sharpeRatio > 0 ? 'texto-warning' : 'texto-rojo')}`;
+            }
+            
+            if (this.DOM.infoSortino) {
+                this.DOM.infoSortino.innerText = (s.sortinoRatio || 0).toFixed(2);
+                this.DOM.infoSortino.className = `stat__value data-font ${s.sortinoRatio >= 1.5 ? 'texto-verde' : (s.sortinoRatio > 0 ? 'texto-warning' : 'texto-rojo')}`;
+            }
+            
+            if (this.DOM.infoVolatilidad) this.DOM.infoVolatilidad.innerText = (s.volatilidadAnualizada || 0).toFixed(1) + "%";
+
+            let correlacionStr = s.correlacionIndice ? (s.correlacionIndice).toFixed(2) : "0.00";
+            if(this.DOM.valCorrelacion) this.DOM.valCorrelacion.innerText = correlacionStr;
+            
+            if(this.DOM.descCorrelacion && s.correlacionIndice !== undefined) {
+                if(s.correlacionIndice < 0.15) { 
+                    this.DOM.descCorrelacion.innerText = "Excelente Diversificación (Bajo Riesgo)"; 
+                    this.DOM.valCorrelacion.className = "data-font texto-verde"; 
+                } else if(s.correlacionIndice < 0.25) { 
+                    this.DOM.descCorrelacion.innerText = "Concentración Moderada (Estable)"; 
+                    this.DOM.valCorrelacion.className = "data-font texto-warning"; 
+                } else { 
+                    this.DOM.descCorrelacion.innerText = "Alta Concentración (Riesgo Sistémico)"; 
+                    this.DOM.valCorrelacion.className = "data-font texto-rojo"; 
                 }
+            }
 
-                row.querySelector('.td-fecha').innerText = mov.fecha;
-                row.querySelector('.td-tipo').innerHTML = `<span class="badge ${tagClass}">${displayTipo}</span>`;
-                row.querySelector('.td-desc').innerHTML = desc !== '' ? desc : '<span style="color:var(--text-muted);">-</span>';
-                
-                if(mov.notas) {
-                    row.querySelector('.td-desc').innerHTML += ` <span data-tooltip="${DOMPurify.sanitize(mov.notas)}" style="margin-left:8px; color:var(--color-primary); cursor:help;"><svg width="14" height="14" style="vertical-align:middle;"><use href="#icon-note"></use></svg></span>`;
-                }
+            let maxPatStr = this.zenMode ? '---' : this.fmt(s.maxPatrimonio, modelData.dolarBlue, modelData.vistaUSD);
+            let maxDDStr = `${s.maxDrawdownPct.toFixed(2)}%`;
+            let currDDStr = `Tensión Actual: ${s.currentDrawdownPct.toFixed(2)}%`;
+            
+            let cagrHtml = `<div style="display:flex; align-items:baseline; justify-content:center; gap:5px;"><span class="${s.cagr >= 0 ? 'texto-verde' : 'texto-rojo'}">${s.cagr.toFixed(2)}%</span><span style="font-size:0.85rem; color:var(--text-muted); font-weight:700;">TIR</span></div>`;
+            
+            const cagrDOM = document.getElementById('info-cagr');
+            if (cagrDOM) cagrDOM.innerHTML = cagrHtml;
+            
+            const maxPatDOM = document.getElementById('info-max-patrimonio');
+            if (maxPatDOM) maxPatDOM.innerHTML = `<span class="privacy-mask">${maxPatStr}</span>`;
+            
+            const maxDdDOM = document.getElementById('info-max-dd');
+            if (maxDdDOM) maxDdDOM.innerText = maxDDStr;
+            
+            const currDdDOM = document.getElementById('info-current-dd');
+            if (currDdDOM) currDdDOM.innerText = currDDStr;
 
-                row.querySelector('.td-flujo').innerHTML = `<strong style="color: ${colorMonto};">${sign}${this.zenMode ? '---' : this.fmt(monto, 1, isUSD)}</strong>`;
-
-                let tagHtml = isUSD ? `<span class="tag--usd" style="padding:2px 4px; font-size:10px;">USD</span>` : `<span class="tag--ars" style="padding:2px 4px; font-size:10px;">ARS</span>`;
-                row.querySelector('.td-res').innerHTML = this.zenMode ? '---' : tagHtml;
-
-                row.querySelector('.td-acc').innerHTML = `
-                    <div style="display:flex; gap:8px; justify-content:center;">
-                        <button class="btn--icon" data-action="editar-operacion" data-id="${mov.id}" title="Editar Registro"><svg width="16" height="16"><use href="#icon-edit"></use></svg></button>
-                        <button class="btn--icon" style="color:var(--color-down)!important; background:rgba(247,23,53,0.1);" data-action="borrar-operacion" data-id="${mov.id}" title="Eliminar Registro"><svg width="16" height="16"><use href="#icon-trash"></use></svg></button>
-                    </div>
-                `;
-
-                fragment.appendChild(row);
-            });
-
-            this.DOM.vsTbody.innerHTML = '';
-            this.DOM.vsTbody.appendChild(fragment);
-            this.DOM.vsTable.style.transform = `translateY(${startIndex * this.vsRowHeight}px)`;
-        },
-
-        renderInformesPro(modelData) {
-            ErrorHandler.catchBoundary('Informes Avanzados', 'informes', () => {
-                const s = modelData.stats;
-
-                if (this.DOM.infoHoldingPeriod) this.DOM.infoHoldingPeriod.innerText = `${s.holdingPeriodDias} Días`;
-                
-                if (this.DOM.infoSharpe) {
-                    this.DOM.infoSharpe.innerText = (s.sharpeRatio || 0).toFixed(2);
-                    this.DOM.infoSharpe.className = `stat__value data-font ${s.sharpeRatio >= 1 ? 'texto-verde' : (s.sharpeRatio > 0 ? 'texto-warning' : 'texto-rojo')}`;
-                }
-                
-                if (this.DOM.infoSortino) {
-                    this.DOM.infoSortino.innerText = (s.sortinoRatio || 0).toFixed(2);
-                    this.DOM.infoSortino.className = `stat__value data-font ${s.sortinoRatio >= 1.5 ? 'texto-verde' : (s.sortinoRatio > 0 ? 'texto-warning' : 'texto-rojo')}`;
-                }
-                
-                if (this.DOM.infoVolatilidad) this.DOM.infoVolatilidad.innerText = (s.volatilidadAnualizada || 0).toFixed(1) + "%";
-
-                let correlacionStr = s.correlacionIndice ? (s.correlacionIndice).toFixed(2) : "0.00";
-                if(this.DOM.valCorrelacion) this.DOM.valCorrelacion.innerText = correlacionStr;
-                
-                if(this.DOM.descCorrelacion && s.correlacionIndice !== undefined) {
-                    if(s.correlacionIndice < 0.15) { 
-                        this.DOM.descCorrelacion.innerText = "Excelente Diversificación (Bajo Riesgo)"; 
-                        this.DOM.valCorrelacion.className = "data-font texto-verde"; 
-                    } else if(s.correlacionIndice < 0.25) { 
-                        this.DOM.descCorrelacion.innerText = "Concentración Moderada (Estable)"; 
-                        this.DOM.valCorrelacion.className = "data-font texto-warning"; 
-                    } else { 
-                        this.DOM.descCorrelacion.innerText = "Alta Concentración (Riesgo Sistémico)"; 
-                        this.DOM.valCorrelacion.className = "data-font texto-rojo"; 
-                    }
-                }
-
-                let maxPatStr = this.zenMode ? '---' : this.fmt(s.maxPatrimonio, modelData.dolarBlue, modelData.vistaUSD);
-                let maxDDStr = `${s.maxDrawdownPct.toFixed(2)}%`;
-                let currDDStr = `Tensión Actual: ${s.currentDrawdownPct.toFixed(2)}%`;
-                
-                let cagrHtml = `<div style="display:flex; align-items:baseline; justify-content:center; gap:5px;"><span class="${s.cagr >= 0 ? 'texto-verde' : 'texto-rojo'}">${s.cagr.toFixed(2)}%</span><span style="font-size:0.85rem; color:var(--text-muted); font-weight:700;">TIR</span></div>`;
-                
-                const cagrDOM = document.getElementById('info-cagr');
-                if (cagrDOM) cagrDOM.innerHTML = cagrHtml;
-                
-                const maxPatDOM = document.getElementById('info-max-patrimonio');
-                if (maxPatDOM) maxPatDOM.innerHTML = `<span class="privacy-mask">${maxPatStr}</span>`;
-                
-                const maxDdDOM = document.getElementById('info-max-dd');
-                if (maxDdDOM) maxDdDOM.innerText = maxDDStr;
-                
-                const currDdDOM = document.getElementById('info-current-dd');
-                if (currDdDOM) currDdDOM.innerText = currDDStr;
-
-                if (this.DOM.infoAtribucionSector) {
-                    let atr = s.atribucionSectorial;
-                    if(Object.keys(atr).length === 0) {
-                        this.DOM.infoAtribucionSector.innerHTML = '<div style="color:var(--text-muted); text-align:center; padding: 40px; font-weight:800;">Sin posiciones activas.</div>';
-                    } else {
-                        let html = '<div style="display:flex; flex-direction:column; gap:12px;">';
-                        let sortedSectores = Object.entries(atr).sort((a,b) => b[1] - a[1]);
+            if (this.DOM.infoAtribucionSector) {
+                let atr = s.atribucionSectorial;
+                if(Object.keys(atr).length === 0) {
+                    this.DOM.infoAtribucionSector.innerHTML = '<div style="color:var(--text-muted); text-align:center; padding: 40px; font-weight:800;">Sin posiciones activas.</div>';
+                } else {
+                    let html = '<div style="display:flex; flex-direction:column; gap:12px;">';
+                    let sortedSectores = Object.entries(atr).sort((a,b) => b[1] - a[1]);
+                    
+                    sortedSectores.forEach(([sec, val], idx) => {
+                        let c = this.sectorColors[idx % this.sectorColors.length];
+                        let vStr = this.zenMode ? '---' : this.fmtStr(Math.abs(val), modelData.dolarBlue, modelData.vistaUSD);
+                        let sign = val >= 0 ? '+' : '-';
+                        let col = val >= 0 ? 'var(--color-up)' : 'var(--color-down)';
                         
-                        sortedSectores.forEach(([sec, val], idx) => {
-                            let c = this.sectorColors[idx % this.sectorColors.length];
-                            let vStr = this.zenMode ? '---' : this.fmtStr(Math.abs(val), modelData.dolarBlue, modelData.vistaUSD);
-                            let sign = val >= 0 ? '+' : '-';
-                            let col = val >= 0 ? 'var(--color-up)' : 'var(--color-down)';
+                        html += `
+                            <div style="display:flex; justify-content:space-between; align-items:center; background:var(--bg-input); padding: 16px 20px; border-radius:12px; border-left: 4px solid ${c}; transition: transform 0.2s;">
+                                <span style="font-weight:900; font-size:1rem; color:var(--text-main); letter-spacing: 0.5px;">${DOMPurify.sanitize(sec)}</span>
+                                <span class="data-font privacy-mask" style="color:${col}; font-weight:900; font-size:1.15rem; text-shadow: 0 0 10px ${col}40;">${sign}$${vStr}</span>
+                            </div>
+                        `;
+                    });
+                    html += '</div>';
+                    this.DOM.infoAtribucionSector.innerHTML = html;
+                }
+            }
+
+            let hmGrid = document.getElementById('heatmap-grid');
+            if (hmGrid && s.heatmapMensual) {
+                let hm = s.heatmapMensual;
+                let años = Object.keys(hm).sort((a,b)=>b-a);
+                
+                if (años.length === 0) {
+                    hmGrid.innerHTML = '<div style="grid-column: 1 / -1; color:var(--text-muted); padding: 40px; font-weight:800;">Datos insuficientes para generar matriz térmica.</div>';
+                } else {
+                    let header = '<div class="hm-header">AÑO</div>';
+                    const mesesStr = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+                    mesesStr.forEach(m => header += `<div class="hm-header">${m}</div>`);
+                    header += '<div class="hm-header" style="color:var(--color-primary);">YTD</div>';
+                    
+                    let body = '';
+                    años.forEach(a => {
+                        body += `<div class="hm-cell" style="background:var(--bg-input); color:var(--text-main); font-weight:900;">${a}</div>`;
+                        let rowYTD = 0;
+                        for(let i=1; i<=12; i++) {
+                            let val = hm[a][i];
+                            if(val !== undefined) {
+                                rowYTD += val;
+                                let cClass = val > 0 ? 'hm-cell--pos' : (val < 0 ? 'hm-cell--neg' : '');
+                                let vStr = val > 0 ? `+${val.toFixed(1)}%` : `${val.toFixed(1)}%`;
+                                body += `<div class="hm-cell ${cClass} data-font">${vStr}</div>`;
+                            } else {
+                                body += `<div class="hm-cell" style="color:var(--text-muted); opacity:0.3;">-</div>`;
+                            }
+                        }
+                        let ytdClass = rowYTD > 0 ? 'hm-cell--pos' : (rowYTD < 0 ? 'hm-cell--neg' : '');
+                        let ytdStr = rowYTD > 0 ? `+${rowYTD.toFixed(1)}%` : `${rowYTD.toFixed(1)}%`;
+                        body += `<div class="hm-cell ${ytdClass} data-font" style="border:1px solid var(--border-color);">${ytdStr}</div>`;
+                    });
+                    
+                    hmGrid.innerHTML = header + body;
+                }
+            }
+
+            if (s.historyFechas && s.historyDrawdown) {
+                ChartRenderer.renderDrawdown(s.historyFechas, s.historyDrawdown);
+            }
+        });
+    },
+
+    renderCalendario(modelData) {
+        ErrorHandler.catchBoundary('Calendario Operativo', 'calendario', () => {
+            const m = modelData.movimientos;
+            
+            const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+            this.DOM.calMesAno.innerText = `${monthNames[this.calMes]} ${this.calAno}`;
+            
+            const firstDay = new Date(this.calAno, this.calMes, 1).getDay();
+            const daysInMonth = new Date(this.calAno, this.calMes + 1, 0).getDate();
+            const startOffset = firstDay === 0 ? 6 : firstDay - 1; 
+            
+            let movsDelMes = m.filter(mov => {
+                let d = new Date(mov.fecha + "T00:00:00");
+                return d.getMonth() === this.calMes && d.getFullYear() === this.calAno;
+            });
+
+            let mapDias = {};
+            movsDelMes.forEach(mov => {
+                let d = parseInt(mov.fecha.split('-')[2]);
+                if(!mapDias[d]) mapDias[d] = [];
+                mapDias[d].push(mov);
+            });
+
+            this.DOM.calDias.innerHTML = '';
+            const template = this.DOM.tplCalDay.content;
+            const fragment = document.createDocumentFragment();
+            
+            let hoy = new Date();
+            let isCurrentMonth = (hoy.getMonth() === this.calMes && hoy.getFullYear() === this.calAno);
+            
+            for(let i=0; i<startOffset; i++) {
+                const el = document.importNode(template, true);
+                let div = el.querySelector('.cal-day');
+                div.classList.add('empty');
+                fragment.appendChild(el);
+            }
+            
+            for(let d=1; d<=daysInMonth; d++) {
+                const el = document.importNode(template, true);
+                let div = el.querySelector('.cal-day');
+                let dateEl = el.querySelector('.cal-date');
+                let dotsEl = el.querySelector('.cal-dots');
+                
+                dateEl.innerText = d;
+                
+                if(isCurrentMonth && d === hoy.getDate()) div.classList.add('today');
+                
+                if(mapDias[d] && mapDias[d].length > 0) {
+                    div.classList.add('has-data');
+                    let dotsHtml = '';
+                    mapDias[d].slice(0, 8).forEach(mov => {
+                        let color = 'var(--text-muted)';
+                        if(['Compra','Venta'].includes(mov.tipo)) color = 'var(--color-accent)';
+                        else if(['Ingreso Local'].includes(mov.tipo)) color = 'var(--color-up)';
+                        else if(['Gasto Local','Gasto Familiar','Pago Proveedor'].includes(mov.tipo)) color = 'var(--color-down)';
+                        else if(mov.tipo === 'Reparto Sociedad') color = 'var(--color-purple)';
+                        
+                        dotsHtml += `<div class="cal-dot" style="color:${color}; background-color:${color};"></div>`;
+                    });
+                    if(mapDias[d].length > 8) dotsHtml += `<div style="font-size:10px; font-weight:900; color:var(--text-muted);">+${mapDias[d].length - 8}</div>`;
+                    dotsEl.innerHTML = dotsHtml;
+                    
+                    div.addEventListener('click', () => {
+                        document.querySelectorAll('.cal-day').forEach(cd => cd.style.borderColor = '');
+                        div.style.borderColor = 'var(--color-primary)';
+                        
+                        let html = `<h3 class="stat__title" style="margin-bottom: 25px; font-size: 1.1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 15px;">Movimientos del ${d} de ${monthNames[this.calMes]}</h3>`;
+                        html += '<div style="display:flex; flex-direction:column; gap:12px; max-height: 500px; overflow-y:auto; padding-right: 10px;">';
+                        
+                        mapDias[d].forEach(mov => {
+                            let displayTipo = this.getDisplayTipo(mov.tipo);
+                            let tagClass = this.getBadgeClass(mov.tipo);
                             
+                            let color = 'var(--text-main)';
+                            let sign = '';
+                            if (['Ingreso Local', 'Ahorro', 'Transferencia Ahorro', 'Venta', 'Dividendo', 'Rendimiento', 'Alta Préstamo'].includes(mov.tipo)) {
+                                color = 'var(--color-up)';
+                                sign = '+';
+                            } else if (['Gasto Local', 'Gasto Familiar', 'Pago Proveedor', 'Amortización Deuda a Proveedor', 'Reparto Sociedad', 'Compra', 'Retiro', 'Pago Préstamo'].includes(mov.tipo)) {
+                                color = 'var(--color-down)';
+                                sign = '-';
+                            }
+
+                            let divVal = this.currentModelData.vistaUSD ? this.currentModelData.dolarBlue : 1;
+                            let isUSD = this.currentModelData.vistaUSD;
+                            let monto = mov.monto;
+                            if (['Transferencia Ahorro', 'Ahorro'].includes(mov.tipo) && mov.usd > 0 && isUSD) monto = mov.usd;
+                            else monto = monto / divVal;
+                            
+                            let desc = '';
+                            if(['Compra','Venta','Dividendo'].includes(mov.tipo)) desc = DOMPurify.sanitize(mov.activo);
+                            else if (mov.tipo === 'Gasto Local' || mov.tipo === 'Gasto Familiar') desc = DOMPurify.sanitize(mov.categoria || '');
+                            else if (mov.tipo === 'Pago Proveedor' || mov.tipo === 'Amortización Deuda a Proveedor') desc = DOMPurify.sanitize(mov.proveedor || '');
+                            else if (mov.tipo === 'Reparto Sociedad') desc = `Socio: ${DOMPurify.sanitize(mov.socio || '')}`;
+                            else if (mov.tipo === 'Alta Préstamo' || mov.tipo === 'Pago Préstamo') desc = `Entidad: ${DOMPurify.sanitize(mov.entidad || '')}`;
+
                             html += `
-                                <div style="display:flex; justify-content:space-between; align-items:center; background:var(--bg-input); padding: 16px 20px; border-radius:12px; border-left: 4px solid ${c}; transition: transform 0.2s;">
-                                    <span style="font-weight:900; font-size:1rem; color:var(--text-main); letter-spacing: 0.5px;">${DOMPurify.sanitize(sec)}</span>
-                                    <span class="data-font privacy-mask" style="color:${col}; font-weight:900; font-size:1.15rem; text-shadow: 0 0 10px ${col}40;">${sign}$${vStr}</span>
+                                <div style="display:flex; justify-content:space-between; align-items:center; padding: 18px 20px; background:var(--bg-input); border-radius:12px; border-left: 4px solid ${color};">
+                                    <div style="display:flex; flex-direction:column; gap:6px;">
+                                        <span class="badge ${tagClass}" style="width:fit-content; font-size: 0.7rem; padding: 4px 8px;">${displayTipo}</span>
+                                        <span style="font-weight:900; font-size:1.05rem; color:var(--text-main);">${desc}</span>
+                                    </div>
+                                    <span class="data-font privacy-mask" style="color:${color}; font-weight:900; font-size:1.25rem;">${sign}${this.zenMode ? '---' : this.fmt(monto, 1, isUSD)}</span>
                                 </div>
                             `;
                         });
                         html += '</div>';
-                        this.DOM.infoAtribucionSector.innerHTML = html;
-                    }
+                        this.DOM.calDetalle.innerHTML = html;
+                    });
                 }
+                fragment.appendChild(el);
+            }
+            
+            this.DOM.calDias.appendChild(fragment);
+        });
+    },
 
-                let hmGrid = document.getElementById('heatmap-grid');
-                if (hmGrid && s.heatmapMensual) {
-                    let hm = s.heatmapMensual;
-                    let años = Object.keys(hm).sort((a,b)=>b-a);
-                    
-                    if (años.length === 0) {
-                        hmGrid.innerHTML = '<div style="grid-column: 1 / -1; color:var(--text-muted); padding: 40px; font-weight:800;">Datos insuficientes para generar matriz térmica.</div>';
-                    } else {
-                        let header = '<div class="hm-header">AÑO</div>';
-                        const mesesStr = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
-                        mesesStr.forEach(m => header += `<div class="hm-header">${m}</div>`);
-                        header += '<div class="hm-header" style="color:var(--color-primary);">YTD</div>';
-                        
-                        let body = '';
-                        años.forEach(a => {
-                            body += `<div class="hm-cell" style="background:var(--bg-input); color:var(--text-main); font-weight:900;">${a}</div>`;
-                            let rowYTD = 0;
-                            for(let i=1; i<=12; i++) {
-                                let val = hm[a][i];
-                                if(val !== undefined) {
-                                    rowYTD += val;
-                                    let cClass = val > 0 ? 'hm-cell--pos' : (val < 0 ? 'hm-cell--neg' : '');
-                                    let vStr = val > 0 ? `+${val.toFixed(1)}%` : `${val.toFixed(1)}%`;
-                                    body += `<div class="hm-cell ${cClass} data-font">${vStr}</div>`;
-                                } else {
-                                    body += `<div class="hm-cell" style="color:var(--text-muted); opacity:0.3;">-</div>`;
-                                }
-                            }
-                            let ytdClass = rowYTD > 0 ? 'hm-cell--pos' : (rowYTD < 0 ? 'hm-cell--neg' : '');
-                            let ytdStr = rowYTD > 0 ? `+${rowYTD.toFixed(1)}%` : `${rowYTD.toFixed(1)}%`;
-                            body += `<div class="hm-cell ${ytdClass} data-font" style="border:1px solid var(--border-color);">${ytdStr}</div>`;
-                        });
-                        
-                        hmGrid.innerHTML = header + body;
-                    }
-                }
+    cambiarMesCalendario(dir) {
+        this.calMes += dir;
+        if(this.calMes > 11) { this.calMes = 0; this.calAno++; }
+        else if(this.calMes < 0) { this.calMes = 11; this.calAno--; }
+        this.renderCalendario(this.currentModelData);
+    },
 
-                if (s.historyFechas && s.historyDrawdown) {
-                    ChartRenderer.renderDrawdown(s.historyFechas, s.historyDrawdown);
-                }
-            });
-        },
+    calcularInteres() {
+        ErrorHandler.catchBoundary('Calculadora Interés', 'herramientas', () => {
+            if(this.activeTab !== 'herramientas' || !this.DOM.calcInicial) return;
+            
+            let p = this.cleanNum(this.DOM.calcInicial.value);
+            let pm = this.cleanNum(this.DOM.calcMensual.value);
+            let r = parseFloat(this.DOM.calcTasa.value) / 100;
+            let t = parseInt(this.DOM.calcAnos.value);
+            let n = 12; 
+            
+            if (isNaN(p) || isNaN(pm) || isNaN(r) || isNaN(t) || t <= 0) return;
 
-        renderCalendario(modelData) {
-            ErrorHandler.catchBoundary('Calendario Operativo', 'calendario', () => {
-                const m = modelData.movimientos;
+            let labels = [];
+            let dAp = [];
+            let dInt = [];
+            
+            let currentAportado = p;
+            let currentTotal = p;
+            
+            for(let i=1; i<=t; i++) {
+                labels.push(`Año ${i}`);
+                currentAportado += pm * 12;
+                currentTotal = currentTotal * Math.pow(1 + r/n, n) + pm * ((Math.pow(1 + r/n, n) - 1) / (r/n));
                 
-                const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
-                this.DOM.calMesAno.innerText = `${monthNames[this.calMes]} ${this.calAno}`;
-                
-                const firstDay = new Date(this.calAno, this.calMes, 1).getDay();
-                const daysInMonth = new Date(this.calAno, this.calMes + 1, 0).getDate();
-                const startOffset = firstDay === 0 ? 6 : firstDay - 1; 
-                
-                let movsDelMes = m.filter(mov => {
-                    let d = new Date(mov.fecha + "T00:00:00");
-                    return d.getMonth() === this.calMes && d.getFullYear() === this.calAno;
-                });
+                dAp.push(currentAportado);
+                dInt.push(Math.max(0, currentTotal - currentAportado));
+            }
 
-                let mapDias = {};
-                movsDelMes.forEach(mov => {
-                    let d = parseInt(mov.fecha.split('-')[2]);
-                    if(!mapDias[d]) mapDias[d] = [];
-                    mapDias[d].push(mov);
-                });
+            this.DOM.calcResAportado.innerText = this.zenMode ? '---' : '$' + this.fmtStr(currentAportado, 1, false);
+            this.DOM.calcResInteres.innerText = this.zenMode ? '---' : '$' + this.fmtStr(currentTotal - currentAportado, 1, false);
+            this.DOM.calcResFinal.innerText = this.zenMode ? '---' : '$' + this.fmtStr(currentTotal, 1, false);
 
-                this.DOM.calDias.innerHTML = '';
-                const template = this.DOM.tplCalDay.content;
-                const fragment = document.createDocumentFragment();
-                
-                let hoy = new Date();
-                let isCurrentMonth = (hoy.getMonth() === this.calMes && hoy.getFullYear() === this.calAno);
-                
-                for(let i=0; i<startOffset; i++) {
-                    const el = document.importNode(template, true);
-                    let div = el.querySelector('.cal-day');
-                    div.classList.add('empty');
-                    fragment.appendChild(el);
-                }
-                
-                for(let d=1; d<=daysInMonth; d++) {
-                    const el = document.importNode(template, true);
-                    let div = el.querySelector('.cal-day');
-                    let dateEl = el.querySelector('.cal-date');
-                    let dotsEl = el.querySelector('.cal-dots');
-                    
-                    dateEl.innerText = d;
-                    
-                    if(isCurrentMonth && d === hoy.getDate()) div.classList.add('today');
-                    
-                    if(mapDias[d] && mapDias[d].length > 0) {
-                        div.classList.add('has-data');
-                        let dotsHtml = '';
-                        mapDias[d].slice(0, 8).forEach(mov => {
-                            let color = 'var(--text-muted)';
-                            if(['Compra','Venta'].includes(mov.tipo)) color = 'var(--color-accent)';
-                            else if(['Ingreso Local'].includes(mov.tipo)) color = 'var(--color-up)';
-                            else if(['Gasto Local','Gasto Familiar','Pago Proveedor'].includes(mov.tipo)) color = 'var(--color-down)';
-                            else if(mov.tipo === 'Reparto Sociedad') color = 'var(--color-purple)';
-                            
-                            dotsHtml += `<div class="cal-dot" style="color:${color}; background-color:${color};"></div>`;
-                        });
-                        if(mapDias[d].length > 8) dotsHtml += `<div style="font-size:10px; font-weight:900; color:var(--text-muted);">+${mapDias[d].length - 8}</div>`;
-                        dotsEl.innerHTML = dotsHtml;
-                        
-                        div.addEventListener('click', () => {
-                            document.querySelectorAll('.cal-day').forEach(cd => cd.style.borderColor = '');
-                            div.style.borderColor = 'var(--color-primary)';
-                            
-                            let html = `<h3 class="stat__title" style="margin-bottom: 25px; font-size: 1.1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 15px;">Movimientos del ${d} de ${monthNames[this.calMes]}</h3>`;
-                            html += '<div style="display:flex; flex-direction:column; gap:12px; max-height: 500px; overflow-y:auto; padding-right: 10px;">';
-                            
-                            mapDias[d].forEach(mov => {
-                                let displayTipo = this.getDisplayTipo(mov.tipo);
-                                let tagClass = this.getBadgeClass(mov.tipo);
-                                
-                                let color = 'var(--text-main)';
-                                let sign = '';
-                                if (['Ingreso Local', 'Ahorro', 'Transferencia Ahorro', 'Venta', 'Dividendo', 'Rendimiento', 'Alta Préstamo'].includes(mov.tipo)) {
-                                    color = 'var(--color-up)';
-                                    sign = '+';
-                                } else if (['Gasto Local', 'Gasto Familiar', 'Pago Proveedor', 'Amortización Deuda a Proveedor', 'Reparto Sociedad', 'Compra', 'Retiro', 'Pago Préstamo'].includes(mov.tipo)) {
-                                    color = 'var(--color-down)';
-                                    sign = '-';
-                                }
+            const getCSS = (varName, fallBack) => getComputedStyle(document.documentElement).getPropertyValue(varName).trim() || fallBack;
+            let c1 = getCSS('--color-primary', '#6045F4');
+            let c2 = getCSS('--color-up', '#00FF95');
 
-                                let divVal = this.currentModelData.vistaUSD ? this.currentModelData.dolarBlue : 1;
-                                let isUSD = this.currentModelData.vistaUSD;
-                                let monto = mov.monto;
-                                if (['Transferencia Ahorro', 'Ahorro'].includes(mov.tipo) && mov.usd > 0 && isUSD) monto = mov.usd;
-                                else monto = monto / divVal;
-                                
-                                let desc = '';
-                                if(['Compra','Venta','Dividendo'].includes(mov.tipo)) desc = DOMPurify.sanitize(mov.activo);
-                                else if (mov.tipo === 'Gasto Local' || mov.tipo === 'Gasto Familiar') desc = DOMPurify.sanitize(mov.categoria || '');
-                                else if (mov.tipo === 'Pago Proveedor' || mov.tipo === 'Amortización Deuda a Proveedor') desc = DOMPurify.sanitize(mov.proveedor || '');
-                                else if (mov.tipo === 'Reparto Sociedad') desc = `Socio: ${DOMPurify.sanitize(mov.socio || '')}`;
-                                else if (mov.tipo === 'Alta Préstamo' || mov.tipo === 'Pago Préstamo') desc = `Entidad: ${DOMPurify.sanitize(mov.entidad || '')}`;
+            ChartRenderer.renderCalculadora(labels, dAp, dInt, 'chartCalc', c1, c2, this.DOM.wrapCalc);
+        });
+    },
 
-                                html += `
-                                    <div style="display:flex; justify-content:space-between; align-items:center; padding: 18px 20px; background:var(--bg-input); border-radius:12px; border-left: 4px solid ${color};">
-                                        <div style="display:flex; flex-direction:column; gap:6px;">
-                                            <span class="badge ${tagClass}" style="width:fit-content; font-size: 0.7rem; padding: 4px 8px;">${displayTipo}</span>
-                                            <span style="font-weight:900; font-size:1.05rem; color:var(--text-main);">${desc}</span>
-                                        </div>
-                                        <span class="data-font privacy-mask" style="color:${color}; font-weight:900; font-size:1.25rem;">${sign}${this.zenMode ? '---' : this.fmt(monto, 1, isUSD)}</span>
-                                    </div>
-                                `;
-                            });
-                            html += '</div>';
-                            this.DOM.calDetalle.innerHTML = html;
-                        });
-                    }
-                    fragment.appendChild(el);
-                }
-                
-                this.DOM.calDias.appendChild(fragment);
-            });
-        },
+    initFIRE(modelData) {
+        ErrorHandler.catchBoundary('Proyección FIRE', 'fire', () => {
+            if(!modelData || !modelData.stats) return;
+            
+            let s = modelData.stats;
+            let objGastoBase = document.getElementById('fire-gasto-base');
+            let objCapital = document.getElementById('fire-capital');
+            let objAhorro = document.getElementById('fire-ahorro');
+            
+            if(objGastoBase && s.gastosFamiliar) {
+                let meses = s.numMesesOperativos || 1;
+                let gastoFamiliarMensual = s.gastosFamiliar / meses;
+                objGastoBase.value = this.fmtStr(gastoFamiliarMensual, 1, false);
+            }
+            
+            if(objCapital) objCapital.value = this.fmtStr(s.capInvertido + s.billetera, 1, false);
+            
+            if(objAhorro && s.totalAhorrado) {
+                let meses = s.numMesesOperativos || 1;
+                objAhorro.value = this.fmtStr(s.totalAhorrado / meses, 1, false);
+            }
+            
+            this.calcularFIRE();
+        });
+    },
 
-        cambiarMesCalendario(dir) {
-            this.calMes += dir;
-            if(this.calMes > 11) { this.calMes = 0; this.calAno++; }
-            else if(this.calMes < 0) { this.calMes = 11; this.calAno--; }
-            this.renderCalendario(this.currentModelData);
-        },
+    calcularFIRE() {
+        ErrorHandler.catchBoundary('Cálculo FIRE', 'fire', () => {
+            let vBase = this.cleanNum(document.getElementById('fire-gasto-base')?.value);
+            let vExtra = this.cleanNum(document.getElementById('fire-gasto-extra')?.value);
+            let p = this.cleanNum(document.getElementById('fire-capital')?.value);
+            let pm = this.cleanNum(document.getElementById('fire-ahorro')?.value);
+            let r = parseFloat(document.getElementById('fire-cagr')?.value) / 100;
+            let swr = parseFloat(document.getElementById('fire-swr')?.value) / 100;
+            
+            let elAnos = document.getElementById('fire-res-anos');
+            let elGasto = document.getElementById('fire-res-gasto');
+            let elObj = document.getElementById('fire-res-objetivo');
+            let wrapFire = document.getElementById('wrap-fire-chart');
 
-        calcularInteres() {
-            ErrorHandler.catchBoundary('Calculadora Interés', 'herramientas', () => {
-                if(this.activeTab !== 'herramientas' || !this.DOM.calcInicial) return;
-                
-                let p = this.cleanNum(this.DOM.calcInicial.value);
-                let pm = this.cleanNum(this.DOM.calcMensual.value);
-                let r = parseFloat(this.DOM.calcTasa.value) / 100;
-                let t = parseInt(this.DOM.calcAnos.value);
-                let n = 12; 
-                
-                if (isNaN(p) || isNaN(pm) || isNaN(r) || isNaN(t) || t <= 0) return;
+            if (isNaN(vBase) || isNaN(vExtra) || isNaN(p) || isNaN(pm) || isNaN(r) || isNaN(swr) || swr <= 0) return;
 
-                let labels = [];
-                let dAp = [];
-                let dInt = [];
-                
-                let currentAportado = p;
-                let currentTotal = p;
-                
-                for(let i=1; i<=t; i++) {
-                    labels.push(`Año ${i}`);
-                    currentAportado += pm * 12;
-                    currentTotal = currentTotal * Math.pow(1 + r/n, n) + pm * ((Math.pow(1 + r/n, n) - 1) / (r/n));
-                    
-                    dAp.push(currentAportado);
-                    dInt.push(Math.max(0, currentTotal - currentAportado));
-                }
+            let gastoMensualTotal = vBase + vExtra;
+            let gastoAnualTotal = gastoMensualTotal * 12;
+            let targetFire = gastoAnualTotal / swr;
 
-                this.DOM.calcResAportado.innerText = this.zenMode ? '---' : '$' + this.fmtStr(currentAportado, 1, false);
-                this.DOM.calcResInteres.innerText = this.zenMode ? '---' : '$' + this.fmtStr(currentTotal - currentAportado, 1, false);
-                this.DOM.calcResFinal.innerText = this.zenMode ? '---' : '$' + this.fmtStr(currentTotal, 1, false);
+            elGasto.innerText = this.zenMode ? '---' : '$' + this.fmtStr(gastoMensualTotal, 1, false);
+            elObj.innerText = this.zenMode ? '---' : '$' + this.fmtStr(targetFire, 1, false);
 
-                const getCSS = (varName, fallBack) => getComputedStyle(document.documentElement).getPropertyValue(varName).trim() || fallBack;
-                let c1 = getCSS('--color-primary', '#6045F4');
-                let c2 = getCSS('--color-up', '#00FF95');
+            let currentVal = p;
+            let meses = 0;
+            let n = 12;
+            let rMensual = r / n;
+            
+            let labels = [];
+            let dataProgreso = [];
+            let dataTarget = [];
 
-                ChartRenderer.renderCalculadora(labels, dAp, dInt, 'chartCalc', c1, c2, this.DOM.wrapCalc);
-            });
-        },
-
-        initFIRE(modelData) {
-            ErrorHandler.catchBoundary('Proyección FIRE', 'fire', () => {
-                if(!modelData || !modelData.stats) return;
-                
-                let s = modelData.stats;
-                let objGastoBase = document.getElementById('fire-gasto-base');
-                let objCapital = document.getElementById('fire-capital');
-                let objAhorro = document.getElementById('fire-ahorro');
-                
-                if(objGastoBase && s.gastosFamiliar) {
-                    let meses = s.numMesesOperativos || 1;
-                    let gastoFamiliarMensual = s.gastosFamiliar / meses;
-                    objGastoBase.value = this.fmtStr(gastoFamiliarMensual, 1, false);
-                }
-                
-                if(objCapital) objCapital.value = this.fmtStr(s.capInvertido + s.billetera, 1, false);
-                
-                if(objAhorro && s.totalAhorrado) {
-                    let meses = s.numMesesOperativos || 1;
-                    objAhorro.value = this.fmtStr(s.totalAhorrado / meses, 1, false);
-                }
-                
-                this.calcularFIRE();
-            });
-        },
-
-        calcularFIRE() {
-            ErrorHandler.catchBoundary('Cálculo FIRE', 'fire', () => {
-                let vBase = this.cleanNum(document.getElementById('fire-gasto-base')?.value);
-                let vExtra = this.cleanNum(document.getElementById('fire-gasto-extra')?.value);
-                let p = this.cleanNum(document.getElementById('fire-capital')?.value);
-                let pm = this.cleanNum(document.getElementById('fire-ahorro')?.value);
-                let r = parseFloat(document.getElementById('fire-cagr')?.value) / 100;
-                let swr = parseFloat(document.getElementById('fire-swr')?.value) / 100;
-                
-                let elAnos = document.getElementById('fire-res-anos');
-                let elGasto = document.getElementById('fire-res-gasto');
-                let elObj = document.getElementById('fire-res-objetivo');
-                let wrapFire = document.getElementById('wrap-fire-chart');
-
-                if (isNaN(vBase) || isNaN(vExtra) || isNaN(p) || isNaN(pm) || isNaN(r) || isNaN(swr) || swr <= 0) return;
-
-                let gastoMensualTotal = vBase + vExtra;
-                let gastoAnualTotal = gastoMensualTotal * 12;
-                let targetFire = gastoAnualTotal / swr;
-
-                elGasto.innerText = this.zenMode ? '---' : '$' + this.fmtStr(gastoMensualTotal, 1, false);
-                elObj.innerText = this.zenMode ? '---' : '$' + this.fmtStr(targetFire, 1, false);
-
-                let currentVal = p;
-                let meses = 0;
-                let n = 12;
-                let rMensual = r / n;
-                
-                let labels = [];
-                let dataProgreso = [];
-                let dataTarget = [];
-
-                if (currentVal >= targetFire) {
-                    elAnos.innerText = "Objetivo Alcanzado";
-                    elAnos.style.color = "var(--color-up)";
-                    labels = ['Actual'];
-                    dataProgreso = [currentVal];
-                    dataTarget = [targetFire];
-                } else if (pm <= 0 && r <= 0) {
-                    elAnos.innerText = "Inviable (Aporte 0)";
-                    elAnos.style.color = "var(--color-down)";
-                } else {
-                    let maxMeses = 12 * 60; 
-                    while(currentVal < targetFire && meses < maxMeses) {
-                        if(meses % 12 === 0) {
-                            labels.push(`Año ${meses/12}`);
-                            dataProgreso.push(currentVal);
-                            dataTarget.push(targetFire);
-                        }
-                        currentVal = currentVal * (1 + rMensual) + pm;
-                        meses++;
-                    }
-                    
-                    if(meses % 12 !== 0) {
-                        labels.push(`Final`);
+            if (currentVal >= targetFire) {
+                elAnos.innerText = "Objetivo Alcanzado";
+                elAnos.style.color = "var(--color-up)";
+                labels = ['Actual'];
+                dataProgreso = [currentVal];
+                dataTarget = [targetFire];
+            } else if (pm <= 0 && r <= 0) {
+                elAnos.innerText = "Inviable (Aporte 0)";
+                elAnos.style.color = "var(--color-down)";
+            } else {
+                let maxMeses = 12 * 60; 
+                while(currentVal < targetFire && meses < maxMeses) {
+                    if(meses % 12 === 0) {
+                        labels.push(`Año ${meses/12}`);
                         dataProgreso.push(currentVal);
                         dataTarget.push(targetFire);
                     }
-
-                    if(meses >= maxMeses) {
-                        elAnos.innerText = "+60 Años";
-                        elAnos.style.color = "var(--color-down)";
-                    } else {
-                        let anosReales = meses / 12;
-                        elAnos.innerText = `${anosReales.toFixed(1)} Años`;
-                        elAnos.style.color = "var(--color-up)";
-                    }
+                    currentVal = currentVal * (1 + rMensual) + pm;
+                    meses++;
+                }
+                
+                if(meses % 12 !== 0) {
+                    labels.push(`Final`);
+                    dataProgreso.push(currentVal);
+                    dataTarget.push(targetFire);
                 }
 
-                if (wrapFire && labels.length > 0) {
-                    let canvas = wrapFire.querySelector('canvas');
-                    if(!canvas) {
-                        wrapFire.innerHTML = '<canvas id="chartFire"></canvas>';
-                        canvas = wrapFire.querySelector('canvas');
-                    }
-                    const getCSS = (varName, fallBack) => getComputedStyle(document.documentElement).getPropertyValue(varName).trim() || fallBack;
-                    
-                    let cAccent = getCSS('--color-accent', '#FF4D8A');
-                    let cUp = getCSS('--color-up', '#00FF95');
-                    const isLightMode = document.documentElement.getAttribute('data-theme') === 'light';
+                if(meses >= maxMeses) {
+                    elAnos.innerText = "+60 Años";
+                    elAnos.style.color = "var(--color-down)";
+                } else {
+                    let anosReales = meses / 12;
+                    elAnos.innerText = `${anosReales.toFixed(1)} Años`;
+                    elAnos.style.color = "var(--color-up)";
+                }
+            }
 
-                    if(window.chartFireInst) window.chartFireInst.destroy();
-                    
-                    window.chartFireInst = new Chart(canvas.getContext('2d'), {
-                        type: 'line',
-                        data: {
-                            labels: labels,
-                            datasets: [
-                                {
-                                    label: 'Progresión de Capital',
-                                    data: dataProgreso,
-                                    borderColor: cUp,
-                                    backgroundColor: isLightMode ? ChartRenderer._createGradient(canvas.getContext('2d'), cUp) : 'transparent',
-                                    borderWidth: 3,
-                                    fill: isLightMode,
-                                    pointRadius: 0,
-                                    tension: 0.4
-                                },
-                                {
-                                    label: 'Umbral FIRE',
-                                    data: dataTarget,
-                                    borderColor: cAccent,
-                                    backgroundColor: 'transparent',
-                                    borderWidth: 2,
-                                    borderDash: [5, 5],
-                                    fill: false,
-                                    pointRadius: 0
-                                }
-                            ]
-                        },
-                        options: {
-                            responsive: true, maintainAspectRatio: false,
-                            interaction: { mode: 'index', intersect: false },
-                            plugins: { legend: { display: false } },
-                            scales: {
-                                x: { grid: { display: false }, ticks: { font: { weight: 'bold' } } },
-                                y: { 
-                                    border: { display: false }, 
-                                    ticks: { 
-                                        callback: function(value) {
-                                            if(value >= 1000000) return '$' + (value/1000000).toFixed(1) + 'M';
-                                            return '$' + value;
-                                        },
-                                        font: { family: "'Roboto Mono', monospace", weight: 'bold' } 
-                                    } 
-                                }
+            if (wrapFire && labels.length > 0) {
+                let canvas = wrapFire.querySelector('canvas');
+                if(!canvas) {
+                    wrapFire.innerHTML = '<canvas id="chartFire"></canvas>';
+                    canvas = wrapFire.querySelector('canvas');
+                }
+                const getCSS = (varName, fallBack) => getComputedStyle(document.documentElement).getPropertyValue(varName).trim() || fallBack;
+                
+                let cAccent = getCSS('--color-accent', '#FF4D8A');
+                let cUp = getCSS('--color-up', '#00FF95');
+                const isLightMode = document.documentElement.getAttribute('data-theme') === 'light';
+
+                if(window.chartFireInst) window.chartFireInst.destroy();
+                
+                window.chartFireInst = new Chart(canvas.getContext('2d'), {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [
+                            {
+                                label: 'Progresión de Capital',
+                                data: dataProgreso,
+                                borderColor: cUp,
+                                backgroundColor: isLightMode ? ChartRenderer._createGradient(canvas.getContext('2d'), cUp) : 'transparent',
+                                borderWidth: 3,
+                                fill: isLightMode,
+                                pointRadius: 0,
+                                tension: 0.4
+                            },
+                            {
+                                label: 'Umbral FIRE',
+                                data: dataTarget,
+                                borderColor: cAccent,
+                                backgroundColor: 'transparent',
+                                borderWidth: 2,
+                                borderDash: [5, 5],
+                                fill: false,
+                                pointRadius: 0
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true, maintainAspectRatio: false,
+                        interaction: { mode: 'index', intersect: false },
+                        plugins: { legend: { display: false } },
+                        scales: {
+                            x: { grid: { display: false }, ticks: { font: { weight: 'bold' } } },
+                            y: { 
+                                border: { display: false }, 
+                                ticks: { 
+                                    callback: function(value) {
+                                        if(value >= 1000000) return '$' + (value/1000000).toFixed(1) + 'M';
+                                        return '$' + value;
+                                    },
+                                    font: { family: "'Roboto Mono', monospace", weight: 'bold' } 
+                                } 
                             }
                         }
-                    });
-                }
-            });
-        }
+                    }
+                });
+            }
+        });
+    }
 };
