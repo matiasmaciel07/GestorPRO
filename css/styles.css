@@ -179,8 +179,14 @@ body {
 .topbar { height: 5rem; min-height: 5rem; background-color: var(--bg-panel); backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur); border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; padding: 0 var(--spacing-lg); z-index: 5; }
 .content-area { flex: 1; padding: var(--spacing-xl); overflow-y: auto; scroll-behavior: smooth; }
 
+/* Animación y control de Pestañas (Corrección de Opacidad) */
 .tab-content { display: none; opacity: 0; transform: translateY(10px); }
 .tab-content--active { display: block; animation: slideUpFade 0.4s ease forwards; }
+
+@keyframes slideUpFade { 
+    from { opacity: 0; transform: translateY(10px); } 
+    to { opacity: 1; transform: translateY(0); } 
+}
 
 .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(22rem, 1fr)); gap: var(--spacing-lg); margin-bottom: var(--spacing-lg); }
 .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr)); gap: var(--spacing-lg); margin-bottom: var(--spacing-lg); }
