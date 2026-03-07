@@ -10,8 +10,7 @@ import { FinancialMath } from './utils/financial.js';
 export const view = {
     DOM: {}, calMes: new Date().getMonth(), calAno: new Date().getFullYear(),
     currentModelData: null, activeTab: 'dashboard', activeFilter: 'MAX',
-    historialData: [], historialFiltros: null, vsRowHeight: 65, // Altura aumentada para el diseño Neon-Tech
-    // FASE 3: Paleta de Colores Vibrantes para gráficos e inyecciones JS
+    historialData: [], historialFiltros: null, vsRowHeight: 65, 
     sectorColors: ['#00FF95', '#FF4D8A', '#2CE6D6', '#FCA311', '#6045F4', '#FF871A', '#7C13A4', '#1AA7EC', '#F71735'],
     chartTermometro: null,
     zenMode: false,
@@ -29,7 +28,6 @@ export const view = {
         return parseFloat(str) || 0;
     },
 
-    // FASE 3: Insignias Vibrantes (Mapeo estricto con FASE 1 CSS)
     getBadgeClass(tipo) {
         switch (tipo) {
             case 'Ingreso Local': return 'bg-ingreso-local';
@@ -51,6 +49,20 @@ export const view = {
             default: return 'bg-rendimiento';
         }
     },
+
+    getDisplayTipo(tipo) {
+        const mapa = {
+            'Ingreso Local': 'Ingreso Comercial',
+            'Gasto Local': 'Egreso Comercial',
+            'Gasto Familiar': 'Egreso Personal',
+            'Transferencia Ahorro': 'Inyección Liquidez',
+            'Pago Proveedor': 'Pago Logístico',
+            'Amortización Deuda a Proveedor': 'Amortización Logística',
+            'Reparto Sociedad': 'Retiro Societario',
+            'Ajuste Stock Inicial': 'Auditoría Inventario'
+        };
+        return mapa[tipo] || tipo;
+    },
     
     initUI() {
         this.cacheDOM();
@@ -70,9 +82,8 @@ export const view = {
             iconSvg.innerHTML = document.body.classList.contains('privacy-active') ? `<use href="#icon-privacy-off"></use>` : `<use href="#icon-privacy"></use>`;
         }
 
-        // FASE 3: Alineación Tabular y limpieza de inputs
         document.querySelectorAll('.format-number').forEach(input => {
-            input.style.textAlign = 'right'; // Forzar alineación a la derecha
+            input.style.textAlign = 'right'; 
             input.addEventListener('input', function() {
                 let clean = this.value.replace(/[^0-9,]/g, '');
                 let parts = clean.split(',');
@@ -82,7 +93,6 @@ export const view = {
             });
         });
         
-        // Forzar alineación derecha en inputs puramente numéricos de uso financiero
         document.querySelectorAll('input[type="number"].data-font').forEach(input => {
             input.style.textAlign = 'right';
         });
@@ -307,7 +317,6 @@ export const view = {
             }
         }, { passive: true });
         
-        // FASE 3: Lógica Hover JS complementaria para el "Modo Foco"
         this.DOM.vsTbody?.addEventListener('mouseover', (e) => {
             let tr = e.target.closest('tr');
             if(tr) tr.style.zIndex = '10';
@@ -327,7 +336,7 @@ export const view = {
                 if (action === 'guardar-operacion') events.emit('ui:guardar-operacion', this.getOperacionFormData());
                 if (action === 'editar-operacion') events.emit('ui:editar-operacion', actionBtn.dataset.id);
                 if (action === 'cancelar-edicion') events.emit('ui:cancelar-edicion');
-                if (action === 'borrar-operacion' && confirm("¿Borrar este registro permanentemente?")) events.emit('ui:borrar-operacion', actionBtn.dataset.id);
+                if (action === 'borrar-operacion' && confirm("¿Proceder con la eliminación del asiento contable?")) events.emit('ui:borrar-operacion', actionBtn.dataset.id);
                 if (action === 'add-watchlist') events.emit('ui:add-watchlist', { activo: DOMPurify.sanitize(document.getElementById('wl-activo').value.trim().toUpperCase()), precio: parseFloat(document.getElementById('wl-precio').value) });
                 if (action === 'del-watchlist') events.emit('ui:del-watchlist', actionBtn.dataset.id);
                 if (action === 'filtrar-historial') events.emit('ui:filtrar-historial', { desde: document.getElementById('filtro-desde').value, hasta: document.getElementById('filtro-hasta').value, tipo: document.getElementById('filtro-tipo').value });
@@ -344,17 +353,17 @@ export const view = {
                     let valParsed = parseFloat(inputVal.replace(',', '.'));
                     events.emit('ui:guardar-inflacion', { mes: DOMPurify.sanitize(document.getElementById('inf-mes').value), val: valParsed });
                 }
-                if (action === 'borrar-inflacion' && confirm(`¿Borrar dato de ${actionBtn.dataset.mes}?`)) events.emit('ui:borrar-inflacion', actionBtn.dataset.mes);
+                if (action === 'borrar-inflacion' && confirm(`¿Purgar dato estadístico de ${actionBtn.dataset.mes}?`)) events.emit('ui:borrar-inflacion', actionBtn.dataset.mes);
                 
                 if (action === 'verificar-pin') events.emit('ui:verificar-pin', document.getElementById('input-pin-login').value);
                 if (action === 'guardar-pin') events.emit('ui:guardar-pin', document.getElementById('nuevo-pin').value);
                 if (action === 'eliminar-pin') {
-                    let p = prompt("Ingresa tu PIN actual:");
+                    let p = prompt("Firma digital requerida (PIN):");
                     if(p !== null) events.emit('ui:eliminar-pin', p);
                 }
                 
                 if (action === 'exportar') events.emit('ui:exportar');
-                if (action === 'borrar-todo' && prompt("Escribe BORRAR") === 'BORRAR') events.emit('ui:borrar-todo');
+                if (action === 'borrar-todo' && prompt("Validación de seguridad: Escriba BORRAR para formatear") === 'BORRAR') events.emit('ui:borrar-todo');
                 if (action === 'cambiar-mes') this.cambiarMesCalendario(parseInt(actionBtn.dataset.dir));
             }
         });
@@ -363,6 +372,7 @@ export const view = {
             if(e.target.files.length > 0) events.emit('ui:importar-backup', e.target.files[0]);
         });
     },
+    
 
     initFiltrosTemporales() {
         const attachGastos = (containerId, contexto, targetDomId) => {
@@ -486,9 +496,9 @@ export const view = {
     poblarFormularioEdicion(mov) {
         window.scrollTo({ top: 0, behavior: 'smooth' });
         
-        if (this.DOM.tituloOperarBursatil) this.DOM.tituloOperarBursatil.innerText = "Editar Inversión";
-        if (this.DOM.tituloOperarEco) this.DOM.tituloOperarEco.innerText = "Editar Movimiento Local";
-        if (this.DOM.tituloConfirmar) this.DOM.tituloConfirmar.innerText = "Guardar Cambios";
+        if (this.DOM.tituloOperarBursatil) this.DOM.tituloOperarBursatil.innerText = "Auditar Inversión Bursátil";
+        if (this.DOM.tituloOperarEco) this.DOM.tituloOperarEco.innerText = "Auditar Asiento de Caja";
+        if (this.DOM.tituloConfirmar) this.DOM.tituloConfirmar.innerText = "Consolidar Modificación";
         if (this.DOM.btnGuardarOp) {
             this.DOM.btnGuardarOp.innerHTML = `<span style="display:inline-flex; gap:8px; align-items:center;"><svg width="18" height="18"><use href="#icon-edit"></use></svg> Sobrescribir Registro</span>`;
             this.DOM.btnGuardarOp.classList.add('btn--warning');
@@ -544,6 +554,7 @@ export const view = {
             this.adaptarFormularioEconomia();
         }
     },
+
     setupSystemListeners() {
         events.on('app:toast', (data) => this.toast(data.msg, data.type));
         events.on('ui:poblar-formulario-edicion', (mov) => this.poblarFormularioEdicion(mov));
@@ -564,7 +575,7 @@ export const view = {
                 else btnZen.style.color = 'var(--text-muted)';
             }
             this.ejecutarRendersActivos();
-            this.toast(this.zenMode ? "Modo Zen Activado (%)" : "Modo Absoluto Activado ($)", "success");
+            this.toast(this.zenMode ? "Modo Relativo Activado (%)" : "Modo Absoluto Activado ($)", "success");
         });
 
         events.on('model:updated', (data) => {
@@ -624,7 +635,7 @@ export const view = {
             let text = document.getElementById('market-text');
             if(dot && text) {
                 dot.className = isOpen ? 'market-dot market-dot--open' : 'market-dot market-dot--closed';
-                text.innerText = isOpen ? 'Mercado Abierto' : 'Mercado Cerrado';
+                text.innerText = isOpen ? 'Mercado Operativo' : 'Mercado Cerrado';
             }
         });
 
@@ -645,8 +656,8 @@ export const view = {
                 if(capInput) capInput.value = '';
             }
 
-            if (this.DOM.tituloOperarBursatil) this.DOM.tituloOperarBursatil.innerText = "Operar Inversiones";
-            if (this.DOM.tituloOperarEco) this.DOM.tituloOperarEco.innerText = "Flujo de Caja (Local/Vida)";
+            if (this.DOM.tituloOperarBursatil) this.DOM.tituloOperarBursatil.innerText = "Transacciones Bursátiles";
+            if (this.DOM.tituloOperarEco) this.DOM.tituloOperarEco.innerText = "Flujos Operativos y Personales";
             if (this.DOM.tituloConfirmar) this.DOM.tituloConfirmar.innerText = "Aprobación de la Transacción";
             
             if (this.DOM.btnGuardarOp) {
@@ -722,11 +733,11 @@ export const view = {
         
         if (ticker !== '') {
             this.DOM.hintCantidad.classList.remove('is-hidden');
-            this.DOM.hintCantidad.innerText = `Tenencia actual: ${tenencia}`;
+            this.DOM.hintCantidad.innerText = `Tenencia actual confirmada: ${tenencia}`;
             const isEditing = !this.DOM.btnCancelarEdicion.classList.contains('is-hidden');
             if (!isEditing && inputCant > tenencia) {
                 this.DOM.opCantidad.value = tenencia;
-                this.DOM.hintCantidad.innerText = `Máximo alcanzado. Tenencia: ${tenencia}`;
+                this.DOM.hintCantidad.innerText = `Tope nominal alcanzado: ${tenencia}`;
             }
         } else {
             this.DOM.hintCantidad.classList.add('is-hidden');
@@ -755,7 +766,7 @@ export const view = {
             this.DOM.bloqueDolares.classList.add('is-hidden');
         }
 
-        this.DOM.lblMonto.innerText = t === 'Dividendo' ? 'Dividendo Cobrado (ARS)' : 'Monto Total Operado (ARS)';
+        this.DOM.lblMonto.innerText = t === 'Dividendo' ? 'Rendimiento Distribuido (ARS)' : 'Impacto Consolidado (ARS)';
     },
 
     adaptarFormularioEconomia() {
@@ -783,7 +794,7 @@ export const view = {
             listData.forEach(c => { datalistHtml += `<option value="${DOMPurify.sanitize(c)}">`; });
             datalistHtml += '</datalist>';
             
-            this.DOM.ecoCategoria.outerHTML = `<input type="text" id="eco-categoria" list="lista-categorias-eco" placeholder="Selecciona de la lista o escribe una nueva...">` + datalistHtml;
+            this.DOM.ecoCategoria.outerHTML = `<input type="text" id="eco-categoria" list="lista-categorias-eco" placeholder="Selección de categoría de asignación...">` + datalistHtml;
             this.DOM.ecoCategoria = document.getElementById('eco-categoria');
         } 
         else if (t === 'Pago Proveedor') {
@@ -796,27 +807,27 @@ export const view = {
             if (this.DOM.rowEcoValorVenta) {
                 this.DOM.rowEcoValorVenta.classList.remove('is-hidden');
                 let hint = document.getElementById('hint-valor-venta');
-                if (hint) hint.innerText = "Si se deja en blanco, se suma al costo sin proyectar ganancia.";
+                if (hint) hint.innerText = "La omisión asume un margen de utilidad nulo para este asiento logístico.";
             }
             
             let provs = this.currentModelData?.proveedores || [];
             let datalistHtml = '<datalist id="lista-proveedores">';
             provs.forEach(p => { datalistHtml += `<option value="${p.nombre}">`; });
             datalistHtml += '</datalist>';
-            this.DOM.ecoProveedor.outerHTML = `<input type="text" id="eco-proveedor" list="lista-proveedores" placeholder="Ej: Proveedor ABC">` + datalistHtml;
+            this.DOM.ecoProveedor.outerHTML = `<input type="text" id="eco-proveedor" list="lista-proveedores" placeholder="Identificador legal/comercial">` + datalistHtml;
             this.DOM.ecoProveedor = document.getElementById('eco-proveedor'); 
         } 
         else if (t === 'Amortización Deuda a Proveedor') {
             if (this.DOM.bloquePagoDeudaProveedor) this.DOM.bloquePagoDeudaProveedor.classList.remove('is-hidden');
             
             let deudas = this.currentModelData?.stats?.deudaProveedoresDetalle || {};
-            let optionsHtml = '<option value="">-- Seleccionar Deuda Pendiente --</option>';
+            let optionsHtml = '<option value="">-- Vincular Deuda Logística --</option>';
             
             for(let key in deudas) {
                 let d = deudas[key];
                 if(d.activo) {
                     let pendiente = d.capitalExigibleTotal - d.capitalServido;
-                    optionsHtml += `<option value="${d.id}">${DOMPurify.sanitize(d.proveedor)} (Resta $${this.fmtStr(pendiente, 1, false)}) - ${d.fecha}</option>`;
+                    optionsHtml += `<option value="${d.id}">${DOMPurify.sanitize(d.proveedor)} (Saldo Pendiente $${this.fmtStr(pendiente, 1, false)}) - ${d.fecha}</option>`;
                 }
             }
             if (this.DOM.ecoDeudaProveedorId) this.DOM.ecoDeudaProveedorId.innerHTML = optionsHtml;
@@ -824,8 +835,8 @@ export const view = {
         else if (t === 'Reparto Sociedad') {
             this.DOM.bloqueCategoriasEco.classList.remove('is-hidden');
             this.DOM.grupoEcoProveedor.classList.remove('is-hidden');
-            this.DOM.ecoProveedor.placeholder = "Ej: Nombre del Socio";
-            this.DOM.ecoProveedor.outerHTML = `<input type="text" id="eco-proveedor" placeholder="Ej: Nombre del Socio">`;
+            this.DOM.ecoProveedor.placeholder = "Identificación de socio receptor";
+            this.DOM.ecoProveedor.outerHTML = `<input type="text" id="eco-proveedor" placeholder="Identificación de socio receptor">`;
             this.DOM.ecoProveedor = document.getElementById('eco-proveedor');
         }
         else if (t === 'Ajuste Stock Inicial') {
@@ -833,7 +844,7 @@ export const view = {
                 this.DOM.bloqueCategoriasEco.classList.remove('is-hidden');
                 this.DOM.rowEcoValorVenta.classList.remove('is-hidden');
                 let hint = document.getElementById('hint-valor-venta');
-                if (hint) hint.innerText = "Ingresa cuánto dinero obtendrías si vendieras todo este stock histórico al público.";
+                if (hint) hint.innerText = "Proyección de ingresos asumiendo la liquidación total del inventario base.";
             }
         }
         else if (t === 'Alta Préstamo') {
@@ -842,13 +853,13 @@ export const view = {
         else if (t === 'Pago Préstamo') {
             this.DOM.bloquePrestamosPago.classList.remove('is-hidden');
             let prestamos = this.currentModelData?.stats?.prestamosDetalle || {};
-            let optionsHtml = '<option value="">-- Seleccionar Préstamo --</option>';
+            let optionsHtml = '<option value="">-- Seleccionar Obligación --</option>';
             
             for(let key in prestamos) {
                 let p = prestamos[key];
                 if(p.activo) {
                     let deudaPendiente = p.totalDevolver - p.pagado;
-                    optionsHtml += `<option value="${p.id}">${DOMPurify.sanitize(p.entidad)} (Resta $${this.fmtStr(deudaPendiente, 1, false)})</option>`;
+                    optionsHtml += `<option value="${p.id}">${DOMPurify.sanitize(p.entidad)} (Saldo $${this.fmtStr(deudaPendiente, 1, false)})</option>`;
                 }
             }
             this.DOM.ecoPrestamoId.innerHTML = optionsHtml;
@@ -887,7 +898,6 @@ export const view = {
         }
     },
 
-    // FASE 3: Aplicación de Mapeo de Profundidad y Sombras Neón en Dashboard
     renderDashboardBase(modelData) {
         ErrorHandler.catchBoundary('Dashboard Principal', 'dashboard', () => {
             let s = modelData.stats;
@@ -896,16 +906,15 @@ export const view = {
                 let sc = s.healthScore || 0;
                 this.DOM.dashHealthScore.innerText = sc;
                 
-                let scLabel = "Peligro Crítico";
+                let scLabel = "Riesgo Estructural";
                 let scColor = "var(--color-down)";
-                if (sc >= 700) { scLabel = "Sólido"; scColor = "var(--color-up)"; }
-                else if (sc >= 400) { scLabel = "Estable"; scColor = "var(--color-warning)"; }
+                if (sc >= 700) { scLabel = "Operativa Óptima"; scColor = "var(--color-up)"; }
+                else if (sc >= 400) { scLabel = "Balance Estable"; scColor = "var(--color-warning)"; }
                 
                 this.DOM.dashHealthScore.style.color = scColor;
                 this.DOM.dashHealthLabel.innerText = scLabel;
                 this.DOM.dashHealthLabel.style.color = scColor;
                 
-                // Efecto de brillo de contenedor dinámico basado en la paleta FASE 1
                 let rgbaColor = scColor.includes('up') ? 'rgba(0, 255, 149, 0.2)' : (scColor.includes('warning') ? 'rgba(252, 163, 17, 0.2)' : 'rgba(247, 23, 53, 0.2)');
                 this.DOM.dashHealthScore.closest('.card').style.borderColor = scColor;
                 this.DOM.dashHealthScore.closest('.card').style.boxShadow = `0 0 20px ${rgbaColor}`;
@@ -931,10 +940,9 @@ export const view = {
             let arrLiquidez = (s.historyLiquidez || []).slice(-histLength);
             let arrInvertido = (s.historyInvertido || []).slice(-histLength);
             
-            // FASE 3: Gráficos de Tendencia con colores FASE 1 (Primario, Menta Neón, Rosa Plasma)
-            ChartRenderer.drawDashboardSparkline('spark-dash-total', arrPatrimonio, '#6045F4'); // Primario
-            ChartRenderer.drawDashboardSparkline('spark-dash-liquidez', arrLiquidez, '#00FF95'); // Menta Neón
-            ChartRenderer.drawDashboardSparkline('spark-dash-invertido', arrInvertido, '#FF4D8A'); // Accent
+            ChartRenderer.drawDashboardSparkline('spark-dash-total', arrPatrimonio, '#6045F4'); 
+            ChartRenderer.drawDashboardSparkline('spark-dash-liquidez', arrLiquidez, '#00FF95'); 
+            ChartRenderer.drawDashboardSparkline('spark-dash-invertido', arrInvertido, '#FF4D8A'); 
 
             if (this.DOM.lblPatSub1) {
                 let cagrStr = `<span class="${s.cagr >= 0 ? 'texto-verde' : 'texto-rojo'} privacy-mask" style="font-weight:900;">${(s.cagr || 0).toFixed(2)}%</span>`;
@@ -957,7 +965,7 @@ export const view = {
                 this.DOM.lblInvSub1.innerText = "Dólar Promedio Histórico";
                 this.DOM.valInvSub1.innerHTML = `<strong>$ <span class="privacy-mask">${this.fmtStr(s.precioPromedioDolar || 0, 1, false)}</span></strong>`;
                 
-                this.DOM.lblInvSub2.innerText = "Trades Realizados";
+                this.DOM.lblInvSub2.innerText = "Trades Ejecutados";
                 this.DOM.valInvSub2.innerHTML = `<strong style="color: var(--color-accent); text-shadow: var(--shadow-neon-accent);">${s.vTotal || 0}</strong>`;
             }
 
@@ -1089,7 +1097,6 @@ export const view = {
         this.DOM.flowPctAhorro.innerText = ((ah / iRef) * 100).toFixed(1) + "%";
     },
 
-    // FASE 3: Tablas y Rendimiento Físico adaptados al DOM Neon-Tech (Esqueletos Tonalizados)
     renderFinanzaGeneral(modelData) {
         ErrorHandler.catchBoundary('Finanzas Generales', 'finanza-general', () => {
             let s = modelData.stats;
@@ -1117,7 +1124,7 @@ export const view = {
                 if (this.DOM.barCrossover) this.DOM.barCrossover.style.width = Math.min(100, cross) + "%";
                 
                 if (this.DOM.lblCrossoverDetalles) {
-                    this.DOM.lblCrossoverDetalles.innerText = `Tus inversiones te regalan ${(s.horasLibresRegaladas || 0).toFixed(1)} hs/mes libres.`;
+                    this.DOM.lblCrossoverDetalles.innerText = `Sustitución operativa: ${(s.horasLibresRegaladas || 0).toFixed(1)} hs/mes.`;
                 }
             }
 
@@ -1132,7 +1139,7 @@ export const view = {
                 for(let i=0; i<=6; i++) { dataArr.push(s.termometroDias[i] || 0); }
                 
                 const getCSS = (varName, fallBack) => getComputedStyle(document.documentElement).getPropertyValue(varName).trim() || fallBack;
-                const colorUp = getCSS('--color-up', '#00FF95'); // Actualizado a FASE 1
+                const colorUp = getCSS('--color-up', '#00FF95'); 
 
                 if (this.chartTermometro) {
                     this.chartTermometro.data.datasets[0].data = dataArr;
@@ -1233,10 +1240,6 @@ export const view = {
                 }
             }
 
-            // ---------------------------------------------------------
-            // RECONSTRUCCIÓN NEO-POP / CYBER-FINANCE DE LAS TABLAS
-            // ---------------------------------------------------------
-
             if (this.DOM.tbodyProveedores) {
                 let statsProvs = s.proveedoresDetalle || {};
                 let provArray = [];
@@ -1313,9 +1316,9 @@ export const view = {
                     pArray.forEach(p => {
                         let pct = Math.min(100, (p.pagado / p.totalDevolver) * 100);
                         let statusColor = p.activo ? 'var(--color-primary)' : 'var(--color-up)';
-                        let statusLabel = p.activo ? 'Deuda Activa' : 'Saldado ✔️';
+                        let statusLabel = p.activo ? 'Deuda Activa' : 'Liquidado';
                         let cuotaActual = Math.min((p.cuotasPagadas || 0) + 1, p.cuotasTotales || 1);
-                        let cuotaStr = p.activo ? `Cuota ${cuotaActual} de ${p.cuotasTotales || 1}` : `Liquidado en ${p.cuotasTotales || 1} pagos`;
+                        let cuotaStr = p.activo ? `Cuota ${cuotaActual} de ${p.cuotasTotales || 1}` : `Cancelado en ${p.cuotasTotales || 1} pagos`;
                         let tasaInteres = p.tasaInteres || 0;
                         let cuotaMesCalculada = p.totalDevolver / (p.cuotasTotales || 1);
                         
@@ -1367,12 +1370,12 @@ export const view = {
                 }
 
                 if (dArray.length === 0) {
-                    deudasHtml.push('<tr><td colspan="4" style="text-align:center; padding: 60px; color:var(--text-muted); font-size: 1.1rem; font-weight: 800;"><svg width="64" height="64" style="margin-bottom:15px; opacity:0.5;"><use href="#icon-empty"></use></svg><br>No hay cuentas corrientes pendientes con proveedores</td></tr>');
+                    deudasHtml.push('<tr><td colspan="4" style="text-align:center; padding: 60px; color:var(--text-muted); font-size: 1.1rem; font-weight: 800;"><svg width="64" height="64" style="margin-bottom:15px; opacity:0.5;"><use href="#icon-empty"></use></svg><br>Auditoría en cero. Sin cuentas pendientes</td></tr>');
                 } else {
                     dArray.forEach(d => {
                         let pct = Math.min(100, d.amortizacionPct || 0);
                         let statusColor = d.activo ? 'var(--color-orange)' : 'var(--color-up)';
-                        let statusLabel = d.activo ? 'Saldo Pendiente' : 'Cuenta Liquidada ✔️';
+                        let statusLabel = d.activo ? 'Saldo Pendiente' : 'Liquidada';
 
                         deudasHtml.push(
                             `<tr style="border-bottom: 1px solid var(--border-color); opacity: ${d.activo ? '1' : '0.4'}; background: var(--bg-input); transition: all 0.3s ease;">
@@ -1399,6 +1402,7 @@ export const view = {
             }
         });
     },
+
     renderAjustesInflacion() {
         ErrorHandler.catchBoundary('Ajustes de Inflación', 'lista-inflacion', () => {
             if(!this.currentModelData || !this.currentModelData.inflacion) return;
@@ -1415,7 +1419,7 @@ export const view = {
 
             let keys = Object.keys(inflacion).sort().reverse();
             if (keys.length === 0) {
-                container.innerHTML = '<div style="text-align:center; padding: 40px; color:var(--text-muted); border: 2px dashed var(--border-color); border-radius: 12px;"><svg width="48" height="48" style="margin-bottom:10px; opacity:0.5;"><use href="#icon-empty"></use></svg><br>No has registrado datos de inflación mensual.</div>';
+                container.innerHTML = '<div style="text-align:center; padding: 40px; color:var(--text-muted); border: 2px dashed var(--border-color); border-radius: 12px;"><svg width="48" height="48" style="margin-bottom:10px; opacity:0.5;"><use href="#icon-empty"></use></svg><br>Ausencia de índices macroeconómicos.</div>';
                 return;
             }
 
@@ -1438,7 +1442,8 @@ export const view = {
         ErrorHandler.catchBoundary('Portafolio Bursátil', 'portafolio', () => {
             this.DOM.tbodyPortafolio.innerHTML = '';
             if(Object.keys(modelData.portafolio).length === 0) {
-                this.DOM.tbodyPortafolio.innerHTML = `<tr><td colspan="9" style="text-align:center; padding: 60px; color:var(--text-muted); font-size: 1.1rem; font-weight: 800;"><svg width="64" height="64" style="margin-bottom:15px; opacity:0.5;"><use href="#icon-empty"></use></svg><br>Tu portafolio de inversión está vacío. Registra compras para comenzar el seguimiento.</td></tr>`;
+                // Ajustado el colspan a 7 y limpiado el texto
+                this.DOM.tbodyPortafolio.innerHTML = `<tr><td colspan="7" style="text-align:center; padding: 60px; color:var(--text-muted); font-size: 1.1rem; font-weight: 800;"><svg width="64" height="64" style="margin-bottom:15px; opacity:0.5;"><use href="#icon-empty"></use></svg><br>Sin instrumentos en cartera. Registre operaciones para iniciar la auditoría.</td></tr>`;
                 if (this.DOM.divBar) this.DOM.divBar.innerHTML = '';
                 if (this.DOM.divLabels) this.DOM.divLabels.innerHTML = '';
                 return;
@@ -1480,13 +1485,9 @@ export const view = {
                 let sparkWrap = row.querySelector('.td-spark div');
                 let tdPrecio = row.querySelector('.td-precio');
                 let tdGnr = row.querySelector('.td-gnr');
-                let tdSma50 = row.querySelector('.td-sma50');
-                let tdSma200 = row.querySelector('.td-sma200');
                 
                 tdPrecio.style.textAlign = 'right';
                 tdGnr.style.textAlign = 'right';
-                tdSma50.style.textAlign = 'right';
-                tdSma200.style.textAlign = 'right';
 
                 if(apiData && apiData.price) {
                     let precio = apiData.price;
@@ -1497,9 +1498,6 @@ export const view = {
                     let pColor = document.documentElement.getAttribute('data-theme') === 'light' ? '#0A0D14' : 'var(--text-main)';
                     tdPrecio.innerHTML = `<span class="td-sensitive"><strong style="font-size: 1.15rem; color: ${pColor};">${this.zenMode ? '---' : this.fmt(precio, modelData.dolarBlue, modelData.vistaUSD)}</strong></span>`;
                     tdGnr.innerHTML = `<span class="td-sensitive ${ganancia>=0?'texto-verde':'texto-rojo'}" style="font-size: 1.15rem;">${ganancia>=0?'+':''}${this.zenMode ? pct.toFixed(2)+'%' : this.fmt(ganancia, modelData.dolarBlue, modelData.vistaUSD)} ${this.zenMode ? '' : '<small style="font-size: 0.85rem; opacity: 0.8;">('+pct.toFixed(2)+'%)</small>'}</span>`;
-                    
-                    tdSma50.innerHTML = apiData.sma50 ? (this.zenMode ? '---' : `<span class="privacy-mask">${this.fmt(apiData.sma50, modelData.dolarBlue, modelData.vistaUSD)}</span>`) : '-';
-                    tdSma200.innerHTML = apiData.sma200 ? (this.zenMode ? '---' : `<span class="privacy-mask">${this.fmt(apiData.sma200, modelData.dolarBlue, modelData.vistaUSD)}</span>`) : '-';
                     
                     if(apiData.history && apiData.history.length > 0) {
                         const getCSS = (varName, fallBack) => getComputedStyle(document.documentElement).getPropertyValue(varName).trim() || fallBack;
@@ -1521,8 +1519,6 @@ export const view = {
                 } else if (apiData === null) {
                     tdPrecio.innerHTML = `<span class="texto-rojo" title="Sin cotización local" style="font-weight: 900;">N/D</span>`;
                     tdGnr.innerHTML = `<strong style="color: var(--text-muted);">-</strong>`;
-                    tdSma50.innerHTML = '-';
-                    tdSma200.innerHTML = '-';
                     sparkWrap.innerHTML = '-';
                     
                     basePatrimonio += d.costo;
@@ -1533,8 +1529,6 @@ export const view = {
                 } else {
                     tdPrecio.innerHTML = `<div class="skeleton" style="width:80px; margin-left:auto;"></div>`;
                     tdGnr.innerHTML = `<div class="skeleton" style="width:100px; margin-left:auto;"></div>`;
-                    tdSma50.innerHTML = `<div class="skeleton" style="width:70px; margin-left:auto;"></div>`;
-                    tdSma200.innerHTML = `<div class="skeleton" style="width:70px; margin-left:auto;"></div>`;
                     sparkWrap.innerHTML = `<div class="skeleton" style="width:70px; height:35px; border-radius:6px;"></div>`;
                 }
                 fragment.appendChild(row);
@@ -1576,7 +1570,7 @@ export const view = {
 
     renderWatchlist(wlData) {
         if (!wlData || wlData.length === 0) {
-            this.DOM.tbodyWatchlist.innerHTML = '<tr><td colspan="5" style="text-align:center; padding: 40px; color:var(--text-muted); font-weight: 800; border-bottom: none;">No sigues ningún activo aún. Agrega tickers a tu radar.</td></tr>';
+            this.DOM.tbodyWatchlist.innerHTML = '<tr><td colspan="5" style="text-align:center; padding: 40px; color:var(--text-muted); font-weight: 800; border-bottom: none;">Sin activos en seguimiento.</td></tr>';
             return;
         }
 
@@ -1597,7 +1591,7 @@ export const view = {
                 `<td class="data-font" style="padding: 15px 20px; text-align:right;">${this.zenMode ? '---' : precioStr}</td>`,
                 `<td class="data-font privacy-mask" style="padding: 15px 20px; font-size: 1.15rem; text-align:right;">${this.zenMode ? '---' : '$' + this.fmtStr(w.precioObjetivo, this.currentModelData.dolarBlue, this.currentModelData.vistaUSD)}</td>`,
                 `<td class="data-font" style="padding: 15px 20px; text-align:right;">${this.zenMode ? '---' : difStr}</td>`,
-                `<td style="padding: 15px 20px; text-align:center;"><button class="btn--danger" style="padding: 8px 16px; font-size:11px; border-radius: 8px;" data-action="del-watchlist" data-id="${w.activo}" title="Eliminar del Radar">Quitar</button></td>`,
+                `<td style="padding: 15px 20px; text-align:center;"><button class="btn--danger" style="padding: 8px 16px; font-size:11px; border-radius: 8px;" data-action="del-watchlist" data-id="${w.activo}" title="Eliminar del Monitor">Desvincular</button></td>`,
                 `</tr>`
             );
         });
@@ -1605,556 +1599,551 @@ export const view = {
         this.DOM.tbodyWatchlist.innerHTML = wlBuffer.join('');
     },
 
-    aplicarFiltrosHistorial(filtros) {
-        this.historialFiltros = filtros;
-        this.renderVirtualScroll(true);
-    },
-
     renderHistorial(modelData) {
-        ErrorHandler.catchBoundary('Historial de Movimientos', 'historial', () => {
-            UIMetrics.animateValue(this.DOM.histAhorroTotal, modelData.stats.totalAhorradoFisico, (val) => this.zenMode ? "---" : this.fmt(val, modelData.dolarBlue, modelData.vistaUSD));
-            UIMetrics.animateValue(this.DOM.histRetiroTotal, modelData.stats.totalRetirado, (val) => this.zenMode ? "---" : this.fmt(val, modelData.dolarBlue, modelData.vistaUSD));
-            UIMetrics.animateValue(this.DOM.histNeto, modelData.stats.ahorroArsPuro, (val) => this.zenMode ? "---" : this.fmt(val, modelData.dolarBlue, modelData.vistaUSD));
+            ErrorHandler.catchBoundary('Libro Mayor', 'historial', () => {
+                if(!modelData) return;
+                
+                const s = modelData.stats;
+                this.DOM.histAhorroTotal.innerHTML = this.zenMode ? "---" : this.fmt(s.totalAhorrado, modelData.dolarBlue, modelData.vistaUSD);
+                this.DOM.histRetiroTotal.innerHTML = this.zenMode ? "---" : this.fmt(s.totalRetirado, modelData.dolarBlue, modelData.vistaUSD);
+                this.DOM.histNeto.innerHTML = this.zenMode ? "---" : this.fmt(s.flujoNeto, modelData.dolarBlue, modelData.vistaUSD);
+                
+                let filtrados = FinancialMath.filtrarHistorialAvanzado(modelData.movimientos, this.historialFiltros);
+                this.historialData = filtrados;
+                
+                if (this.historialData.length === 0) {
+                    this.DOM.vsTbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 60px; color:var(--text-muted); font-size: 1.1rem; font-weight: 800;"><svg width="64" height="64" style="margin-bottom:15px; opacity:0.5;"><use href="#icon-empty"></use></svg><br>Auditoría en cero. Sin asientos contables registrados.</td></tr>';
+                    this.DOM.vsSpacer.style.height = '0px';
+                    return;
+                }
 
-            this.historialData = modelData.movimientos.slice().reverse();
-            this.renderVirtualScroll();
-        });
-    },
-
-    renderVirtualScroll(resetScroll = false) {
-        let datosAmostrar = this.historialData;
-        
-        if(this.historialFiltros) {
-            datosAmostrar = datosAmostrar.filter(m => {
-                let pass = true;
-                if(this.historialFiltros.desde && m.fecha < this.historialFiltros.desde) pass = false;
-                if(this.historialFiltros.hasta && m.fecha > this.historialFiltros.hasta) pass = false;
-                if(this.historialFiltros.tipo && this.historialFiltros.tipo !== 'Todos' && m.tipo !== this.historialFiltros.tipo) pass = false;
-                return pass;
+                this.DOM.vsSpacer.style.height = (this.historialData.length * this.vsRowHeight) + 'px';
+                this.renderVirtualScroll();
             });
-        }
+        },
 
-        if(resetScroll) {
+        aplicarFiltrosHistorial(filtros) {
+            this.historialFiltros = filtros;
             this.DOM.vsViewport.scrollTop = 0;
-        }
+            this.renderHistorial(this.currentModelData);
+        },
 
-        if(!datosAmostrar || datosAmostrar.length === 0) {
-            this.DOM.vsTbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding: 100px; color:var(--text-muted);"><svg width="80" height="80" style="margin-bottom:20px; opacity:0.3; filter: drop-shadow(0 0 10px rgba(9, 251, 255, 0.5));"><use href="#icon-empty"></use></svg><br><h3 style="margin-bottom:10px; font-weight: 900; letter-spacing: 1px;">El Libro Mayor está en blanco</h3><p style="font-size:1rem; font-weight: 600;">Registra un movimiento para comenzar a rastrear el flujo.</p></td></tr>`;
-            this.DOM.vsSpacer.style.height = '0px';
-            this.DOM.vsTable.style.transform = `translateY(0px)`;
-            return;
-        }
+        renderVirtualScroll() {
+            if (this.historialData.length === 0) return;
 
-        this.DOM.vsSpacer.style.height = `${datosAmostrar.length * this.vsRowHeight}px`;
-
-        const scrollTop = this.DOM.vsViewport.scrollTop;
-        const viewportHeight = this.DOM.vsViewport.clientHeight || 500;
-        
-        let startIndex = Math.floor(scrollTop / this.vsRowHeight);
-        let visibleRows = Math.ceil(viewportHeight / this.vsRowHeight);
-        
-        const buffer = 5;
-        startIndex = Math.max(0, startIndex - buffer);
-        const endIndex = Math.min(datosAmostrar.length, startIndex + visibleRows + (buffer * 2));
-
-        const existingRows = Array.from(this.DOM.vsTbody.children);
-        const rowsNeeded = endIndex - startIndex;
-        
-        if (existingRows.length !== rowsNeeded || existingRows[0]?.dataset?.diffId === undefined) {
+            const scrollTop = this.DOM.vsViewport.scrollTop;
+            const viewportHeight = this.DOM.vsViewport.clientHeight;
+            
+            let startIndex = Math.floor(scrollTop / this.vsRowHeight);
+            let endIndex = startIndex + Math.ceil(viewportHeight / this.vsRowHeight) + 2;
+            
+            startIndex = Math.max(0, startIndex - 2);
+            endIndex = Math.min(this.historialData.length, endIndex);
+            
+            const visibleData = this.historialData.slice(startIndex, endIndex);
+            const template = this.DOM.tplHistorial.content;
             const fragment = document.createDocumentFragment();
-            const tpl = this.DOM.tplHistorial.content;
+            const div = this.currentModelData.vistaUSD ? this.currentModelData.dolarBlue : 1;
+            const isUSD = this.currentModelData.vistaUSD;
 
-            for (let i = startIndex; i < endIndex; i++) {
-                const m = datosAmostrar[i];
-                const row = document.importNode(tpl, true);
-                let tr = row.querySelector('tr');
-                tr.dataset.diffId = m.id;
+            visibleData.forEach((mov) => {
+                const row = document.importNode(template, true);
+                const tr = row.querySelector('tr');
+                tr.style.height = this.vsRowHeight + 'px';
                 
-                let badgeClass = this.getBadgeClass(m.tipo);
-                let descStr = m.activo ? `${m.cantidad||''}x ${m.activo}` : (m.categoria ? m.categoria : (m.proveedor ? m.proveedor : (m.socio ? m.socio : (m.entidad ? m.entidad : (m.tipo === 'Ajuste Stock Inicial' ? 'Inventario Base' : (m.usd?`u$s ${m.usd}`:'-'))))));
-                let desc = DOMPurify.sanitize(descStr);
+                let tagClass = this.getBadgeClass(mov.tipo);
+                let displayTipo = this.getDisplayTipo(mov.tipo);
+
+                let desc = '';
+                if(['Compra','Venta','Dividendo'].includes(mov.tipo)) desc = `${DOMPurify.sanitize(mov.activo)} ${mov.cantidad ? '('+mov.cantidad+' nom)' : ''}`;
+                else if (mov.tipo === 'Gasto Local' || mov.tipo === 'Gasto Familiar') desc = DOMPurify.sanitize(mov.categoria || 'Sin clasificar');
+                else if (mov.tipo === 'Pago Proveedor' || mov.tipo === 'Amortización Deuda a Proveedor') desc = DOMPurify.sanitize(mov.proveedor || 'No especificado');
+                else if (mov.tipo === 'Reparto Sociedad') desc = `Socio: ${DOMPurify.sanitize(mov.socio || 'No especificado')}`;
+                else if (mov.tipo === 'Alta Préstamo' || mov.tipo === 'Pago Préstamo') desc = `Entidad: ${DOMPurify.sanitize(mov.entidad || 'Financiera')}`;
                 
-                if (m.notas) {
-                    let markdownHtml = DOMPurify.sanitize(marked.parse(m.notas));
-                    desc += `<div style="margin-top: 8px; font-size: 0.8rem; color: var(--text-muted); background: var(--bg-base); padding: 8px 12px; border-radius: 6px; border-left: 3px solid var(--color-primary); line-height:1.5;">${markdownHtml}</div>`;
+                let monto = mov.monto;
+                if (['Transferencia Ahorro', 'Ahorro'].includes(mov.tipo) && mov.usd > 0 && isUSD) monto = mov.usd;
+                else monto = monto / div;
+
+                let colorMonto = 'var(--text-main)';
+                let sign = '';
+                if (['Ingreso Local', 'Ahorro', 'Transferencia Ahorro', 'Venta', 'Dividendo', 'Rendimiento', 'Alta Préstamo'].includes(mov.tipo)) {
+                    colorMonto = 'var(--color-up)';
+                    sign = '+';
+                } else if (['Gasto Local', 'Gasto Familiar', 'Pago Proveedor', 'Amortización Deuda a Proveedor', 'Reparto Sociedad', 'Compra', 'Retiro', 'Pago Préstamo'].includes(mov.tipo)) {
+                    colorMonto = 'var(--color-down)';
+                    sign = '-';
                 }
 
-                let res = '-';
-                if(m.resultadoCalculado !== undefined && m.tipo === 'Venta') {
-                    let sign = m.resultadoCalculado > 0 ? '+' : (m.resultadoCalculado < 0 ? '-' : '');
-                    let colorClass = m.resultadoCalculado >= 0 ? 'texto-verde' : 'texto-rojo';
-                    let tag = this.currentModelData.vistaUSD ? `<span class="tag--usd">USD</span>` : `<span class="tag--ars">ARS</span>`;
-                    let valStr = this.fmtStr(Math.abs(m.resultadoCalculado), this.currentModelData.dolarBlue, this.currentModelData.vistaUSD);
-                    res = `<div style="display:inline-flex; align-items:center; justify-content:flex-end; width:100%; gap:8px; white-space:nowrap;">${this.zenMode ? '' : tag} <strong class="data-font ${colorClass} privacy-mask" style="font-size: 1.15rem;">${sign}${this.zenMode ? '---' : valStr}</strong></div>`;
+                row.querySelector('.td-fecha').innerText = mov.fecha;
+                row.querySelector('.td-tipo').innerHTML = `<span class="badge ${tagClass}">${displayTipo}</span>`;
+                row.querySelector('.td-desc').innerHTML = desc !== '' ? desc : '<span style="color:var(--text-muted);">-</span>';
+                
+                if(mov.notas) {
+                    row.querySelector('.td-desc').innerHTML += ` <span data-tooltip="${DOMPurify.sanitize(mov.notas)}" style="margin-left:8px; color:var(--color-primary); cursor:help;"><svg width="14" height="14" style="vertical-align:middle;"><use href="#icon-note"></use></svg></span>`;
                 }
 
-                row.querySelector('.td-fecha').innerHTML = `<span style="font-weight: 800; color: var(--text-muted); font-size: 0.95rem;">${m.fecha}</span>`;
-                row.querySelector('.td-tipo').innerHTML = `<span class="badge ${badgeClass}" style="box-shadow: none;">${m.tipo}</span>`;
-                row.querySelector('.td-desc').innerHTML = desc;
-                row.querySelector('.td-flujo').innerHTML = `<strong style="font-size: 1.15rem; color: var(--text-main);">${this.zenMode ? '---' : this.fmt(m.monto, this.currentModelData.dolarBlue, this.currentModelData.vistaUSD)}</strong>`;
-                row.querySelector('.td-res').innerHTML = res;
+                row.querySelector('.td-flujo').innerHTML = `<strong style="color: ${colorMonto};">${sign}${this.zenMode ? '---' : this.fmt(monto, 1, isUSD)}</strong>`;
+
+                let tagHtml = isUSD ? `<span class="tag--usd" style="padding:2px 4px; font-size:10px;">USD</span>` : `<span class="tag--ars" style="padding:2px 4px; font-size:10px;">ARS</span>`;
+                row.querySelector('.td-res').innerHTML = this.zenMode ? '---' : tagHtml;
+
                 row.querySelector('.td-acc').innerHTML = `
-                    <button class="btn--icon" style="display:inline-flex; padding:10px; margin-right:4px;" data-action="editar-operacion" data-id="${m.id}" title="Editar Transacción">
-                        <svg width="18" height="18"><use href="#icon-edit"></use></svg>
-                    </button>
-                    <button class="btn--danger" style="display:inline-flex; padding:10px; border-radius:10px; box-shadow: none;" data-action="borrar-operacion" data-id="${m.id}" title="Eliminar Registro">
-                        <svg width="18" height="18"><use href="#icon-trash"></use></svg>
-                    </button>
+                    <div style="display:flex; gap:8px; justify-content:center;">
+                        <button class="btn--icon" data-action="editar-operacion" data-id="${mov.id}" title="Editar Registro"><svg width="16" height="16"><use href="#icon-edit"></use></svg></button>
+                        <button class="btn--icon" style="color:var(--color-down)!important; background:rgba(247,23,53,0.1);" data-action="borrar-operacion" data-id="${mov.id}" title="Eliminar Registro"><svg width="16" height="16"><use href="#icon-trash"></use></svg></button>
+                    </div>
                 `;
+
                 fragment.appendChild(row);
-            }
+            });
+
             this.DOM.vsTbody.innerHTML = '';
             this.DOM.vsTbody.appendChild(fragment);
-        } 
-        else {
-            for (let i = startIndex; i < endIndex; i++) {
-                const m = datosAmostrar[i];
-                const tr = existingRows[i - startIndex];
+            this.DOM.vsTable.style.transform = `translateY(${startIndex * this.vsRowHeight}px)`;
+        },
+
+        renderInformesPro(modelData) {
+            ErrorHandler.catchBoundary('Informes Avanzados', 'informes', () => {
+                const s = modelData.stats;
+
+                if (this.DOM.infoHoldingPeriod) this.DOM.infoHoldingPeriod.innerText = `${s.holdingPeriodDias} Días`;
                 
-                if (tr.dataset.diffId != m.id || this.zenMode !== (tr.dataset.zen === 'true')) {
-                    tr.dataset.diffId = m.id;
-                    tr.dataset.zen = this.zenMode;
-
-                    let badgeClass = this.getBadgeClass(m.tipo);
-                    let descStr = m.activo ? `${m.cantidad||''}x ${m.activo}` : (m.categoria ? m.categoria : (m.proveedor ? m.proveedor : (m.socio ? m.socio : (m.entidad ? m.entidad : (m.tipo === 'Ajuste Stock Inicial' ? 'Inventario Base' : (m.usd?`u$s ${m.usd}`:'-'))))));
-                    let desc = DOMPurify.sanitize(descStr);
-                    
-                    if (m.notas) {
-                        let markdownHtml = DOMPurify.sanitize(marked.parse(m.notas));
-                        desc += `<div style="margin-top: 8px; font-size: 0.8rem; color: var(--text-muted); background: var(--bg-base); padding: 8px 12px; border-radius: 6px; border-left: 3px solid var(--color-primary); line-height:1.5;">${markdownHtml}</div>`;
-                    }
-
-                    let res = '-';
-                    if(m.resultadoCalculado !== undefined && m.tipo === 'Venta') {
-                        let sign = m.resultadoCalculado > 0 ? '+' : (m.resultadoCalculado < 0 ? '-' : '');
-                        let colorClass = m.resultadoCalculado >= 0 ? 'texto-verde' : 'texto-rojo';
-                        let tag = this.currentModelData.vistaUSD ? `<span class="tag--usd">USD</span>` : `<span class="tag--ars">ARS</span>`;
-                        let valStr = this.fmtStr(Math.abs(m.resultadoCalculado), this.currentModelData.dolarBlue, this.currentModelData.vistaUSD);
-                        res = `<div style="display:inline-flex; align-items:center; justify-content:flex-end; width:100%; gap:8px; white-space:nowrap;">${this.zenMode ? '' : tag} <strong class="data-font ${colorClass} privacy-mask" style="font-size: 1.15rem;">${sign}${this.zenMode ? '---' : valStr}</strong></div>`;
-                    }
-
-                    tr.querySelector('.td-fecha').innerHTML = `<span style="font-weight: 800; color: var(--text-muted); font-size: 0.95rem;">${m.fecha}</span>`;
-                    tr.querySelector('.td-tipo').innerHTML = `<span class="badge ${badgeClass}" style="box-shadow: none;">${m.tipo}</span>`;
-                    tr.querySelector('.td-desc').innerHTML = desc;
-                    tr.querySelector('.td-flujo').innerHTML = `<strong style="font-size: 1.15rem; color: var(--text-main);">${this.zenMode ? '---' : this.fmt(m.monto, this.currentModelData.dolarBlue, this.currentModelData.vistaUSD)}</strong>`;
-                    tr.querySelector('.td-res').innerHTML = res;
-                    tr.querySelector('.td-acc').innerHTML = `
-                        <button class="btn--icon" style="display:inline-flex; padding:10px; margin-right:4px;" data-action="editar-operacion" data-id="${m.id}" title="Editar Transacción">
-                            <svg width="18" height="18"><use href="#icon-edit"></use></svg>
-                        </button>
-                        <button class="btn--danger" style="display:inline-flex; padding:10px; border-radius:10px; box-shadow: none;" data-action="borrar-operacion" data-id="${m.id}" title="Eliminar Registro">
-                            <svg width="18" height="18"><use href="#icon-trash"></use></svg>
-                        </button>
-                    `;
+                if (this.DOM.infoSharpe) {
+                    this.DOM.infoSharpe.innerText = (s.sharpeRatio || 0).toFixed(2);
+                    this.DOM.infoSharpe.className = `stat__value data-font ${s.sharpeRatio >= 1 ? 'texto-verde' : (s.sharpeRatio > 0 ? 'texto-warning' : 'texto-rojo')}`;
                 }
-            }
-        }
-        this.DOM.vsTable.style.transform = `translateY(${startIndex * this.vsRowHeight}px)`;
-    },
+                
+                if (this.DOM.infoSortino) {
+                    this.DOM.infoSortino.innerText = (s.sortinoRatio || 0).toFixed(2);
+                    this.DOM.infoSortino.className = `stat__value data-font ${s.sortinoRatio >= 1.5 ? 'texto-verde' : (s.sortinoRatio > 0 ? 'texto-warning' : 'texto-rojo')}`;
+                }
+                
+                if (this.DOM.infoVolatilidad) this.DOM.infoVolatilidad.innerText = (s.volatilidadAnualizada || 0).toFixed(1) + "%";
 
-    renderCalendario(modelData) {
-        ErrorHandler.catchBoundary('Calendario Financiero', 'calendario', () => {
-            const meses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
-            this.DOM.calMesAno.innerText = `${meses[this.calMes]} ${this.calAno}`;
-            
-            let grid = this.DOM.calDias;
-            grid.innerHTML = '';
-            
-            let primerDia = new Date(this.calAno, this.calMes, 1).getDay();
-            if(primerDia === 0) primerDia = 7;
-            
-            let diasMes = new Date(this.calAno, this.calMes + 1, 0).getDate();
-            
-            const fragment = document.createDocumentFragment();
-            const tpl = this.DOM.tplCalDay.content;
-
-            for(let i=1; i<primerDia; i++) {
-                let emptyDiv = document.createElement('div');
-                emptyDiv.className = "cal-day empty";
-                fragment.appendChild(emptyDiv);
-            }
-
-            for(let d=1; d<=diasMes; d++) {
-                let fStr = `${this.calAno}-${String(this.calMes+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-                let movs = modelData.movimientos.filter(m => m.fecha === fStr);
+                let correlacionStr = s.correlacionIndice ? (s.correlacionIndice).toFixed(2) : "0.00";
+                if(this.DOM.valCorrelacion) this.DOM.valCorrelacion.innerText = correlacionStr;
                 
-                let cssClass = (fStr === new Date().toISOString().split('T')[0]) ? 'today' : '';
-                if(movs.length > 0) cssClass += ' has-data';
-                
-                const cellNode = document.importNode(tpl, true);
-                const wrapper = cellNode.querySelector('.cal-day');
-                wrapper.className = `cal-day ${cssClass}`;
-                wrapper.querySelector('.cal-date').textContent = d;
-                
-                let dotsContainer = wrapper.querySelector('.cal-dots');
-                movs.forEach(m => {
-                    // Extraer solo el background color principal de la insignia
-                    let tempDiv = document.createElement('div');
-                    tempDiv.className = `badge ${this.getBadgeClass(m.tipo)}`;
-                    document.body.appendChild(tempDiv);
-                    let computedColor = getComputedStyle(tempDiv).color;
-                    document.body.removeChild(tempDiv);
-                    
-                    let dot = document.createElement('div');
-                    dot.className = `cal-dot`;
-                    dot.style.backgroundColor = computedColor;
-                    dot.style.color = computedColor;
-                    dotsContainer.appendChild(dot);
-                });
-                
-                wrapper.onclick = () => {
-                    const p = this.DOM.calDetalle;
-                    if(movs.length === 0) {
-                        p.innerHTML = `<div style="text-align:center; color:var(--text-muted); padding: 40px; border: 2px dashed var(--border-color); border-radius: 12px;"><h3 style="margin-bottom: 10px; font-size:1.2rem; font-weight: 900; letter-spacing: 1px;">${fStr}</h3><p style="font-size: 1rem;">Día sin movimientos registrados.</p></div>`;
-                        return;
+                if(this.DOM.descCorrelacion && s.correlacionIndice !== undefined) {
+                    if(s.correlacionIndice < 0.15) { 
+                        this.DOM.descCorrelacion.innerText = "Excelente Diversificación (Bajo Riesgo)"; 
+                        this.DOM.valCorrelacion.className = "data-font texto-verde"; 
+                    } else if(s.correlacionIndice < 0.25) { 
+                        this.DOM.descCorrelacion.innerText = "Concentración Moderada (Estable)"; 
+                        this.DOM.valCorrelacion.className = "data-font texto-warning"; 
+                    } else { 
+                        this.DOM.descCorrelacion.innerText = "Alta Concentración (Riesgo Sistémico)"; 
+                        this.DOM.valCorrelacion.className = "data-font texto-rojo"; 
                     }
-                    
-                    let detailBuffer = [`<h3 style="margin-bottom: 20px; font-size:1.2rem; font-weight: 900; letter-spacing: 0.5px; color: var(--color-primary); text-shadow: var(--shadow-neon-primary); border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">Movimientos del ${fStr}</h3>`];
-                    movs.forEach(m => {
-                        let c = this.getBadgeClass(m.tipo);
-                        let descStr = m.activo ? `${m.cantidad||''}x ${m.activo}` : (m.categoria ? m.categoria : (m.proveedor ? m.proveedor : (m.socio ? m.socio : (m.entidad ? m.entidad : (m.tipo === 'Ajuste Stock Inicial' ? 'Inventario Base' : (m.usd?`u$s ${m.usd}`:'-'))))));
-                        let desc = DOMPurify.sanitize(descStr);
-                        
-                        detailBuffer.push(
-                            `<div style="padding:15px 20px; background:var(--bg-input); border-radius:12px; margin-bottom:12px; display:flex; justify-content:space-between; align-items:center; border: 1px solid var(--border-color); box-shadow: var(--shadow-card); transition: transform 0.2s;">`,
-                            `<div><span class="badge ${c}" style="margin-bottom:8px;">${m.tipo}</span><br><span style="font-size:1rem; font-weight: 700;">${desc}</span></div>`,
-                            `<strong class="data-font ${m.tipo==='Venta'?'texto-primario':''}" style="font-size: 1.2rem; font-weight: 900; text-align:right;">${this.zenMode ? '---' : this.fmt(m.monto, modelData.dolarBlue, modelData.vistaUSD)}</strong>`,
-                            `</div>`
-                        );
-                    });
-                    p.innerHTML = detailBuffer.join('');
-                };
-                fragment.appendChild(cellNode);
-            }
-            grid.appendChild(fragment);
-        });
-    },
-
-    cambiarMesCalendario(d) {
-        this.calMes += d;
-        if(this.calMes > 11) { this.calMes = 0; this.calAno++; }
-        if(this.calMes < 0) { this.calMes = 11; this.calAno--; }
-        if(this.currentModelData) this.renderCalendario(this.currentModelData);
-    },
-
-    renderInformesPro(modelData) {
-        ErrorHandler.catchBoundary('Informes Pro', 'informes', () => {
-            let wrapDD = document.getElementById('wrap-drawdown');
-            if(!wrapDD) return;
-            
-            let s = modelData.stats;
-
-            if (this.DOM.infoHoldingPeriod) {
-                this.DOM.infoHoldingPeriod.innerHTML = `<span style="font-weight: 900; color: var(--color-primary); text-shadow: var(--shadow-neon-primary);">${Math.round(s.holdingPeriodDias || 0)} Días</span>`;
-            }
-
-            if (this.DOM.valCorrelacion && this.DOM.descCorrelacion) {
-                let conc = s.riesgoConcentracion;
-                if (conc && conc.hhi > 0) {
-                    this.DOM.valCorrelacion.innerText = Math.round(conc.hhi);
-                    this.DOM.descCorrelacion.innerText = conc.label;
-                    let color = conc.hhi < 1500 ? 'var(--color-up)' : (conc.hhi < 2500 ? 'var(--color-warning)' : 'var(--color-down)');
-                    this.DOM.valCorrelacion.style.color = color;
-                    this.DOM.valCorrelacion.style.textShadow = `0 0 15px ${color.replace('var(', '').replace(')', '') === '--color-up' ? 'rgba(0, 255, 149, 0.4)' : (color.includes('warning') ? 'rgba(252, 163, 17, 0.4)' : 'rgba(247, 23, 53, 0.4)')}`;
-                } else {
-                    this.DOM.valCorrelacion.innerText = '-';
-                    this.DOM.descCorrelacion.innerText = 'Faltan datos';
                 }
-            }
 
-            if (this.DOM.infoAtribucionSector) {
-                let attribBuffer = ['<table class="dataTable-table" style="width:100%; font-size:1rem; margin-top:10px; border-collapse: separate; border-spacing: 0 5px;">'];
-                let sectores = Object.entries(s.atribucionSector || {}).sort((a,b) => b[1] - a[1]);
+                let maxPatStr = this.zenMode ? '---' : this.fmt(s.maxPatrimonio, modelData.dolarBlue, modelData.vistaUSD);
+                let maxDDStr = `${s.maxDrawdownPct.toFixed(2)}%`;
+                let currDDStr = `Tensión Actual: ${s.currentDrawdownPct.toFixed(2)}%`;
                 
-                if(sectores.length === 0) {
-                    attribBuffer.push('<tr><td style="color:var(--text-muted); text-align:center; padding:30px; font-weight: 800; border: 2px dashed var(--border-color); border-radius: 12px;">El mercado te espera. Aún no hay ventas cerradas.</td></tr>');
-                } else {
-                    sectores.forEach(([sector, resultado]) => {
-                        let color = resultado >= 0 ? 'var(--color-up)' : 'var(--color-down)';
-                        let signo = resultado > 0 ? '+' : (resultado < 0 ? '-' : '');
-                        attribBuffer.push(
-                            `<tr style="background: var(--bg-input);">`,
-                            `<td style="padding: 15px 20px; color:var(--text-main); font-weight: 900; border-radius: 12px 0 0 12px;">${DOMPurify.sanitize(sector)}</td>`,
-                            `<td class="data-font privacy-mask" style="text-align:right; color:${color}; font-weight:900; font-size: 1.15rem; padding: 15px 20px; border-radius: 0 12px 12px 0;">${signo}${this.zenMode ? '---' : this.fmtStr(Math.abs(resultado), modelData.dolarBlue, modelData.vistaUSD)}</td>`,
-                            `</tr>`
-                        );
-                    });
-                }
-                attribBuffer.push('</table>');
-                this.DOM.infoAtribucionSector.innerHTML = attribBuffer.join('');
-            }
-
-            if (s.riesgo) {
-                if (this.DOM.infoSharpe) this.DOM.infoSharpe.innerHTML = `<span class="data-font privacy-mask" style="font-weight: 900; color: var(--text-main);">${s.riesgo.sharpe}</span>`;
-                if (this.DOM.infoSortino) this.DOM.infoSortino.innerHTML = `<span class="data-font privacy-mask" style="font-weight: 900; color: var(--text-main);">${s.riesgo.sortino}</span>`;
-                if (this.DOM.infoVolatilidad) this.DOM.infoVolatilidad.innerHTML = `<span class="data-font privacy-mask texto-warning">${s.riesgo.volatilidad}%</span>`;
-            }
-
-            let cagrColor = s.cagr >= 0 ? 'texto-verde' : 'texto-rojo';
-            document.getElementById('info-cagr').innerHTML = `<span class="${cagrColor}" style="font-size: 3rem; font-weight: 900;">${(s.cagr || 0).toFixed(2)}%</span>`;
-
-            if(!modelData.movimientos || modelData.movimientos.length === 0) {
-                wrapDD.innerHTML = '<div style="text-align:center; padding: 60px; color:var(--text-muted); font-size: 1.1rem; font-weight: 800;"><svg width="64" height="64" style="margin-bottom:15px; opacity:0.5;"><use href="#icon-empty"></use></svg><br>Sin datos suficientes para calcular riesgos</div>';
-                return;
-            }
-
-            let fechas = [...new Set(modelData.movimientos.map(m=>m.fecha))].sort();
-            let pAcum = 0;
-            let peak = 0;
-            let dataDD = [];
-            let dataFechas = [];
-            let pnlMensual = {};
-            let capMensualTracker = {};
-
-            fechas.forEach((f) => {
-                let diaMovs = modelData.movimientos.filter(x=>x.fecha===f);
-                let valMes = f.substring(0,7);
-                let year = valMes.split('-')[0];
-                let month = valMes.split('-')[1];
-
-                if(!pnlMensual[year]) pnlMensual[year] = {};
-                if(!pnlMensual[year][month]) pnlMensual[year][month] = { pnlPuro: 0 };
+                let cagrHtml = `<div style="display:flex; align-items:baseline; justify-content:center; gap:5px;"><span class="${s.cagr >= 0 ? 'texto-verde' : 'texto-rojo'}">${s.cagr.toFixed(2)}%</span><span style="font-size:0.85rem; color:var(--text-muted); font-weight:700;">TIR</span></div>`;
                 
-                capMensualTracker[valMes] = pAcum;
-
-                diaMovs.forEach(m => {
-                    if(m.tipo === 'Compra' || m.tipo === 'Transferencia Ahorro') pAcum += m.monto;
-                    if(m.tipo === 'Venta' || m.tipo === 'Retiro') pAcum -= m.monto;
-                    
-                    if(m.tipo === 'Venta' && m.resultadoCalculado) pnlMensual[year][month].pnlPuro += m.resultadoCalculado;
-                });
+                const cagrDOM = document.getElementById('info-cagr');
+                if (cagrDOM) cagrDOM.innerHTML = cagrHtml;
                 
-                let val = modelData.vistaUSD ? (pAcum/modelData.dolarBlue) : pAcum;
-                if(val > peak) peak = val;
-                let dd = peak > 0 ? ((val - peak) / peak) * 100 : 0;
-                dataDD.push(dd);
-                dataFechas.push(f);
-            });
-
-            document.getElementById('info-max-patrimonio').innerHTML = `<span style="font-size: 3rem; font-weight: 900; color: var(--color-primary); text-shadow: var(--shadow-neon-primary);">${this.zenMode ? '---' : this.fmt(peak, modelData.dolarBlue, modelData.vistaUSD)}</span>`;
-            
-            let maxDD = Math.min(...dataDD);
-            if(!isFinite(maxDD)) maxDD = 0;
-            document.getElementById('info-max-dd').innerHTML = `<span style="font-size: 3rem; font-weight: 900; color: var(--color-down); text-shadow: var(--shadow-neon-down);">${maxDD.toFixed(2)}%</span>`;
-            document.getElementById('info-current-dd').innerHTML = `<span style="font-size: 1rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase;">Drawdown Actual: ${(dataDD[dataDD.length-1] || 0).toFixed(2)}%</span>`;
-
-            ChartRenderer.renderDrawdown(dataFechas, dataDD);
-
-            const hGrid = document.getElementById('heatmap-grid');
-            let heatmapBuffer = [
-                '<div class="hm-header">Año</div><div class="hm-header">Ene</div><div class="hm-header">Feb</div><div class="hm-header">Mar</div><div class="hm-header">Abr</div><div class="hm-header">May</div><div class="hm-header">Jun</div><div class="hm-header">Jul</div><div class="hm-header">Ago</div><div class="hm-header">Sep</div><div class="hm-header">Oct</div><div class="hm-header">Nov</div><div class="hm-header">Dic</div><div class="hm-header" style="color:var(--color-primary); text-shadow: var(--shadow-neon-primary);">YTD</div>'
-            ];
-
-            Object.keys(pnlMensual).sort().reverse().forEach(y => {
-                heatmapBuffer.push(`<div class="hm-cell" style="background:var(--bg-input); color:var(--text-main); font-weight: 900;">${DOMPurify.sanitize(y)}</div>`);
-                let productReturnAnual = 1;
+                const maxPatDOM = document.getElementById('info-max-patrimonio');
+                if (maxPatDOM) maxPatDOM.innerHTML = `<span class="privacy-mask">${maxPatStr}</span>`;
                 
-                for(let m=1; m<=12; m++) {
-                    let mStr = String(m).padStart(2,'0');
-                    let dataMes = pnlMensual[y][mStr];
-                    if(dataMes === undefined) {
-                        heatmapBuffer.push(`<div class="hm-cell" style="color:var(--text-muted); font-weight:normal; background: transparent;">-</div>`);
+                const maxDdDOM = document.getElementById('info-max-dd');
+                if (maxDdDOM) maxDdDOM.innerText = maxDDStr;
+                
+                const currDdDOM = document.getElementById('info-current-dd');
+                if (currDdDOM) currDdDOM.innerText = currDDStr;
+
+                if (this.DOM.infoAtribucionSector) {
+                    let atr = s.atribucionSectorial;
+                    if(Object.keys(atr).length === 0) {
+                        this.DOM.infoAtribucionSector.innerHTML = '<div style="color:var(--text-muted); text-align:center; padding: 40px; font-weight:800;">Sin posiciones activas.</div>';
                     } else {
-                        let capBaseMes = capMensualTracker[`${y}-${mStr}`] || 1;
-                        if (capBaseMes <= 0) capBaseMes = 1;
+                        let html = '<div style="display:flex; flex-direction:column; gap:12px;">';
+                        let sortedSectores = Object.entries(atr).sort((a,b) => b[1] - a[1]);
                         
-                        let returnPorcentual = (dataMes.pnlPuro / capBaseMes) * 100;
-                        productReturnAnual *= (1 + (returnPorcentual / 100));
-                        
-                        let cls = '';
-                        if(returnPorcentual > 5) cls = 'hm-cell--pos';
-                        else if(returnPorcentual > 0) cls = 'hm-cell--pos';
-                        else if(returnPorcentual < -5) cls = 'hm-cell--neg';
-                        else if(returnPorcentual < 0) cls = 'hm-cell--neg';
-                        
-                        let numTxt = returnPorcentual === 0 ? '0%' : (returnPorcentual>0?'+':'') + returnPorcentual.toFixed(1) + '%';
-                        let divValStr = this.fmtStr(modelData.vistaUSD ? (dataMes.pnlPuro/modelData.dolarBlue) : dataMes.pnlPuro, modelData.dolarBlue, modelData.vistaUSD);
-                        
-                        heatmapBuffer.push(`<div class="hm-cell ${cls} data-font" title="PnL Mes: ${this.zenMode ? 'Oculto en Zen' : divValStr}" style="font-size: 0.95rem;">${numTxt}</div>`);
+                        sortedSectores.forEach(([sec, val], idx) => {
+                            let c = this.sectorColors[idx % this.sectorColors.length];
+                            let vStr = this.zenMode ? '---' : this.fmtStr(Math.abs(val), modelData.dolarBlue, modelData.vistaUSD);
+                            let sign = val >= 0 ? '+' : '-';
+                            let col = val >= 0 ? 'var(--color-up)' : 'var(--color-down)';
+                            
+                            html += `
+                                <div style="display:flex; justify-content:space-between; align-items:center; background:var(--bg-input); padding: 16px 20px; border-radius:12px; border-left: 4px solid ${c}; transition: transform 0.2s;">
+                                    <span style="font-weight:900; font-size:1rem; color:var(--text-main); letter-spacing: 0.5px;">${DOMPurify.sanitize(sec)}</span>
+                                    <span class="data-font privacy-mask" style="color:${col}; font-weight:900; font-size:1.15rem; text-shadow: 0 0 10px ${col}40;">${sign}$${vStr}</span>
+                                </div>
+                            `;
+                        });
+                        html += '</div>';
+                        this.DOM.infoAtribucionSector.innerHTML = html;
                     }
                 }
-                
-                let ytdPct = (productReturnAnual - 1) * 100;
-                let ytdCls = ytdPct >= 0 ? 'texto-verde' : 'texto-rojo';
-                let ytdSign = ytdPct > 0 ? '+' : '';
-                
-                heatmapBuffer.push(`<div class="hm-cell data-font" style="background:var(--bg-panel); border-left: 2px solid var(--border-color);"><span class="${ytdCls}" style="font-size: 1rem;">${ytdSign}${ytdPct.toFixed(1)}%</span></div>`);
-            });
 
-            hGrid.innerHTML = heatmapBuffer.join('');
-        });
-    },
-
-    calcularInteres() {
-        ErrorHandler.catchBoundary('Calculadora Compuesta', 'wrap-calc', () => {
-            if(!this.DOM.calcInicial) return;
-            
-            const cIni = this.cleanNum(this.DOM.calcInicial.value);
-            const cMen = this.cleanNum(this.DOM.calcMensual.value);
-            const ans = this.cleanNum(this.DOM.calcAnos.value);
-            const tAnual = this.cleanNum(this.DOM.calcTasa.value);
-
-            if (ans <= 0 || tAnual < 0) return;
-            
-            let r = tAnual / 100;
-            let t = ans;
-            let pmtAnual = cMen * 12;
-
-            let lbl = [];
-            let dAp = [];
-            let dInt = [];
-
-            for(let i=1; i<=t; i++) {
-                let aportado = cIni + (pmtAnual * i);
-                let capCrecido = cIni * Math.pow(1 + r, i);
-                let aportesCrecidos = r > 0 ? pmtAnual * ((Math.pow(1 + r, i) - 1) / r) : pmtAnual * i;
-                let bal = capCrecido + aportesCrecidos;
-                lbl.push(`Año ${i}`);
-                dAp.push(aportado);
-                dInt.push(bal - aportado);
-            }
-
-            let totalAportadoF = dAp[dAp.length-1] || 0;
-            let totalInteresF = dInt[dInt.length-1] || 0;
-            let capitalFinalF = totalAportadoF + totalInteresF;
-
-            if (this.DOM.calcResAportado) this.DOM.calcResAportado.innerHTML = this.zenMode ? '---' : `<span class="privacy-mask" style="font-size: 1.8rem; font-weight: 900; color: var(--text-main);">$ ${this.fmtStr(totalAportadoF, 1, false)}</span>`;
-            if (this.DOM.calcResInteres) this.DOM.calcResInteres.innerHTML = `<span class="texto-verde privacy-mask" style="font-size: 1.8rem; font-weight: 900;">${this.zenMode ? '---' : '+$ ' + this.fmtStr(totalInteresF, 1, false)}</span>`;
-            if (this.DOM.calcResFinal) this.DOM.calcResFinal.innerHTML = `<span class="texto-primario privacy-mask" style="font-size: 2.2rem; font-weight: 900;">${this.zenMode ? '---' : '$ ' + this.fmtStr(capitalFinalF, 1, false)}</span>`;
-            
-            if (this.DOM.wrapCalc) {
-                const getCSS = (varName, fallBack) => getComputedStyle(document.documentElement).getPropertyValue(varName).trim() || fallBack;
-                const colorC1 = getCSS('--color-primary', '#6045F4');
-                const colorC2 = getCSS('--color-up', '#00FF95');
-                ChartRenderer.renderCalculadora(lbl, dAp, dInt, 'chartCalculadora', colorC1, colorC2, this.DOM.wrapCalc);
-            }
-        });
-    },
-
-    initFIRE(modelData) {
-        if(modelData && modelData.stats) {
-            let capActual = modelData.stats.billetera + modelData.stats.capInvertido;
-            let currentInpt = document.getElementById('fire-capital');
-            if(currentInpt && capActual > 0 && parseFloat(currentInpt.value) === 0) {
-                currentInpt.value = this.fmtStr(Math.round(capActual), 1, false);
-            }
-            
-            let inGastoBase = document.getElementById('fire-gasto-base');
-            if(inGastoBase && modelData.stats.gastoPersonalPromedioMes > 0) {
-                inGastoBase.value = this.fmtStr(modelData.stats.gastoPersonalPromedioMes, 1, false);
-            }
-        }
-        this.calcularFIRE();
-    },
-
-    calcularFIRE() {
-        ErrorHandler.catchBoundary('Simulador FIRE', 'wrap-fire-chart', () => {
-            const inGastoBase = document.getElementById('fire-gasto-base');
-            if(!inGastoBase) return;
-            
-            const gastoBase = this.cleanNum(inGastoBase.value);
-            const gastoExtra = this.cleanNum(document.getElementById('fire-gasto-extra').value);
-            const capIni = this.cleanNum(document.getElementById('fire-capital').value);
-            const ahorroMes = this.cleanNum(document.getElementById('fire-ahorro').value);
-            const cagrPct = parseFloat(document.getElementById('fire-cagr').value) || 8;
-            const swrPct = parseFloat(document.getElementById('fire-swr').value) || 4;
-
-            const gastoTotal = gastoBase + gastoExtra;
-            const gastoAnual = gastoTotal * 12;
-            const targetFIRE = gastoAnual / (swrPct / 100);
-
-            document.getElementById('fire-res-gasto').innerHTML = this.zenMode ? '---' : `<span class="privacy-mask" style="font-size: 2.5rem; font-weight: 900; color: var(--color-down); text-shadow: var(--shadow-neon-down);">$ ${this.fmtStr(gastoTotal, 1, false)}</span>`;
-            document.getElementById('fire-res-objetivo').innerHTML = this.zenMode ? '---' : `<span class="privacy-mask" style="font-size: 2.5rem; font-weight: 900; color: var(--color-accent); text-shadow: var(--shadow-neon-accent);">$ ${this.fmtStr(targetFIRE, 1, false)}</span>`;
-
-            let r = cagrPct / 100;
-            let capitalAcumulado = capIni;
-            let anos = 0;
-            const maxAnos = 60;
-
-            let lbl = ['Hoy'];
-            let dataCapital = [capIni];
-            let dataObjetivo = [targetFIRE];
-
-            if(capIni < targetFIRE) {
-                while(capitalAcumulado < targetFIRE && anos < maxAnos) {
-                    anos++;
-                    capitalAcumulado = (capitalAcumulado * (1 + r)) + (ahorroMes * 12);
-                    lbl.push(`Año ${anos}`);
-                    dataCapital.push(capitalAcumulado);
-                    dataObjetivo.push(targetFIRE);
-                }
-            }
-
-            let elAnos = document.getElementById('fire-res-anos');
-            if(capIni >= targetFIRE) {
-                elAnos.innerText = "¡Independencia Alcanzada!";
-                elAnos.className = "data-font texto-primario";
-                elAnos.style.fontSize = "3rem";
-            } else if (anos >= maxAnos) {
-                elAnos.innerText = "+60 Años";
-                elAnos.className = "data-font texto-rojo";
-                elAnos.style.fontSize = "4rem";
-            } else {
-                elAnos.innerText = `${anos} Años`;
-                elAnos.className = `data-font ${anos <= 10 ? 'texto-verde' : (anos <= 20 ? 'texto-warning' : 'texto-rojo')}`;
-                elAnos.style.fontSize = "5rem";
-            }
-
-            const wrapChart = document.getElementById('wrap-fire-chart');
-            if (wrapChart) {
-                let canvas = wrapChart.querySelector('canvas');
-                if (!canvas) {
-                    wrapChart.innerHTML = '<canvas id="chartFIRE"></canvas>';
-                    canvas = wrapChart.querySelector('canvas');
-                }
-
-                if (window.fireChartInstance) window.fireChartInstance.destroy();
-
-                const getCSS = (varName, fallBack) => getComputedStyle(document.documentElement).getPropertyValue(varName).trim() || fallBack;
-                const c1 = getCSS('--color-up', '#00FF95');
-                const c2 = getCSS('--color-accent', '#FF4D8A');
-
-                const gradient = canvas.getContext('2d').createLinearGradient(0, 0, 0, 400);
-                gradient.addColorStop(0, c1.replace(')', ', 0.3)').replace('rgb', 'rgba'));
-                gradient.addColorStop(1, 'rgba(0,0,0,0)');
-
-                window.fireChartInstance = new Chart(canvas.getContext('2d'), {
-                    type: 'line',
-                    data: {
-                        labels: lbl,
-                        datasets: [
-                            {
-                                label: 'Capital Proyectado',
-                                data: dataCapital,
-                                borderColor: c1,
-                                backgroundColor: gradient,
-                                borderWidth: 3,
-                                fill: true,
-                                pointRadius: 0,
-                                tension: 0.4
-                            },
-                            {
-                                label: 'Objetivo FIRE',
-                                data: dataObjetivo,
-                                borderColor: c2,
-                                borderDash: [6, 6],
-                                borderWidth: 3,
-                                fill: false,
-                                pointRadius: 0
+                let hmGrid = document.getElementById('heatmap-grid');
+                if (hmGrid && s.heatmapMensual) {
+                    let hm = s.heatmapMensual;
+                    let años = Object.keys(hm).sort((a,b)=>b-a);
+                    
+                    if (años.length === 0) {
+                        hmGrid.innerHTML = '<div style="grid-column: 1 / -1; color:var(--text-muted); padding: 40px; font-weight:800;">Datos insuficientes para generar matriz térmica.</div>';
+                    } else {
+                        let header = '<div class="hm-header">AÑO</div>';
+                        const mesesStr = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+                        mesesStr.forEach(m => header += `<div class="hm-header">${m}</div>`);
+                        header += '<div class="hm-header" style="color:var(--color-primary);">YTD</div>';
+                        
+                        let body = '';
+                        años.forEach(a => {
+                            body += `<div class="hm-cell" style="background:var(--bg-input); color:var(--text-main); font-weight:900;">${a}</div>`;
+                            let rowYTD = 0;
+                            for(let i=1; i<=12; i++) {
+                                let val = hm[a][i];
+                                if(val !== undefined) {
+                                    rowYTD += val;
+                                    let cClass = val > 0 ? 'hm-cell--pos' : (val < 0 ? 'hm-cell--neg' : '');
+                                    let vStr = val > 0 ? `+${val.toFixed(1)}%` : `${val.toFixed(1)}%`;
+                                    body += `<div class="hm-cell ${cClass} data-font">${vStr}</div>`;
+                                } else {
+                                    body += `<div class="hm-cell" style="color:var(--text-muted); opacity:0.3;">-</div>`;
+                                }
                             }
-                        ]
-                    },
-                    options: {
-                        responsive: true, maintainAspectRatio: false,
-                        interaction: { mode: 'index', intersect: false },
-                        plugins: { legend: { labels: { color: getCSS('--text-muted', '#8B95A5'), font: { weight: 'bold' } } } },
-                        scales: {
-                            x: { grid: { color: 'rgba(139, 149, 165, 0.05)' }, ticks: { color: getCSS('--text-muted', '#8B95A5'), font: { weight: 'bold' }, maxTicksLimit: 10 } },
-                            y: { grid: { color: 'rgba(139, 149, 165, 0.05)' }, ticks: { color: getCSS('--text-muted', '#8B95A5'), font: { weight: 'bold' } } }
-                        }
+                            let ytdClass = rowYTD > 0 ? 'hm-cell--pos' : (rowYTD < 0 ? 'hm-cell--neg' : '');
+                            let ytdStr = rowYTD > 0 ? `+${rowYTD.toFixed(1)}%` : `${rowYTD.toFixed(1)}%`;
+                            body += `<div class="hm-cell ${ytdClass} data-font" style="border:1px solid var(--border-color);">${ytdStr}</div>`;
+                        });
+                        
+                        hmGrid.innerHTML = header + body;
                     }
+                }
+
+                if (s.historyFechas && s.historyDrawdown) {
+                    ChartRenderer.renderDrawdown(s.historyFechas, s.historyDrawdown);
+                }
+            });
+        },
+
+        renderCalendario(modelData) {
+            ErrorHandler.catchBoundary('Calendario Operativo', 'calendario', () => {
+                const m = modelData.movimientos;
+                
+                const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+                this.DOM.calMesAno.innerText = `${monthNames[this.calMes]} ${this.calAno}`;
+                
+                const firstDay = new Date(this.calAno, this.calMes, 1).getDay();
+                const daysInMonth = new Date(this.calAno, this.calMes + 1, 0).getDate();
+                const startOffset = firstDay === 0 ? 6 : firstDay - 1; 
+                
+                let movsDelMes = m.filter(mov => {
+                    let d = new Date(mov.fecha + "T00:00:00");
+                    return d.getMonth() === this.calMes && d.getFullYear() === this.calAno;
                 });
-            }
-        });
-    }
+
+                let mapDias = {};
+                movsDelMes.forEach(mov => {
+                    let d = parseInt(mov.fecha.split('-')[2]);
+                    if(!mapDias[d]) mapDias[d] = [];
+                    mapDias[d].push(mov);
+                });
+
+                this.DOM.calDias.innerHTML = '';
+                const template = this.DOM.tplCalDay.content;
+                const fragment = document.createDocumentFragment();
+                
+                let hoy = new Date();
+                let isCurrentMonth = (hoy.getMonth() === this.calMes && hoy.getFullYear() === this.calAno);
+                
+                for(let i=0; i<startOffset; i++) {
+                    const el = document.importNode(template, true);
+                    let div = el.querySelector('.cal-day');
+                    div.classList.add('empty');
+                    fragment.appendChild(el);
+                }
+                
+                for(let d=1; d<=daysInMonth; d++) {
+                    const el = document.importNode(template, true);
+                    let div = el.querySelector('.cal-day');
+                    let dateEl = el.querySelector('.cal-date');
+                    let dotsEl = el.querySelector('.cal-dots');
+                    
+                    dateEl.innerText = d;
+                    
+                    if(isCurrentMonth && d === hoy.getDate()) div.classList.add('today');
+                    
+                    if(mapDias[d] && mapDias[d].length > 0) {
+                        div.classList.add('has-data');
+                        let dotsHtml = '';
+                        mapDias[d].slice(0, 8).forEach(mov => {
+                            let color = 'var(--text-muted)';
+                            if(['Compra','Venta'].includes(mov.tipo)) color = 'var(--color-accent)';
+                            else if(['Ingreso Local'].includes(mov.tipo)) color = 'var(--color-up)';
+                            else if(['Gasto Local','Gasto Familiar','Pago Proveedor'].includes(mov.tipo)) color = 'var(--color-down)';
+                            else if(mov.tipo === 'Reparto Sociedad') color = 'var(--color-purple)';
+                            
+                            dotsHtml += `<div class="cal-dot" style="color:${color}; background-color:${color};"></div>`;
+                        });
+                        if(mapDias[d].length > 8) dotsHtml += `<div style="font-size:10px; font-weight:900; color:var(--text-muted);">+${mapDias[d].length - 8}</div>`;
+                        dotsEl.innerHTML = dotsHtml;
+                        
+                        div.addEventListener('click', () => {
+                            document.querySelectorAll('.cal-day').forEach(cd => cd.style.borderColor = '');
+                            div.style.borderColor = 'var(--color-primary)';
+                            
+                            let html = `<h3 class="stat__title" style="margin-bottom: 25px; font-size: 1.1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 15px;">Movimientos del ${d} de ${monthNames[this.calMes]}</h3>`;
+                            html += '<div style="display:flex; flex-direction:column; gap:12px; max-height: 500px; overflow-y:auto; padding-right: 10px;">';
+                            
+                            mapDias[d].forEach(mov => {
+                                let displayTipo = this.getDisplayTipo(mov.tipo);
+                                let tagClass = this.getBadgeClass(mov.tipo);
+                                
+                                let color = 'var(--text-main)';
+                                let sign = '';
+                                if (['Ingreso Local', 'Ahorro', 'Transferencia Ahorro', 'Venta', 'Dividendo', 'Rendimiento', 'Alta Préstamo'].includes(mov.tipo)) {
+                                    color = 'var(--color-up)';
+                                    sign = '+';
+                                } else if (['Gasto Local', 'Gasto Familiar', 'Pago Proveedor', 'Amortización Deuda a Proveedor', 'Reparto Sociedad', 'Compra', 'Retiro', 'Pago Préstamo'].includes(mov.tipo)) {
+                                    color = 'var(--color-down)';
+                                    sign = '-';
+                                }
+
+                                let divVal = this.currentModelData.vistaUSD ? this.currentModelData.dolarBlue : 1;
+                                let isUSD = this.currentModelData.vistaUSD;
+                                let monto = mov.monto;
+                                if (['Transferencia Ahorro', 'Ahorro'].includes(mov.tipo) && mov.usd > 0 && isUSD) monto = mov.usd;
+                                else monto = monto / divVal;
+                                
+                                let desc = '';
+                                if(['Compra','Venta','Dividendo'].includes(mov.tipo)) desc = DOMPurify.sanitize(mov.activo);
+                                else if (mov.tipo === 'Gasto Local' || mov.tipo === 'Gasto Familiar') desc = DOMPurify.sanitize(mov.categoria || '');
+                                else if (mov.tipo === 'Pago Proveedor' || mov.tipo === 'Amortización Deuda a Proveedor') desc = DOMPurify.sanitize(mov.proveedor || '');
+                                else if (mov.tipo === 'Reparto Sociedad') desc = `Socio: ${DOMPurify.sanitize(mov.socio || '')}`;
+                                else if (mov.tipo === 'Alta Préstamo' || mov.tipo === 'Pago Préstamo') desc = `Entidad: ${DOMPurify.sanitize(mov.entidad || '')}`;
+
+                                html += `
+                                    <div style="display:flex; justify-content:space-between; align-items:center; padding: 18px 20px; background:var(--bg-input); border-radius:12px; border-left: 4px solid ${color};">
+                                        <div style="display:flex; flex-direction:column; gap:6px;">
+                                            <span class="badge ${tagClass}" style="width:fit-content; font-size: 0.7rem; padding: 4px 8px;">${displayTipo}</span>
+                                            <span style="font-weight:900; font-size:1.05rem; color:var(--text-main);">${desc}</span>
+                                        </div>
+                                        <span class="data-font privacy-mask" style="color:${color}; font-weight:900; font-size:1.25rem;">${sign}${this.zenMode ? '---' : this.fmt(monto, 1, isUSD)}</span>
+                                    </div>
+                                `;
+                            });
+                            html += '</div>';
+                            this.DOM.calDetalle.innerHTML = html;
+                        });
+                    }
+                    fragment.appendChild(el);
+                }
+                
+                this.DOM.calDias.appendChild(fragment);
+            });
+        },
+
+        cambiarMesCalendario(dir) {
+            this.calMes += dir;
+            if(this.calMes > 11) { this.calMes = 0; this.calAno++; }
+            else if(this.calMes < 0) { this.calMes = 11; this.calAno--; }
+            this.renderCalendario(this.currentModelData);
+        },
+
+        calcularInteres() {
+            ErrorHandler.catchBoundary('Calculadora Interés', 'herramientas', () => {
+                if(this.activeTab !== 'herramientas' || !this.DOM.calcInicial) return;
+                
+                let p = this.cleanNum(this.DOM.calcInicial.value);
+                let pm = this.cleanNum(this.DOM.calcMensual.value);
+                let r = parseFloat(this.DOM.calcTasa.value) / 100;
+                let t = parseInt(this.DOM.calcAnos.value);
+                let n = 12; 
+                
+                if (isNaN(p) || isNaN(pm) || isNaN(r) || isNaN(t) || t <= 0) return;
+
+                let labels = [];
+                let dAp = [];
+                let dInt = [];
+                
+                let currentAportado = p;
+                let currentTotal = p;
+                
+                for(let i=1; i<=t; i++) {
+                    labels.push(`Año ${i}`);
+                    currentAportado += pm * 12;
+                    currentTotal = currentTotal * Math.pow(1 + r/n, n) + pm * ((Math.pow(1 + r/n, n) - 1) / (r/n));
+                    
+                    dAp.push(currentAportado);
+                    dInt.push(Math.max(0, currentTotal - currentAportado));
+                }
+
+                this.DOM.calcResAportado.innerText = this.zenMode ? '---' : '$' + this.fmtStr(currentAportado, 1, false);
+                this.DOM.calcResInteres.innerText = this.zenMode ? '---' : '$' + this.fmtStr(currentTotal - currentAportado, 1, false);
+                this.DOM.calcResFinal.innerText = this.zenMode ? '---' : '$' + this.fmtStr(currentTotal, 1, false);
+
+                const getCSS = (varName, fallBack) => getComputedStyle(document.documentElement).getPropertyValue(varName).trim() || fallBack;
+                let c1 = getCSS('--color-primary', '#6045F4');
+                let c2 = getCSS('--color-up', '#00FF95');
+
+                ChartRenderer.renderCalculadora(labels, dAp, dInt, 'chartCalc', c1, c2, this.DOM.wrapCalc);
+            });
+        },
+
+        initFIRE(modelData) {
+            ErrorHandler.catchBoundary('Proyección FIRE', 'fire', () => {
+                if(!modelData || !modelData.stats) return;
+                
+                let s = modelData.stats;
+                let objGastoBase = document.getElementById('fire-gasto-base');
+                let objCapital = document.getElementById('fire-capital');
+                let objAhorro = document.getElementById('fire-ahorro');
+                
+                if(objGastoBase && s.gastosFamiliar) {
+                    let meses = s.numMesesOperativos || 1;
+                    let gastoFamiliarMensual = s.gastosFamiliar / meses;
+                    objGastoBase.value = this.fmtStr(gastoFamiliarMensual, 1, false);
+                }
+                
+                if(objCapital) objCapital.value = this.fmtStr(s.capInvertido + s.billetera, 1, false);
+                
+                if(objAhorro && s.totalAhorrado) {
+                    let meses = s.numMesesOperativos || 1;
+                    objAhorro.value = this.fmtStr(s.totalAhorrado / meses, 1, false);
+                }
+                
+                this.calcularFIRE();
+            });
+        },
+
+        calcularFIRE() {
+            ErrorHandler.catchBoundary('Cálculo FIRE', 'fire', () => {
+                let vBase = this.cleanNum(document.getElementById('fire-gasto-base')?.value);
+                let vExtra = this.cleanNum(document.getElementById('fire-gasto-extra')?.value);
+                let p = this.cleanNum(document.getElementById('fire-capital')?.value);
+                let pm = this.cleanNum(document.getElementById('fire-ahorro')?.value);
+                let r = parseFloat(document.getElementById('fire-cagr')?.value) / 100;
+                let swr = parseFloat(document.getElementById('fire-swr')?.value) / 100;
+                
+                let elAnos = document.getElementById('fire-res-anos');
+                let elGasto = document.getElementById('fire-res-gasto');
+                let elObj = document.getElementById('fire-res-objetivo');
+                let wrapFire = document.getElementById('wrap-fire-chart');
+
+                if (isNaN(vBase) || isNaN(vExtra) || isNaN(p) || isNaN(pm) || isNaN(r) || isNaN(swr) || swr <= 0) return;
+
+                let gastoMensualTotal = vBase + vExtra;
+                let gastoAnualTotal = gastoMensualTotal * 12;
+                let targetFire = gastoAnualTotal / swr;
+
+                elGasto.innerText = this.zenMode ? '---' : '$' + this.fmtStr(gastoMensualTotal, 1, false);
+                elObj.innerText = this.zenMode ? '---' : '$' + this.fmtStr(targetFire, 1, false);
+
+                let currentVal = p;
+                let meses = 0;
+                let n = 12;
+                let rMensual = r / n;
+                
+                let labels = [];
+                let dataProgreso = [];
+                let dataTarget = [];
+
+                if (currentVal >= targetFire) {
+                    elAnos.innerText = "Objetivo Alcanzado";
+                    elAnos.style.color = "var(--color-up)";
+                    labels = ['Actual'];
+                    dataProgreso = [currentVal];
+                    dataTarget = [targetFire];
+                } else if (pm <= 0 && r <= 0) {
+                    elAnos.innerText = "Inviable (Aporte 0)";
+                    elAnos.style.color = "var(--color-down)";
+                } else {
+                    let maxMeses = 12 * 60; 
+                    while(currentVal < targetFire && meses < maxMeses) {
+                        if(meses % 12 === 0) {
+                            labels.push(`Año ${meses/12}`);
+                            dataProgreso.push(currentVal);
+                            dataTarget.push(targetFire);
+                        }
+                        currentVal = currentVal * (1 + rMensual) + pm;
+                        meses++;
+                    }
+                    
+                    if(meses % 12 !== 0) {
+                        labels.push(`Final`);
+                        dataProgreso.push(currentVal);
+                        dataTarget.push(targetFire);
+                    }
+
+                    if(meses >= maxMeses) {
+                        elAnos.innerText = "+60 Años";
+                        elAnos.style.color = "var(--color-down)";
+                    } else {
+                        let anosReales = meses / 12;
+                        elAnos.innerText = `${anosReales.toFixed(1)} Años`;
+                        elAnos.style.color = "var(--color-up)";
+                    }
+                }
+
+                if (wrapFire && labels.length > 0) {
+                    let canvas = wrapFire.querySelector('canvas');
+                    if(!canvas) {
+                        wrapFire.innerHTML = '<canvas id="chartFire"></canvas>';
+                        canvas = wrapFire.querySelector('canvas');
+                    }
+                    const getCSS = (varName, fallBack) => getComputedStyle(document.documentElement).getPropertyValue(varName).trim() || fallBack;
+                    
+                    let cAccent = getCSS('--color-accent', '#FF4D8A');
+                    let cUp = getCSS('--color-up', '#00FF95');
+                    const isLightMode = document.documentElement.getAttribute('data-theme') === 'light';
+
+                    if(window.chartFireInst) window.chartFireInst.destroy();
+                    
+                    window.chartFireInst = new Chart(canvas.getContext('2d'), {
+                        type: 'line',
+                        data: {
+                            labels: labels,
+                            datasets: [
+                                {
+                                    label: 'Progresión de Capital',
+                                    data: dataProgreso,
+                                    borderColor: cUp,
+                                    backgroundColor: isLightMode ? ChartRenderer._createGradient(canvas.getContext('2d'), cUp) : 'transparent',
+                                    borderWidth: 3,
+                                    fill: isLightMode,
+                                    pointRadius: 0,
+                                    tension: 0.4
+                                },
+                                {
+                                    label: 'Umbral FIRE',
+                                    data: dataTarget,
+                                    borderColor: cAccent,
+                                    backgroundColor: 'transparent',
+                                    borderWidth: 2,
+                                    borderDash: [5, 5],
+                                    fill: false,
+                                    pointRadius: 0
+                                }
+                            ]
+                        },
+                        options: {
+                            responsive: true, maintainAspectRatio: false,
+                            interaction: { mode: 'index', intersect: false },
+                            plugins: { legend: { display: false } },
+                            scales: {
+                                x: { grid: { display: false }, ticks: { font: { weight: 'bold' } } },
+                                y: { 
+                                    border: { display: false }, 
+                                    ticks: { 
+                                        callback: function(value) {
+                                            if(value >= 1000000) return '$' + (value/1000000).toFixed(1) + 'M';
+                                            return '$' + value;
+                                        },
+                                        font: { family: "'Roboto Mono', monospace", weight: 'bold' } 
+                                    } 
+                                }
+                            }
+                        }
+                    });
+                }
+            });
+        }
 };
