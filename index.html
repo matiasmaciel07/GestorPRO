@@ -20,6 +20,60 @@
     <link rel="stylesheet" href="css/styles.css">
     <link rel="stylesheet" href="css/utilities.css">
     
+    <style>
+        /* Estructura UI: Tooltips Interactivos de Leyendas */
+        .floating-legend-tooltip {
+            position: absolute; 
+            background: rgba(15, 23, 42, 0.98); 
+            color: #f8fafc; 
+            padding: 12px; 
+            border-radius: 8px;
+            font-size: 11px; 
+            line-height: 1.5; 
+            border: 1px solid var(--border-color); 
+            box-shadow: 0 10px 20px -3px rgba(0,0,0,0.7);
+            z-index: 9999; 
+            pointer-events: none; 
+            width: 240px; 
+            transition: opacity 0.2s ease, transform 0.2s ease; 
+            opacity: 0; 
+            transform: translateY(5px);
+        }
+        .floating-legend-tooltip.active {
+            opacity: 1; 
+            transform: translateY(0);
+        }
+        .floating-legend-tooltip strong { 
+            color: var(--color-primary); 
+            display: block; 
+            margin-bottom: 4px; 
+            font-family: 'Inter', sans-serif; 
+            text-transform: uppercase; 
+            letter-spacing: 0.5px; 
+        }
+
+        /* Contenedores con Desplazamiento para Listas de Gastos */
+        .lista-gastos-container {
+            margin-top: 20px; 
+            max-height: 220px; 
+            overflow-y: auto; 
+            padding-right: 5px;
+            border-top: 1px solid var(--border-color); 
+            padding-top: 10px;
+        }
+        .lista-gastos-container::-webkit-scrollbar {
+            width: 4px;
+        }
+        .lista-gastos-container::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 4px;
+        }
+        .lista-gastos-container::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: 4px;
+        }
+    </style>
+
     <link rel="manifest" href="manifest.json">
     
     <script>
@@ -264,6 +318,7 @@
                                 </div>
                             </div>
                             <div id="wrap-gastos-local" style="height: 250px; width: 100%; position: relative;"></div>
+                            <div id="wrap-gastos-local-lista" class="lista-gastos-container"></div>
                         </div>
                         <div class="card">
                             <div class="is-visible-flex" style="justify-content:space-between; align-items:center; margin-bottom:15px; flex-wrap:wrap; gap:10px;">
@@ -276,6 +331,7 @@
                                 </div>
                             </div>
                             <div id="wrap-gastos-personal" style="height: 250px; width: 100%; position: relative;"></div>
+                            <div id="wrap-gastos-personal-lista" class="lista-gastos-container"></div>
                         </div>
                     </div>
                     
