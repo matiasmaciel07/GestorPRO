@@ -85,14 +85,15 @@ const controller = {
             
             const uiState = model.data.uiState;
             
+            // Inyección corregida: Sincronización estricta de variables hacia los renderizadores de distribución.
             events.emit('ui:actualizar-distribucion-gastos', { 
                 contexto: 'Local', 
-                temporalidad: uiState.gastosLocalTemporalidad || 'Mensual', 
+                temporalidad: uiState.gastosLocalTemporalidad || 'Histórico', 
                 domId: 'wrap-gastos-local' 
             });
             events.emit('ui:actualizar-distribucion-gastos', { 
                 contexto: 'Personal', 
-                temporalidad: uiState.gastosPersonalTemporalidad || 'Mensual', 
+                temporalidad: uiState.gastosPersonalTemporalidad || 'Histórico', 
                 domId: 'wrap-gastos-personal' 
             });
 
@@ -123,32 +124,32 @@ const controller = {
         events.on('ui:editar-operacion', (id) => this.prepararEdicion(id));
         events.on('ui:cancelar-edicion', () => this.limpiarModoEdicion());
 
-        events.on('ui:deshacer-operacion', () => { model.deshacer(); events.emit('app:toast', { msg: "Operación deshecha", type: "success" }); });
-        events.on('ui:borrar-operacion', (id) => { model.borrarMovimiento(parseInt(id)); events.emit('app:toast', { msg: "Registro eliminado", type: "success" }); });
+        events.on('ui:deshacer-operacion', () => { model.deshacer(); events.emit('app:toast', { msg: "Operación revertida", type: "success" }); });
+        events.on('ui:borrar-operacion', (id) => { model.borrarMovimiento(parseInt(id)); events.emit('app:toast', { msg: "Registro purgado", type: "success" }); });
 
         events.on('ui:add-watchlist', (data) => {
-            if(!data.activo || isNaN(data.precio) || data.precio<=0) return events.emit('app:toast', { msg:"Datos inválidos", type:"error" });
+            if(!data.activo || isNaN(data.precio) || data.precio<=0) return events.emit('app:toast', { msg:"Parámetros de entrada inválidos", type:"error" });
             model.agregarWatchlist(data.activo, data.precio);
-            events.emit('app:toast', { msg:"Agregado a Seguimiento", type:"success" });
+            events.emit('app:toast', { msg:"Activo indexado al monitoreo", type:"success" });
             if(TabFSM.state === 'portafolio') this.actualizarPreciosPortafolioDirecto();
         });
 
         events.on('ui:del-watchlist', (activo) => {
             model.borrarWatchlist(activo);
-            events.emit('app:toast', { msg:"Eliminado de Seguimiento", type:"success" });
+            events.emit('app:toast', { msg:"Activo removido del monitoreo", type:"success" });
         });
 
         events.on('ui:filtrar-historial', (filtros) => { view.aplicarFiltrosHistorial(filtros); });
 
         events.on('ui:guardar-inflacion', (data) => {
-            if(!data.mes || isNaN(data.val)) return events.emit('app:toast', { msg: "Datos inválidos (Use formato: 3.5)", type: "error" });
+            if(!data.mes || isNaN(data.val)) return events.emit('app:toast', { msg: "Estructura de datos inválida (Use formato: 3.5)", type: "error" });
             model.guardarInflacion(data.mes, data.val);
-            events.emit('app:toast', { msg: "Inflación guardada", type: "success" });
+            events.emit('app:toast', { msg: "Índice de inflación registrado", type: "success" });
         });
 
         events.on('ui:borrar-inflacion', (mes) => {
             model.borrarInflacion(mes);
-            events.emit('app:toast', { msg: "Inflación eliminada", type: "success" });
+            events.emit('app:toast', { msg: "Índice de inflación depurado", type: "success" });
         });
 
         events.on('ui:importar-backup', (file) => {
@@ -157,9 +158,9 @@ const controller = {
                     model._data.movimientos = model.curarDatos(datos); 
                     model.guardarLocal(); 
                     model.procesarMotor();
-                    events.emit('app:toast', { msg: "Backup Restaurado", type: "success" }); 
+                    events.emit('app:toast', { msg: "Restauración de base de datos exitosa", type: "success" }); 
                 },
-                () => events.emit('app:toast', { msg: "Archivo Inválido", type: "error" })
+                () => events.emit('app:toast', { msg: "Archivo de respaldo corrupto o inválido", type: "error" })
             );
         });
 
@@ -168,24 +169,24 @@ const controller = {
 
         events.on('ui:guardar-manual', async () => {
             await model.guardarLocal();
-            events.emit('app:toast', { msg: "Cambios guardados correctamente", type: "success" }); 
+            events.emit('app:toast', { msg: "Estado contable consolidado exitosamente", type: "success" }); 
         });
 
         events.on('ui:verificar-pin', async (pin) => {
             const storedPin = await storage.get('gestor_pin');
             if(pin === storedPin) {
                 events.emit('app:pinStatus', 'UNLOCKED');
-                events.emit('app:toast', { msg: "Bóveda Abierta", type: "success" });
+                events.emit('app:toast', { msg: "Bóveda desbloqueada", type: "success" });
             } else { 
                 events.emit('app:pinStatus', 'ERROR'); 
-                events.emit('app:toast', { msg: "PIN Incorrecto", type: "error" }); 
+                events.emit('app:toast', { msg: "Credenciales rechazadas", type: "error" }); 
             }
         });
 
         events.on('ui:guardar-pin', async (pin) => {
-            if(pin.length !== 4 || isNaN(pin)) return events.emit('app:toast', { msg: "Debe tener 4 números", type: "error" });
+            if(pin.length !== 4 || isNaN(pin)) return events.emit('app:toast', { msg: "La clave debe ser numérica (4 dígitos)", type: "error" });
             await storage.set('gestor_pin', pin); 
-            events.emit('app:toast', { msg: "Bóveda Activada", type: "success" }); 
+            events.emit('app:toast', { msg: "Protocolo de Bóveda activado", type: "success" }); 
             await this.comprobarBloqueo();
         });
 
@@ -195,12 +196,12 @@ const controller = {
                 await storage.remove('gestor_pin'); 
                 location.reload(); 
             } else { 
-                events.emit('app:toast', { msg: "PIN Incorrecto", type: "error" }); 
+                events.emit('app:toast', { msg: "Firma de autorización denegada", type: "error" }); 
             }
         });
 
         events.on('ui:exportar-pdf', (filtros) => {
-            events.emit('app:toast', { msg: "Generando Reporte Financiero PDF...", type: "success" });
+            events.emit('app:toast', { msg: "Compilando Reporte Financiero PDF...", type: "success" });
             const datosFiltrados = model.getLibroMayorData(filtros);
             PDFGenerator.exportarLibroMayor(datosFiltrados, filtros);
         });
@@ -232,8 +233,9 @@ const controller = {
         });
 
         events.on('ui:actualizar-distribucion-gastos', (config) => {
+            // Corrección de acceso de datos: pasamos la copia de seguridad segura `model.data.movimientos`
             const datosGenerados = FinancialMath.calcularDistribucionGastos(
-                model._rawData.movimientos, 
+                model.data.movimientos, 
                 config.contexto, 
                 config.temporalidad
             );
@@ -242,12 +244,14 @@ const controller = {
                 ChartRenderer.renderDistribucionGastos(datosGenerados, config.domId);
             }
             
-            UIMetrics.renderListaGastos(
-                datosGenerados, 
-                config.domId + '-lista', 
-                model.data.vistaUSD ? model.data.dolarBlue : 1, 
-                model.data.vistaUSD
-            );
+            if (typeof UIMetrics !== 'undefined' && UIMetrics.renderListaGastos) {
+                UIMetrics.renderListaGastos(
+                    datosGenerados, 
+                    config.domId + '-lista', 
+                    model.data.vistaUSD ? model.data.dolarBlue : 1, 
+                    model.data.vistaUSD
+                );
+            }
         });
 
         document.getElementById('eco-prestamo-id')?.addEventListener('change', (e) => {
@@ -286,7 +290,7 @@ const controller = {
                     } else if (tipo === 'Reparto Sociedad') {
                         lblMonto.innerText = 'Monto Retirado por el Socio (ARS)';
                     } else {
-                        lblMonto.innerText = tipo === 'Pago Préstamo' ? 'Valor de la Cuota a Pagar (ARS)' : 'Monto del Movimiento (Costo ARS)';
+                        lblMonto.innerText = tipo === 'Pago Préstamo' ? 'Valor de la Cuota a Pagar (ARS)' : 'Impacto Bruto del Movimiento (ARS)';
                     }
                 }
             }
@@ -364,7 +368,7 @@ const controller = {
 
     prepararEdicion(id) {
         const mov = model.getMovimiento(id);
-        if(!mov) return events.emit('app:toast', { msg: "Error al cargar registro", type: "error" });
+        if(!mov) return events.emit('app:toast', { msg: "Error de lectura de registro", type: "error" });
         
         this.state.editingId = id;
         TabFSM.transition('operar');
@@ -384,7 +388,7 @@ const controller = {
         let montoOperacion = isAltaPrestamo && capitalAdicional > 0 ? capitalAdicional : formData.monto;
 
         if(!formData.fecha || isNaN(montoOperacion) || montoOperacion <= 0) { 
-            return events.emit('app:toast', { msg: "Monto inválido o cero", type: "error" });
+            return events.emit('app:toast', { msg: "Impacto bruto (monto) inválido o inexistente", type: "error" });
         }
         
         let mov = { 
@@ -397,18 +401,18 @@ const controller = {
         if (formData.notas) mov.notas = formData.notas;
 
         if(['Compra','Venta','Dividendo'].includes(formData.tipo)) {
-            if(!formData.activo) return events.emit('app:toast', { msg: "Falta el Ticker", type: "error" });
+            if(!formData.activo) return events.emit('app:toast', { msg: "Ausencia de Ticker / Identificador", type: "error" });
             mov.activo = formData.activo;
             
             if(formData.tipo !== 'Dividendo') { 
-                if(formData.cant <= 0) return events.emit('app:toast', { msg: "Cantidad inválida", type: "error" });
+                if(formData.cant <= 0) return events.emit('app:toast', { msg: "Volumen de nominales inválido", type: "error" });
                 mov.cantidad = formData.cant;
             }
             if(formData.tipo === 'Compra') mov.sector = formData.sector || 'Otro';
             
             if(formData.tipo === 'Venta' && !this.state.editingId) { 
                 let holding = model.data.portafolio[formData.activo];
-                if(!holding || holding.cant < formData.cant) return events.emit('app:toast', { msg: "Sin nominales suficientes", type: "error" });
+                if(!holding || holding.cant < formData.cant) return events.emit('app:toast', { msg: "Déficit de nominales en portafolio", type: "error" });
             }
         } 
         else if(formData.tipo === 'Transferencia Ahorro' || formData.tipo === 'Ahorro') { 
@@ -430,7 +434,7 @@ const controller = {
         } 
         else if (formData.tipo === 'Amortización Deuda a Proveedor') {
             if (!formData.deudaAsociadaId) {
-                return events.emit('app:toast', { msg: "Debe seleccionar la deuda a amortizar", type: "error" });
+                return events.emit('app:toast', { msg: "Ausencia de vinculación de deuda", type: "error" });
             }
             mov.deudaAsociadaId = formData.deudaAsociadaId;
             mov.proveedor = formData.proveedor;
@@ -451,21 +455,21 @@ const controller = {
             mov.capital = montoOperacion;
             mov.cuotas = cuotasInput && cuotasInput.value ? parseInt(cuotasInput.value) : 1;
 
-            if(!mov.entidad) return events.emit('app:toast', { msg: "Falta el nombre de la entidad", type: "error" });
+            if(!mov.entidad) return events.emit('app:toast', { msg: "Identificación de entidad emisora faltante", type: "error" });
         } 
         else if (formData.tipo === 'Pago Préstamo') {
             mov.prestamoAsociado = formData.prestamoAsociado;
-            if(!mov.prestamoAsociado) return events.emit('app:toast', { msg: "Seleccione una deuda activa", type: "error" });
+            if(!mov.prestamoAsociado) return events.emit('app:toast', { msg: "Deuda bancaria no vinculada", type: "error" });
         }
         
         if (this.state.editingId) {
             model.actualizarMovimiento(this.state.editingId, mov);
-            events.emit('app:toast', { msg: "Registro actualizado exitosamente", type: "success" });
+            events.emit('app:toast', { msg: "Base de datos sincronizada (Actualización)", type: "success" });
             this.limpiarModoEdicion();
         } else {
             mov.id = Date.now(); 
             model.agregarMovimiento(mov);
-            events.emit('app:toast', { msg: "Operación registrada", type: "success" });
+            events.emit('app:toast', { msg: "Asiento contable consolidado", type: "success" });
             
             events.emit('ui:reset-form-operacion');
             if (['Gasto Local', 'Gasto Familiar', 'Ingreso Local'].includes(formData.tipo)) {
