@@ -10,8 +10,9 @@ import { FinancialMath } from './utils/financial.js';
 export const view = {
     DOM: {}, calMes: new Date().getMonth(), calAno: new Date().getFullYear(),
     currentModelData: null, activeTab: 'dashboard', activeFilter: 'MAX',
-    historialData: [], historialFiltros: null, vsRowHeight: 45, 
-    sectorColors: ['#09FBFF', '#EA00D9', '#BFFF00', '#F50BBA', '#FFD91F', '#FF871A', '#0042B7', '#FF66B2', '#2AAEB6'],
+    historialData: [], historialFiltros: null, vsRowHeight: 65, // Altura aumentada para el diseño Neon-Tech
+    // FASE 3: Paleta de Colores Vibrantes para gráficos e inyecciones JS
+    sectorColors: ['#00FF95', '#FF4D8A', '#2CE6D6', '#FCA311', '#6045F4', '#FF871A', '#7C13A4', '#1AA7EC', '#F71735'],
     chartTermometro: null,
     zenMode: false,
 
@@ -28,6 +29,7 @@ export const view = {
         return parseFloat(str) || 0;
     },
 
+    // FASE 3: Insignias Vibrantes (Mapeo estricto con FASE 1 CSS)
     getBadgeClass(tipo) {
         switch (tipo) {
             case 'Ingreso Local': return 'bg-ingreso-local';
@@ -68,7 +70,9 @@ export const view = {
             iconSvg.innerHTML = document.body.classList.contains('privacy-active') ? `<use href="#icon-privacy-off"></use>` : `<use href="#icon-privacy"></use>`;
         }
 
+        // FASE 3: Alineación Tabular y limpieza de inputs
         document.querySelectorAll('.format-number').forEach(input => {
+            input.style.textAlign = 'right'; // Forzar alineación a la derecha
             input.addEventListener('input', function() {
                 let clean = this.value.replace(/[^0-9,]/g, '');
                 let parts = clean.split(',');
@@ -76,6 +80,11 @@ export const view = {
                 if(parts.length > 2) parts.pop();
                 this.value = parts.join(',');
             });
+        });
+        
+        // Forzar alineación derecha en inputs puramente numéricos de uso financiero
+        document.querySelectorAll('input[type="number"].data-font').forEach(input => {
+            input.style.textAlign = 'right';
         });
     },
 
@@ -297,6 +306,16 @@ export const view = {
                 }
             }
         }, { passive: true });
+        
+        // FASE 3: Lógica Hover JS complementaria para el "Modo Foco"
+        this.DOM.vsTbody?.addEventListener('mouseover', (e) => {
+            let tr = e.target.closest('tr');
+            if(tr) tr.style.zIndex = '10';
+        });
+        this.DOM.vsTbody?.addEventListener('mouseout', (e) => {
+            let tr = e.target.closest('tr');
+            if(tr) tr.style.zIndex = '1';
+        });
     },
 
     bindBusinessEvents() {
@@ -471,7 +490,7 @@ export const view = {
         if (this.DOM.tituloOperarEco) this.DOM.tituloOperarEco.innerText = "Editar Movimiento Local";
         if (this.DOM.tituloConfirmar) this.DOM.tituloConfirmar.innerText = "Guardar Cambios";
         if (this.DOM.btnGuardarOp) {
-            this.DOM.btnGuardarOp.innerHTML = `<svg width="18" height="18"><use href="#icon-edit"></use></svg> Sobrescribir Registro`;
+            this.DOM.btnGuardarOp.innerHTML = `<span style="display:inline-flex; gap:8px; align-items:center;"><svg width="18" height="18"><use href="#icon-edit"></use></svg> Sobrescribir Registro</span>`;
             this.DOM.btnGuardarOp.classList.add('btn--warning');
         }
         if (this.DOM.btnCancelarEdicion) this.DOM.btnCancelarEdicion.classList.remove('is-hidden');
@@ -525,7 +544,6 @@ export const view = {
             this.adaptarFormularioEconomia();
         }
     },
-
     setupSystemListeners() {
         events.on('app:toast', (data) => this.toast(data.msg, data.type));
         events.on('ui:poblar-formulario-edicion', (mov) => this.poblarFormularioEdicion(mov));
@@ -629,10 +647,10 @@ export const view = {
 
             if (this.DOM.tituloOperarBursatil) this.DOM.tituloOperarBursatil.innerText = "Operar Inversiones";
             if (this.DOM.tituloOperarEco) this.DOM.tituloOperarEco.innerText = "Flujo de Caja (Local/Vida)";
-            if (this.DOM.tituloConfirmar) this.DOM.tituloConfirmar.innerText = "Confirmar Transacción";
+            if (this.DOM.tituloConfirmar) this.DOM.tituloConfirmar.innerText = "Aprobación de la Transacción";
             
             if (this.DOM.btnGuardarOp) {
-                this.DOM.btnGuardarOp.innerHTML = "Registrar en Base de Datos";
+                this.DOM.btnGuardarOp.innerHTML = "Consolidar Registro";
                 this.DOM.btnGuardarOp.classList.remove('btn--warning');
             }
             if (this.DOM.btnCancelarEdicion) this.DOM.btnCancelarEdicion.classList.add('is-hidden');
@@ -868,6 +886,8 @@ export const view = {
             this.DOM.resSimMeses.className = `data-font ${mesesSobrevida > 6 ? 'texto-verde' : (mesesSobrevida > 3 ? 'texto-warning' : 'texto-rojo')}`;
         }
     },
+
+    // FASE 3: Aplicación de Mapeo de Profundidad y Sombras Neón en Dashboard
     renderDashboardBase(modelData) {
         ErrorHandler.catchBoundary('Dashboard Principal', 'dashboard', () => {
             let s = modelData.stats;
@@ -884,8 +904,11 @@ export const view = {
                 this.DOM.dashHealthScore.style.color = scColor;
                 this.DOM.dashHealthLabel.innerText = scLabel;
                 this.DOM.dashHealthLabel.style.color = scColor;
+                
+                // Efecto de brillo de contenedor dinámico basado en la paleta FASE 1
+                let rgbaColor = scColor.includes('up') ? 'rgba(0, 255, 149, 0.2)' : (scColor.includes('warning') ? 'rgba(252, 163, 17, 0.2)' : 'rgba(247, 23, 53, 0.2)');
                 this.DOM.dashHealthScore.closest('.card').style.borderColor = scColor;
-                this.DOM.dashHealthScore.closest('.card').style.boxShadow = `0 0 20px ${scColor.replace('var(', '').replace(')', '') === '--color-up' ? 'rgba(191, 255, 0, 0.2)' : (scColor.replace('var(', '').replace(')', '') === '--color-warning' ? 'rgba(255, 217, 31, 0.2)' : 'rgba(234, 0, 217, 0.2)')}`;
+                this.DOM.dashHealthScore.closest('.card').style.boxShadow = `0 0 20px ${rgbaColor}`;
             }
 
             if(this.DOM.lblDolar) this.DOM.lblDolar.innerText = modelData.dolarBlue;
@@ -908,9 +931,10 @@ export const view = {
             let arrLiquidez = (s.historyLiquidez || []).slice(-histLength);
             let arrInvertido = (s.historyInvertido || []).slice(-histLength);
             
-            ChartRenderer.drawDashboardSparkline('spark-dash-total', arrPatrimonio, '#09FBFF');
-            ChartRenderer.drawDashboardSparkline('spark-dash-liquidez', arrLiquidez, '#BFFF00');
-            ChartRenderer.drawDashboardSparkline('spark-dash-invertido', arrInvertido, '#F50BBA');
+            // FASE 3: Gráficos de Tendencia con colores FASE 1 (Primario, Menta Neón, Rosa Plasma)
+            ChartRenderer.drawDashboardSparkline('spark-dash-total', arrPatrimonio, '#6045F4'); // Primario
+            ChartRenderer.drawDashboardSparkline('spark-dash-liquidez', arrLiquidez, '#00FF95'); // Menta Neón
+            ChartRenderer.drawDashboardSparkline('spark-dash-invertido', arrInvertido, '#FF4D8A'); // Accent
 
             if (this.DOM.lblPatSub1) {
                 let cagrStr = `<span class="${s.cagr >= 0 ? 'texto-verde' : 'texto-rojo'} privacy-mask" style="font-weight:900;">${(s.cagr || 0).toFixed(2)}%</span>`;
@@ -1024,15 +1048,14 @@ export const view = {
             let meses = stats.numMesesOperativos || 1;
             let val = monto;
             
-            // Lógica matemática rigurosa para proyecciones precisas basadas en los meses operativos reales
             if (temporalidad.toLowerCase() === 'anual') {
                 val = monto / Math.max(1, meses / 12);
             } else if (temporalidad.toLowerCase() === 'mensual') {
                 val = monto / meses;
             } else if (temporalidad.toLowerCase() === 'semanal') {
-                val = (monto / meses) / 4.3333; // Semanas promedio por mes
+                val = (monto / meses) / 4.3333; 
             } else if (temporalidad.toLowerCase() === 'diario') {
-                val = (monto / meses) / 30.416; // Días promedio por mes
+                val = (monto / meses) / 30.416; 
             }
             return Math.max(0, val);
         };
@@ -1066,6 +1089,7 @@ export const view = {
         this.DOM.flowPctAhorro.innerText = ((ah / iRef) * 100).toFixed(1) + "%";
     },
 
+    // FASE 3: Tablas y Rendimiento Físico adaptados al DOM Neon-Tech (Esqueletos Tonalizados)
     renderFinanzaGeneral(modelData) {
         ErrorHandler.catchBoundary('Finanzas Generales', 'finanza-general', () => {
             let s = modelData.stats;
@@ -1108,7 +1132,7 @@ export const view = {
                 for(let i=0; i<=6; i++) { dataArr.push(s.termometroDias[i] || 0); }
                 
                 const getCSS = (varName, fallBack) => getComputedStyle(document.documentElement).getPropertyValue(varName).trim() || fallBack;
-                const colorUp = getCSS('--color-up', '#BFFF00');
+                const colorUp = getCSS('--color-up', '#00FF95'); // Actualizado a FASE 1
 
                 if (this.chartTermometro) {
                     this.chartTermometro.data.datasets[0].data = dataArr;
@@ -1228,7 +1252,6 @@ export const view = {
                     provHtml.push('<tr><td colspan="2" style="text-align:center; padding: 60px; color:var(--text-muted); font-size: 1.1rem; font-weight: 800;"><svg width="64" height="64" style="margin-bottom:15px; opacity:0.5;"><use href="#icon-empty"></use></svg><br>Sin registros logísticos recientes</td></tr>');
                 } else {
                     provArray.forEach((p, index) => {
-                        // Resaltamos el top proveedor con un color magenta
                         let pColor = index === 0 ? 'var(--color-accent)' : 'var(--color-primary)';
                         provHtml.push(
                             `<tr style="border-bottom: 1px solid var(--border-color); background: var(--bg-input); transition: transform 0.2s; cursor: default;">
@@ -1259,7 +1282,6 @@ export const view = {
                         oldSubDash.remove();
                     }
 
-                    // Nuevo Sub-Dashboard Cyber-Finance superior para Pasivos
                     let subDash = document.createElement('div');
                     subDash.className = 'pasivos-subdash grid-4';
                     subDash.style.gap = '15px';
@@ -1339,7 +1361,7 @@ export const view = {
                 let headerElement = this.DOM.tbodyDeudasProveedores.closest('.card').querySelector('h2');
                 if (headerElement) {
                     headerElement.innerHTML = `Auditoría de Cuentas Corrientes (Proveedores) 
-                        <span class="data-font texto-warning privacy-mask" style="float:right; font-size:1.2rem; background: rgba(255, 217, 31, 0.1); padding: 5px 15px; border-radius: 8px; border: 1px solid var(--color-warning);">
+                        <span class="data-font texto-warning privacy-mask" style="float:right; font-size:1.2rem; background: rgba(252, 163, 17, 0.1); padding: 5px 15px; border-radius: 8px; border: 1px solid var(--color-warning);">
                             Total Pendiente: ${this.zenMode ? '---' : '$' + this.fmtStr(totalDeudaProveedores, 1, false)}
                         </span>`;
                 }
@@ -1377,7 +1399,6 @@ export const view = {
             }
         });
     },
-    
     renderAjustesInflacion() {
         ErrorHandler.catchBoundary('Ajustes de Inflación', 'lista-inflacion', () => {
             if(!this.currentModelData || !this.currentModelData.inflacion) return;
@@ -1387,8 +1408,8 @@ export const view = {
             let inflacion = this.currentModelData.inflacion;
             let htmlBuffer = [
                 '<div style="max-height: 250px; overflow-y: auto; background:var(--bg-base); border: 1px solid var(--border-color); border-radius:12px;">',
-                '<table style="width:100%; text-align:left; font-size:14px; border-collapse: collapse;">',
-                '<thead style="position: sticky; top: 0; background: var(--bg-panel); backdrop-filter: var(--glass-blur);"><tr><th style="padding:15px; font-weight: 900; text-transform: uppercase;">Período</th><th style="padding:15px; font-weight: 900; text-transform: uppercase;">Índice</th><th style="padding:15px; text-align:right;"></th></tr></thead>',
+                '<table class="dataTable-table" style="width:100%; text-align:left; border-collapse: collapse;">',
+                '<thead style="position: sticky; top: 0; background: var(--bg-panel); backdrop-filter: var(--glass-blur);"><tr><th style="padding:15px; font-weight: 900; text-transform: uppercase;">Período</th><th style="padding:15px; font-weight: 900; text-transform: uppercase; text-align:right;">Índice</th><th style="padding:15px; text-align:right;"></th></tr></thead>',
                 '<tbody>'
             ];
 
@@ -1402,7 +1423,7 @@ export const view = {
                 htmlBuffer.push(
                     `<tr style="border-bottom: 1px solid var(--border-color); transition: background 0.2s; background: var(--bg-input);">`,
                     `<td style="padding: 15px; color:var(--text-main); font-size: 1rem;"><strong style="letter-spacing: 0.5px;">${DOMPurify.sanitize(k)}</strong></td>`,
-                    `<td class="data-font privacy-mask texto-warning" style="padding:15px; font-size: 1.1rem;">${inflacion[k]}%</td>`,
+                    `<td class="data-font privacy-mask texto-warning" style="padding:15px; font-size: 1.1rem; text-align:right;">${inflacion[k]}%</td>`,
                     `<td style="text-align:right; padding:15px;"><button class="btn--danger" style="padding: 6px 12px; font-size:11px; border-radius: 6px;" data-action="borrar-inflacion" data-mes="${k}" title="Borrar">Eliminar</button></td>`,
                     `</tr>`
                 );
@@ -1444,10 +1465,15 @@ export const view = {
                 const row = document.importNode(template, true);
                 let mainColor = this.sectorColors[cIdx];
 
-                row.querySelector('.td-avatar').innerHTML = `<div class="asset-wrapper"><span class="asset-badge" style="border-left: 4px solid ${mainColor}; background: ${mainColor}22; color:${mainColor}; box-shadow: -2px 0 10px ${mainColor}40;">${actSafe}</span><div><span style="font-size:11px;color:var(--text-muted); font-weight: 900; text-transform:uppercase;">${secSafe}</span></div></div>`;
+                row.querySelector('.td-avatar').innerHTML = `<div class="asset-wrapper" style="display:flex; align-items:center; gap:12px;"><span class="asset-badge" style="padding:6px 12px; border-radius:8px; font-weight:900; border-left: 4px solid ${mainColor}; background: ${mainColor}22; color:${mainColor}; box-shadow: -2px 0 10px ${mainColor}40;">${actSafe}</span><div><span style="font-size:11px;color:var(--text-muted); font-weight: 900; text-transform:uppercase;">${secSafe}</span></div></div>`;
                 row.querySelector('.td-cant').innerHTML = `<strong style="font-size: 1.1rem;">${d.cant}</strong>`;
+                row.querySelector('.td-cant').style.textAlign = 'right';
+                
                 row.querySelector('.td-ppp').innerHTML = this.zenMode ? '---' : this.fmt(ppp, modelData.dolarBlue, modelData.vistaUSD);
+                row.querySelector('.td-ppp').style.textAlign = 'right';
+                
                 row.querySelector('.td-costo').innerHTML = this.zenMode ? '---' : this.fmt(d.costo, modelData.dolarBlue, modelData.vistaUSD);
+                row.querySelector('.td-costo').style.textAlign = 'right';
                 
                 let apiDataObj = cachePrecios[activo];
                 let apiData = apiDataObj ? apiDataObj.data : null;
@@ -1456,6 +1482,11 @@ export const view = {
                 let tdGnr = row.querySelector('.td-gnr');
                 let tdSma50 = row.querySelector('.td-sma50');
                 let tdSma200 = row.querySelector('.td-sma200');
+                
+                tdPrecio.style.textAlign = 'right';
+                tdGnr.style.textAlign = 'right';
+                tdSma50.style.textAlign = 'right';
+                tdSma200.style.textAlign = 'right';
 
                 if(apiData && apiData.price) {
                     let precio = apiData.price;
@@ -1463,16 +1494,16 @@ export const view = {
                     let ganancia = valorMercado - d.costo;
                     let pct = (ganancia / d.costo) * 100;
                     
-                    let pColor = document.documentElement.getAttribute('data-theme') === 'light' ? '#000000' : 'var(--text-main)';
-                    tdPrecio.innerHTML = `<span class="td-sensitive"><strong style="font-size: 1.1rem; color: ${pColor};">${this.zenMode ? '---' : this.fmt(precio, modelData.dolarBlue, modelData.vistaUSD)}</strong></span>`;
-                    tdGnr.innerHTML = `<span class="td-sensitive ${ganancia>=0?'texto-verde':'texto-rojo'}" style="font-size: 1.1rem;">${ganancia>=0?'+':''}${this.zenMode ? pct.toFixed(2)+'%' : this.fmt(ganancia, modelData.dolarBlue, modelData.vistaUSD)} ${this.zenMode ? '' : '<small style="font-size: 0.85rem; opacity: 0.8;">('+pct.toFixed(2)+'%)</small>'}</span>`;
+                    let pColor = document.documentElement.getAttribute('data-theme') === 'light' ? '#0A0D14' : 'var(--text-main)';
+                    tdPrecio.innerHTML = `<span class="td-sensitive"><strong style="font-size: 1.15rem; color: ${pColor};">${this.zenMode ? '---' : this.fmt(precio, modelData.dolarBlue, modelData.vistaUSD)}</strong></span>`;
+                    tdGnr.innerHTML = `<span class="td-sensitive ${ganancia>=0?'texto-verde':'texto-rojo'}" style="font-size: 1.15rem;">${ganancia>=0?'+':''}${this.zenMode ? pct.toFixed(2)+'%' : this.fmt(ganancia, modelData.dolarBlue, modelData.vistaUSD)} ${this.zenMode ? '' : '<small style="font-size: 0.85rem; opacity: 0.8;">('+pct.toFixed(2)+'%)</small>'}</span>`;
                     
                     tdSma50.innerHTML = apiData.sma50 ? (this.zenMode ? '---' : `<span class="privacy-mask">${this.fmt(apiData.sma50, modelData.dolarBlue, modelData.vistaUSD)}</span>`) : '-';
                     tdSma200.innerHTML = apiData.sma200 ? (this.zenMode ? '---' : `<span class="privacy-mask">${this.fmt(apiData.sma200, modelData.dolarBlue, modelData.vistaUSD)}</span>`) : '-';
                     
                     if(apiData.history && apiData.history.length > 0) {
                         const getCSS = (varName, fallBack) => getComputedStyle(document.documentElement).getPropertyValue(varName).trim() || fallBack;
-                        let sparkColor = apiData.history[apiData.history.length-1] >= apiData.history[0] ? getCSS('--color-up', '#BFFF00') : getCSS('--color-down', '#EA00D9');
+                        let sparkColor = apiData.history[apiData.history.length-1] >= apiData.history[0] ? getCSS('--color-up', '#00FF95') : getCSS('--color-down', '#F71735');
                         sparkWrap.id = `spark-${actSafe}`;
                         sparkWrap.style.height = '35px';
                         sparkWrap.style.width = '70px';
@@ -1500,10 +1531,10 @@ export const view = {
                     expSectorialValor[d.sector] = (expSectorialValor[d.sector]||0) + d.costo;
                     totalInvertidoMercado += d.costo;
                 } else {
-                    tdPrecio.innerHTML = `<div class="skeleton" style="width:70px;"></div>`;
-                    tdGnr.innerHTML = `<div class="skeleton" style="width:100px;"></div>`;
-                    tdSma50.innerHTML = `<div class="skeleton" style="width:70px;"></div>`;
-                    tdSma200.innerHTML = `<div class="skeleton" style="width:70px;"></div>`;
+                    tdPrecio.innerHTML = `<div class="skeleton" style="width:80px; margin-left:auto;"></div>`;
+                    tdGnr.innerHTML = `<div class="skeleton" style="width:100px; margin-left:auto;"></div>`;
+                    tdSma50.innerHTML = `<div class="skeleton" style="width:70px; margin-left:auto;"></div>`;
+                    tdSma200.innerHTML = `<div class="skeleton" style="width:70px; margin-left:auto;"></div>`;
                     sparkWrap.innerHTML = `<div class="skeleton" style="width:70px; height:35px; border-radius:6px;"></div>`;
                 }
                 fragment.appendChild(row);
@@ -1551,22 +1582,22 @@ export const view = {
 
         let wlBuffer = [];
         wlData.forEach(w => {
-            let precioStr = '<div class="skeleton" style="width: 80px;"></div>';
+            let precioStr = '<div class="skeleton" style="width: 80px; margin-left:auto;"></div>';
             let difStr = '-';
             
             if (w.precioActual !== null && w.precioActual !== undefined) {
-                precioStr = `<strong class="privacy-mask" style="font-size: 1.1rem;">$${this.fmtStr(w.precioActual, this.currentModelData.dolarBlue, this.currentModelData.vistaUSD)}</strong>`;
+                precioStr = `<strong class="privacy-mask" style="font-size: 1.15rem;">$${this.fmtStr(w.precioActual, this.currentModelData.dolarBlue, this.currentModelData.vistaUSD)}</strong>`;
                 let colorClass = w.distancia >= 0 ? 'texto-verde' : 'texto-rojo';
-                difStr = `<span class="${colorClass}" style="font-size: 1.1rem;">${w.distancia > 0 ? '+' : ''}${w.distancia.toFixed(2)}%</span>`;
+                difStr = `<span class="${colorClass}" style="font-size: 1.15rem;">${w.distancia > 0 ? '+' : ''}${w.distancia.toFixed(2)}%</span>`;
             }
 
             wlBuffer.push(
                 `<tr style="transition: background 0.2s; background: var(--bg-input); border-bottom: 1px solid var(--border-color);">`,
-                `<td style="padding: 15px 20px;"><strong style="color: var(--color-primary); font-size: 1.1rem; text-shadow: var(--shadow-neon-primary);">${DOMPurify.sanitize(w.activo)}</strong></td>`,
-                `<td class="data-font" style="padding: 15px 20px;">${this.zenMode ? '---' : precioStr}</td>`,
-                `<td class="data-font privacy-mask" style="padding: 15px 20px; font-size: 1.1rem;">${this.zenMode ? '---' : '$' + this.fmtStr(w.precioObjetivo, this.currentModelData.dolarBlue, this.currentModelData.vistaUSD)}</td>`,
-                `<td class="data-font" style="padding: 15px 20px;">${this.zenMode ? '---' : difStr}</td>`,
-                `<td style="padding: 15px 20px;"><button class="btn--danger" style="padding: 6px 12px; font-size:11px; border-radius: 6px;" data-action="del-watchlist" data-id="${w.activo}" title="Eliminar del Radar">Quitar</button></td>`,
+                `<td style="padding: 15px 20px;"><strong style="color: var(--color-primary); font-size: 1.15rem; text-shadow: var(--shadow-neon-primary);">${DOMPurify.sanitize(w.activo)}</strong></td>`,
+                `<td class="data-font" style="padding: 15px 20px; text-align:right;">${this.zenMode ? '---' : precioStr}</td>`,
+                `<td class="data-font privacy-mask" style="padding: 15px 20px; font-size: 1.15rem; text-align:right;">${this.zenMode ? '---' : '$' + this.fmtStr(w.precioObjetivo, this.currentModelData.dolarBlue, this.currentModelData.vistaUSD)}</td>`,
+                `<td class="data-font" style="padding: 15px 20px; text-align:right;">${this.zenMode ? '---' : difStr}</td>`,
+                `<td style="padding: 15px 20px; text-align:center;"><button class="btn--danger" style="padding: 8px 16px; font-size:11px; border-radius: 8px;" data-action="del-watchlist" data-id="${w.activo}" title="Eliminar del Radar">Quitar</button></td>`,
                 `</tr>`
             );
         });
@@ -1614,7 +1645,6 @@ export const view = {
             return;
         }
 
-        // Virtual Scrolling mantiene su alta performance inyectando filas sobre demanda
         this.DOM.vsSpacer.style.height = `${datosAmostrar.length * this.vsRowHeight}px`;
 
         const scrollTop = this.DOM.vsViewport.scrollTop;
@@ -1655,19 +1685,19 @@ export const view = {
                     let colorClass = m.resultadoCalculado >= 0 ? 'texto-verde' : 'texto-rojo';
                     let tag = this.currentModelData.vistaUSD ? `<span class="tag--usd">USD</span>` : `<span class="tag--ars">ARS</span>`;
                     let valStr = this.fmtStr(Math.abs(m.resultadoCalculado), this.currentModelData.dolarBlue, this.currentModelData.vistaUSD);
-                    res = `<div style="display:inline-flex; align-items:center; gap:8px; white-space:nowrap;">${this.zenMode ? '' : tag} <strong class="data-font ${colorClass} privacy-mask" style="font-size: 1.1rem;">${sign}${this.zenMode ? '---' : valStr}</strong></div>`;
+                    res = `<div style="display:inline-flex; align-items:center; justify-content:flex-end; width:100%; gap:8px; white-space:nowrap;">${this.zenMode ? '' : tag} <strong class="data-font ${colorClass} privacy-mask" style="font-size: 1.15rem;">${sign}${this.zenMode ? '---' : valStr}</strong></div>`;
                 }
 
-                row.querySelector('.td-fecha').innerHTML = `<span style="font-weight: 800; color: var(--text-muted);">${m.fecha}</span>`;
+                row.querySelector('.td-fecha').innerHTML = `<span style="font-weight: 800; color: var(--text-muted); font-size: 0.95rem;">${m.fecha}</span>`;
                 row.querySelector('.td-tipo').innerHTML = `<span class="badge ${badgeClass}" style="box-shadow: none;">${m.tipo}</span>`;
                 row.querySelector('.td-desc').innerHTML = desc;
-                row.querySelector('.td-flujo').innerHTML = `<strong style="font-size: 1.1rem; color: var(--text-main);">${this.zenMode ? '---' : this.fmt(m.monto, this.currentModelData.dolarBlue, this.currentModelData.vistaUSD)}</strong>`;
+                row.querySelector('.td-flujo').innerHTML = `<strong style="font-size: 1.15rem; color: var(--text-main);">${this.zenMode ? '---' : this.fmt(m.monto, this.currentModelData.dolarBlue, this.currentModelData.vistaUSD)}</strong>`;
                 row.querySelector('.td-res').innerHTML = res;
                 row.querySelector('.td-acc').innerHTML = `
-                    <button class="btn--icon" style="display:inline-flex; padding:8px; margin-right:4px;" data-action="editar-operacion" data-id="${m.id}" title="Editar Transacción">
+                    <button class="btn--icon" style="display:inline-flex; padding:10px; margin-right:4px;" data-action="editar-operacion" data-id="${m.id}" title="Editar Transacción">
                         <svg width="18" height="18"><use href="#icon-edit"></use></svg>
                     </button>
-                    <button class="btn--danger" style="display:inline-flex; padding:8px; border-radius:6px; box-shadow: none;" data-action="borrar-operacion" data-id="${m.id}" title="Eliminar Registro">
+                    <button class="btn--danger" style="display:inline-flex; padding:10px; border-radius:10px; box-shadow: none;" data-action="borrar-operacion" data-id="${m.id}" title="Eliminar Registro">
                         <svg width="18" height="18"><use href="#icon-trash"></use></svg>
                     </button>
                 `;
@@ -1700,19 +1730,19 @@ export const view = {
                         let colorClass = m.resultadoCalculado >= 0 ? 'texto-verde' : 'texto-rojo';
                         let tag = this.currentModelData.vistaUSD ? `<span class="tag--usd">USD</span>` : `<span class="tag--ars">ARS</span>`;
                         let valStr = this.fmtStr(Math.abs(m.resultadoCalculado), this.currentModelData.dolarBlue, this.currentModelData.vistaUSD);
-                        res = `<div style="display:inline-flex; align-items:center; gap:8px; white-space:nowrap;">${this.zenMode ? '' : tag} <strong class="data-font ${colorClass} privacy-mask" style="font-size: 1.1rem;">${sign}${this.zenMode ? '---' : valStr}</strong></div>`;
+                        res = `<div style="display:inline-flex; align-items:center; justify-content:flex-end; width:100%; gap:8px; white-space:nowrap;">${this.zenMode ? '' : tag} <strong class="data-font ${colorClass} privacy-mask" style="font-size: 1.15rem;">${sign}${this.zenMode ? '---' : valStr}</strong></div>`;
                     }
 
-                    tr.querySelector('.td-fecha').innerHTML = `<span style="font-weight: 800; color: var(--text-muted);">${m.fecha}</span>`;
+                    tr.querySelector('.td-fecha').innerHTML = `<span style="font-weight: 800; color: var(--text-muted); font-size: 0.95rem;">${m.fecha}</span>`;
                     tr.querySelector('.td-tipo').innerHTML = `<span class="badge ${badgeClass}" style="box-shadow: none;">${m.tipo}</span>`;
                     tr.querySelector('.td-desc').innerHTML = desc;
-                    tr.querySelector('.td-flujo').innerHTML = `<strong style="font-size: 1.1rem; color: var(--text-main);">${this.zenMode ? '---' : this.fmt(m.monto, this.currentModelData.dolarBlue, this.currentModelData.vistaUSD)}</strong>`;
+                    tr.querySelector('.td-flujo').innerHTML = `<strong style="font-size: 1.15rem; color: var(--text-main);">${this.zenMode ? '---' : this.fmt(m.monto, this.currentModelData.dolarBlue, this.currentModelData.vistaUSD)}</strong>`;
                     tr.querySelector('.td-res').innerHTML = res;
                     tr.querySelector('.td-acc').innerHTML = `
-                        <button class="btn--icon" style="display:inline-flex; padding:8px; margin-right:4px;" data-action="editar-operacion" data-id="${m.id}" title="Editar Transacción">
+                        <button class="btn--icon" style="display:inline-flex; padding:10px; margin-right:4px;" data-action="editar-operacion" data-id="${m.id}" title="Editar Transacción">
                             <svg width="18" height="18"><use href="#icon-edit"></use></svg>
                         </button>
-                        <button class="btn--danger" style="display:inline-flex; padding:8px; border-radius:6px; box-shadow: none;" data-action="borrar-operacion" data-id="${m.id}" title="Eliminar Registro">
+                        <button class="btn--danger" style="display:inline-flex; padding:10px; border-radius:10px; box-shadow: none;" data-action="borrar-operacion" data-id="${m.id}" title="Eliminar Registro">
                             <svg width="18" height="18"><use href="#icon-trash"></use></svg>
                         </button>
                     `;
@@ -1721,6 +1751,7 @@ export const view = {
         }
         this.DOM.vsTable.style.transform = `translateY(${startIndex * this.vsRowHeight}px)`;
     },
+
     renderCalendario(modelData) {
         ErrorHandler.catchBoundary('Calendario Financiero', 'calendario', () => {
             const meses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
@@ -1757,9 +1788,17 @@ export const view = {
                 
                 let dotsContainer = wrapper.querySelector('.cal-dots');
                 movs.forEach(m => {
-                    let c = this.getBadgeClass(m.tipo);
+                    // Extraer solo el background color principal de la insignia
+                    let tempDiv = document.createElement('div');
+                    tempDiv.className = `badge ${this.getBadgeClass(m.tipo)}`;
+                    document.body.appendChild(tempDiv);
+                    let computedColor = getComputedStyle(tempDiv).color;
+                    document.body.removeChild(tempDiv);
+                    
                     let dot = document.createElement('div');
-                    dot.className = `cal-dot ${c}`;
+                    dot.className = `cal-dot`;
+                    dot.style.backgroundColor = computedColor;
+                    dot.style.color = computedColor;
                     dotsContainer.appendChild(dot);
                 });
                 
@@ -1779,7 +1818,7 @@ export const view = {
                         detailBuffer.push(
                             `<div style="padding:15px 20px; background:var(--bg-input); border-radius:12px; margin-bottom:12px; display:flex; justify-content:space-between; align-items:center; border: 1px solid var(--border-color); box-shadow: var(--shadow-card); transition: transform 0.2s;">`,
                             `<div><span class="badge ${c}" style="margin-bottom:8px;">${m.tipo}</span><br><span style="font-size:1rem; font-weight: 700;">${desc}</span></div>`,
-                            `<strong class="data-font ${m.tipo==='Venta'?'texto-primario':''}" style="font-size: 1.2rem; font-weight: 900;">${this.zenMode ? '---' : this.fmt(m.monto, modelData.dolarBlue, modelData.vistaUSD)}</strong>`,
+                            `<strong class="data-font ${m.tipo==='Venta'?'texto-primario':''}" style="font-size: 1.2rem; font-weight: 900; text-align:right;">${this.zenMode ? '---' : this.fmt(m.monto, modelData.dolarBlue, modelData.vistaUSD)}</strong>`,
                             `</div>`
                         );
                     });
@@ -1816,7 +1855,7 @@ export const view = {
                     this.DOM.descCorrelacion.innerText = conc.label;
                     let color = conc.hhi < 1500 ? 'var(--color-up)' : (conc.hhi < 2500 ? 'var(--color-warning)' : 'var(--color-down)');
                     this.DOM.valCorrelacion.style.color = color;
-                    this.DOM.valCorrelacion.style.textShadow = `0 0 15px ${color}`;
+                    this.DOM.valCorrelacion.style.textShadow = `0 0 15px ${color.replace('var(', '').replace(')', '') === '--color-up' ? 'rgba(0, 255, 149, 0.4)' : (color.includes('warning') ? 'rgba(252, 163, 17, 0.4)' : 'rgba(247, 23, 53, 0.4)')}`;
                 } else {
                     this.DOM.valCorrelacion.innerText = '-';
                     this.DOM.descCorrelacion.innerText = 'Faltan datos';
@@ -1824,7 +1863,7 @@ export const view = {
             }
 
             if (this.DOM.infoAtribucionSector) {
-                let attribBuffer = ['<table style="width:100%; font-size:1rem; margin-top:10px; border-collapse: separate; border-spacing: 0 5px;">'];
+                let attribBuffer = ['<table class="dataTable-table" style="width:100%; font-size:1rem; margin-top:10px; border-collapse: separate; border-spacing: 0 5px;">'];
                 let sectores = Object.entries(s.atribucionSector || {}).sort((a,b) => b[1] - a[1]);
                 
                 if(sectores.length === 0) {
@@ -1835,8 +1874,8 @@ export const view = {
                         let signo = resultado > 0 ? '+' : (resultado < 0 ? '-' : '');
                         attribBuffer.push(
                             `<tr style="background: var(--bg-input);">`,
-                            `<td style="padding: 12px 20px; color:var(--text-main); font-weight: 900; border-radius: 8px 0 0 8px;">${DOMPurify.sanitize(sector)}</td>`,
-                            `<td class="data-font privacy-mask" style="text-align:right; color:${color}; font-weight:900; font-size: 1.1rem; padding: 12px 20px; border-radius: 0 8px 8px 0;">${signo}${this.zenMode ? '---' : this.fmtStr(Math.abs(resultado), modelData.dolarBlue, modelData.vistaUSD)}</td>`,
+                            `<td style="padding: 15px 20px; color:var(--text-main); font-weight: 900; border-radius: 12px 0 0 12px;">${DOMPurify.sanitize(sector)}</td>`,
+                            `<td class="data-font privacy-mask" style="text-align:right; color:${color}; font-weight:900; font-size: 1.15rem; padding: 15px 20px; border-radius: 0 12px 12px 0;">${signo}${this.zenMode ? '---' : this.fmtStr(Math.abs(resultado), modelData.dolarBlue, modelData.vistaUSD)}</td>`,
                             `</tr>`
                         );
                     });
@@ -1852,7 +1891,7 @@ export const view = {
             }
 
             let cagrColor = s.cagr >= 0 ? 'texto-verde' : 'texto-rojo';
-            document.getElementById('info-cagr').innerHTML = `<span class="${cagrColor}" style="font-size: 1.2rem; font-weight: 900;">${(s.cagr || 0).toFixed(2)}%</span>`;
+            document.getElementById('info-cagr').innerHTML = `<span class="${cagrColor}" style="font-size: 3rem; font-weight: 900;">${(s.cagr || 0).toFixed(2)}%</span>`;
 
             if(!modelData.movimientos || modelData.movimientos.length === 0) {
                 wrapDD.innerHTML = '<div style="text-align:center; padding: 60px; color:var(--text-muted); font-size: 1.1rem; font-weight: 800;"><svg width="64" height="64" style="margin-bottom:15px; opacity:0.5;"><use href="#icon-empty"></use></svg><br>Sin datos suficientes para calcular riesgos</div>';
@@ -1892,12 +1931,12 @@ export const view = {
                 dataFechas.push(f);
             });
 
-            document.getElementById('info-max-patrimonio').innerHTML = `<span style="font-size: 1.2rem; font-weight: 900; color: var(--color-primary); text-shadow: var(--shadow-neon-primary);">${this.zenMode ? '---' : this.fmt(peak, modelData.dolarBlue, modelData.vistaUSD)}</span>`;
+            document.getElementById('info-max-patrimonio').innerHTML = `<span style="font-size: 3rem; font-weight: 900; color: var(--color-primary); text-shadow: var(--shadow-neon-primary);">${this.zenMode ? '---' : this.fmt(peak, modelData.dolarBlue, modelData.vistaUSD)}</span>`;
             
             let maxDD = Math.min(...dataDD);
             if(!isFinite(maxDD)) maxDD = 0;
-            document.getElementById('info-max-dd').innerHTML = `<span style="font-size: 1.2rem; font-weight: 900; color: var(--color-down); text-shadow: var(--shadow-neon-down);">${maxDD.toFixed(2)}%</span>`;
-            document.getElementById('info-current-dd').innerHTML = `<span style="font-size: 0.9rem; font-weight: 800; color: var(--text-muted);">Drawdown Actual: ${(dataDD[dataDD.length-1] || 0).toFixed(2)}%</span>`;
+            document.getElementById('info-max-dd').innerHTML = `<span style="font-size: 3rem; font-weight: 900; color: var(--color-down); text-shadow: var(--shadow-neon-down);">${maxDD.toFixed(2)}%</span>`;
+            document.getElementById('info-current-dd').innerHTML = `<span style="font-size: 1rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase;">Drawdown Actual: ${(dataDD[dataDD.length-1] || 0).toFixed(2)}%</span>`;
 
             ChartRenderer.renderDrawdown(dataFechas, dataDD);
 
@@ -1931,7 +1970,7 @@ export const view = {
                         let numTxt = returnPorcentual === 0 ? '0%' : (returnPorcentual>0?'+':'') + returnPorcentual.toFixed(1) + '%';
                         let divValStr = this.fmtStr(modelData.vistaUSD ? (dataMes.pnlPuro/modelData.dolarBlue) : dataMes.pnlPuro, modelData.dolarBlue, modelData.vistaUSD);
                         
-                        heatmapBuffer.push(`<div class="hm-cell ${cls}" title="PnL Mes: ${this.zenMode ? 'Oculto en Zen' : divValStr}" style="font-size: 0.95rem;">${numTxt}</div>`);
+                        heatmapBuffer.push(`<div class="hm-cell ${cls} data-font" title="PnL Mes: ${this.zenMode ? 'Oculto en Zen' : divValStr}" style="font-size: 0.95rem;">${numTxt}</div>`);
                     }
                 }
                 
@@ -1979,14 +2018,14 @@ export const view = {
             let totalInteresF = dInt[dInt.length-1] || 0;
             let capitalFinalF = totalAportadoF + totalInteresF;
 
-            if (this.DOM.calcResAportado) this.DOM.calcResAportado.innerHTML = this.zenMode ? '---' : `<span class="privacy-mask" style="font-size: 1.2rem; font-weight: 900; color: var(--color-primary); text-shadow: var(--shadow-neon-primary);">$ ${this.fmtStr(totalAportadoF, 1, false)}</span>`;
-            if (this.DOM.calcResInteres) this.DOM.calcResInteres.innerHTML = `<span class="texto-verde privacy-mask" style="font-size: 1.2rem; font-weight: 900;">${this.zenMode ? '---' : '+$ ' + this.fmtStr(totalInteresF, 1, false)}</span>`;
-            if (this.DOM.calcResFinal) this.DOM.calcResFinal.innerHTML = `<span class="texto-accent privacy-mask" style="font-size: 1.4rem; font-weight: 900;">${this.zenMode ? '---' : '$ ' + this.fmtStr(capitalFinalF, 1, false)}</span>`;
+            if (this.DOM.calcResAportado) this.DOM.calcResAportado.innerHTML = this.zenMode ? '---' : `<span class="privacy-mask" style="font-size: 1.8rem; font-weight: 900; color: var(--text-main);">$ ${this.fmtStr(totalAportadoF, 1, false)}</span>`;
+            if (this.DOM.calcResInteres) this.DOM.calcResInteres.innerHTML = `<span class="texto-verde privacy-mask" style="font-size: 1.8rem; font-weight: 900;">${this.zenMode ? '---' : '+$ ' + this.fmtStr(totalInteresF, 1, false)}</span>`;
+            if (this.DOM.calcResFinal) this.DOM.calcResFinal.innerHTML = `<span class="texto-primario privacy-mask" style="font-size: 2.2rem; font-weight: 900;">${this.zenMode ? '---' : '$ ' + this.fmtStr(capitalFinalF, 1, false)}</span>`;
             
             if (this.DOM.wrapCalc) {
                 const getCSS = (varName, fallBack) => getComputedStyle(document.documentElement).getPropertyValue(varName).trim() || fallBack;
-                const colorC1 = getCSS('--color-primary', '#09FBFF');
-                const colorC2 = getCSS('--color-up', '#BFFF00');
+                const colorC1 = getCSS('--color-primary', '#6045F4');
+                const colorC2 = getCSS('--color-up', '#00FF95');
                 ChartRenderer.renderCalculadora(lbl, dAp, dInt, 'chartCalculadora', colorC1, colorC2, this.DOM.wrapCalc);
             }
         });
@@ -2024,8 +2063,8 @@ export const view = {
             const gastoAnual = gastoTotal * 12;
             const targetFIRE = gastoAnual / (swrPct / 100);
 
-            document.getElementById('fire-res-gasto').innerHTML = this.zenMode ? '---' : `<span class="privacy-mask" style="font-size: 1.2rem; font-weight: 900; color: var(--color-warning); text-shadow: var(--shadow-neon-warning);">$ ${this.fmtStr(gastoTotal, 1, false)}</span>`;
-            document.getElementById('fire-res-objetivo').innerHTML = this.zenMode ? '---' : `<span class="privacy-mask" style="font-size: 1.2rem; font-weight: 900; color: var(--color-purple); text-shadow: var(--shadow-neon-purple);">$ ${this.fmtStr(targetFIRE, 1, false)}</span>`;
+            document.getElementById('fire-res-gasto').innerHTML = this.zenMode ? '---' : `<span class="privacy-mask" style="font-size: 2.5rem; font-weight: 900; color: var(--color-down); text-shadow: var(--shadow-neon-down);">$ ${this.fmtStr(gastoTotal, 1, false)}</span>`;
+            document.getElementById('fire-res-objetivo').innerHTML = this.zenMode ? '---' : `<span class="privacy-mask" style="font-size: 2.5rem; font-weight: 900; color: var(--color-accent); text-shadow: var(--shadow-neon-accent);">$ ${this.fmtStr(targetFIRE, 1, false)}</span>`;
 
             let r = cagrPct / 100;
             let capitalAcumulado = capIni;
@@ -2050,15 +2089,15 @@ export const view = {
             if(capIni >= targetFIRE) {
                 elAnos.innerText = "¡Independencia Alcanzada!";
                 elAnos.className = "data-font texto-primario";
-                elAnos.style.fontSize = "1.4rem";
+                elAnos.style.fontSize = "3rem";
             } else if (anos >= maxAnos) {
                 elAnos.innerText = "+60 Años";
                 elAnos.className = "data-font texto-rojo";
-                elAnos.style.fontSize = "1.4rem";
+                elAnos.style.fontSize = "4rem";
             } else {
                 elAnos.innerText = `${anos} Años`;
                 elAnos.className = `data-font ${anos <= 10 ? 'texto-verde' : (anos <= 20 ? 'texto-warning' : 'texto-rojo')}`;
-                elAnos.style.fontSize = "1.4rem";
+                elAnos.style.fontSize = "5rem";
             }
 
             const wrapChart = document.getElementById('wrap-fire-chart');
@@ -2072,13 +2111,11 @@ export const view = {
                 if (window.fireChartInstance) window.fireChartInstance.destroy();
 
                 const getCSS = (varName, fallBack) => getComputedStyle(document.documentElement).getPropertyValue(varName).trim() || fallBack;
-                const c1 = getCSS('--color-up', '#BFFF00');
-                const c2 = getCSS('--color-accent', '#F50BBA');
+                const c1 = getCSS('--color-up', '#00FF95');
+                const c2 = getCSS('--color-accent', '#FF4D8A');
 
-                // Asegurar que exista un ChartRenderer para el _createGradient global, 
-                // pero aquí lo recreamos rápidamente para el plugin FIRE
                 const gradient = canvas.getContext('2d').createLinearGradient(0, 0, 0, 400);
-                gradient.addColorStop(0, c1.replace(')', ', 0.3)').replace('rgb', 'rgba').replace('#BFFF00', 'rgba(191,255,0,0.3)'));
+                gradient.addColorStop(0, c1.replace(')', ', 0.3)').replace('rgb', 'rgba'));
                 gradient.addColorStop(1, 'rgba(0,0,0,0)');
 
                 window.fireChartInstance = new Chart(canvas.getContext('2d'), {
@@ -2110,10 +2147,10 @@ export const view = {
                     options: {
                         responsive: true, maintainAspectRatio: false,
                         interaction: { mode: 'index', intersect: false },
-                        plugins: { legend: { labels: { color: 'var(--text-muted)', font: { weight: 'bold' } } } },
+                        plugins: { legend: { labels: { color: getCSS('--text-muted', '#8B95A5'), font: { weight: 'bold' } } } },
                         scales: {
-                            x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: 'var(--text-muted)', font: { weight: 'bold' }, maxTicksLimit: 10 } },
-                            y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: 'var(--text-muted)', font: { weight: 'bold' } } }
+                            x: { grid: { color: 'rgba(139, 149, 165, 0.05)' }, ticks: { color: getCSS('--text-muted', '#8B95A5'), font: { weight: 'bold' }, maxTicksLimit: 10 } },
+                            y: { grid: { color: 'rgba(139, 149, 165, 0.05)' }, ticks: { color: getCSS('--text-muted', '#8B95A5'), font: { weight: 'bold' } } }
                         }
                     }
                 });
