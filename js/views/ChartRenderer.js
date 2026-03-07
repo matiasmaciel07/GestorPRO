@@ -3,76 +3,116 @@ import { UIMetrics } from './UIMetrics.js';
 import { FinancialMath } from '../utils/financial.js';
 
 // -----------------------------------------------------------------------------
+// FASE 4: PLUGIN CUSTOM PARA GLOW NEÓN DIRECTO EN CANVAS
+// -----------------------------------------------------------------------------
+const NeonGlowPlugin = {
+    id: 'neonGlow',
+    beforeDatasetDraw(chart, args, pluginOptions) {
+        const isLightMode = document.documentElement.getAttribute('data-theme') === 'light';
+        if (isLightMode) return; // En modo claro apagamos el Glow para usar Sombras Ambientales CSS
+        
+        const ctx = chart.ctx;
+        ctx.save();
+        const dataset = chart.data.datasets[args.index];
+        
+        if (chart.config.type === 'line' || chart.config.type === 'doughnut') {
+            let color = dataset.borderColor || dataset.backgroundColor;
+            if (Array.isArray(color)) color = color[0];
+            
+            // Inyección de filtro Drop-Shadow en el contexto 2D
+            ctx.shadowColor = color;
+            ctx.shadowBlur = chart.config.type === 'line' ? 12 : 20;
+            ctx.shadowOffsetX = 0;
+            ctx.shadowOffsetY = 0;
+        }
+    },
+    afterDatasetDraw(chart, args, pluginOptions) {
+        const isLightMode = document.documentElement.getAttribute('data-theme') === 'light';
+        if (!isLightMode) {
+            chart.ctx.restore();
+        }
+    }
+};
+
+Chart.register(NeonGlowPlugin);
+
+// -----------------------------------------------------------------------------
 // CONFIGURACIÓN GLOBAL CYBER-FINANCE / CANDY UI PARA GRÁFICOS
 // -----------------------------------------------------------------------------
-Chart.defaults.color = '#CCCCFF'; // Periwinkle Blue como base neutra futurista
+Chart.defaults.color = '#8B95A5'; // Texto Subtexto Starlight
 Chart.defaults.font.family = "'Inter', system-ui, sans-serif";
 Chart.defaults.elements.line.tension = 0.4; // Curvas fluidas y orgánicas
-Chart.defaults.elements.point.radius = 0;
-Chart.defaults.elements.point.hoverRadius = 8; // Impacto visual al interactuar
-Chart.defaults.scale.grid.color = 'rgba(9, 251, 255, 0.05)'; // Grid estilo Tron sutil
+Chart.defaults.elements.point.radius = 0; // Puntos ocultos por defecto
+Chart.defaults.elements.point.hoverRadius = 8; // Círculo sólido al interactuar
+Chart.defaults.elements.point.hoverBorderWidth = 4;
+Chart.defaults.elements.point.hoverBackgroundColor = '#FFFFFF'; // Centro luminoso
+Chart.defaults.scale.grid.color = 'rgba(139, 149, 165, 0.15)'; 
+Chart.defaults.scale.grid.borderDash = [5, 5]; // Cuadrículas Punteadas/Discontinuas
 
 Chart.defaults.interaction.mode = 'index';
 Chart.defaults.interaction.intersect = false;
 
-// Tooltips Estilo Ciberpunk / Alto Contraste
-Chart.defaults.plugins.tooltip.backgroundColor = 'rgba(5, 4, 26, 0.98)'; // Midnight super oscuro
-Chart.defaults.plugins.tooltip.titleColor = '#09FBFF'; // Cian eléctrico
-Chart.defaults.plugins.tooltip.bodyColor = '#FFFFFF'; // Blanco puro para lectura clara
-Chart.defaults.plugins.tooltip.titleFont = { size: 14, family: "'Inter', sans-serif", weight: '900' };
+// Tooltips de Alto Contraste (Modo Bóveda/Glassmorphism)
+Chart.defaults.plugins.tooltip.backgroundColor = 'rgba(17, 20, 26, 0.95)'; 
+Chart.defaults.plugins.tooltip.titleColor = '#6045F4'; // Primario
+Chart.defaults.plugins.tooltip.bodyColor = '#F8F9FA'; // Blanco puro para lectura clara
+Chart.defaults.plugins.tooltip.titleFont = { size: 13, family: "'Inter', sans-serif", weight: '900' };
 Chart.defaults.plugins.tooltip.bodyFont = { size: 14, family: "'Roboto Mono', monospace", weight: 'bold' };
 Chart.defaults.plugins.tooltip.padding = 16;
-Chart.defaults.plugins.tooltip.cornerRadius = 12;
+Chart.defaults.plugins.tooltip.cornerRadius = 16; // Squircle tooltip
 Chart.defaults.plugins.tooltip.boxPadding = 10;
-Chart.defaults.plugins.tooltip.borderColor = 'rgba(9, 251, 255, 0.5)'; // Borde neón
-Chart.defaults.plugins.tooltip.borderWidth = 2;
+Chart.defaults.plugins.tooltip.borderColor = 'rgba(96, 69, 244, 0.5)'; // Borde primario
+Chart.defaults.plugins.tooltip.borderWidth = 1;
 Chart.defaults.plugins.tooltip.usePointStyle = true; 
 
 const chartInstances = {};
 
-// Paleta Estratégica de 20 Colores (Alta Saturación para Donas y Barras Múltiples)
+// Paleta Estratégica de 15 Colores Vibrantes (Diseño 70/30)
 const paletaEstrategica = [
-    '#09FBFF', // Cian Eléctrico
-    '#EA00D9', // Magenta Neón
-    '#BFFF00', // Verde Lima Brillante
-    '#F50BBA', // Morado Pulso
-    '#FFD91F', // Amarillo Limón Saturado
-    '#FF871A', // Naranja Atardecer
-    '#FF001F', // Rojo Coral Vibrante
-    '#0042B7', // Azul Laguna
-    '#FF66B2', // Rosa Guayaba
-    '#2AAEB6', // Turquesa Brillante
-    '#4405E4', // Púrpura Plasma
-    '#82E0AA', // Verde Tomatillo
-    '#CCCCFF', // Azul Periwinkle
-    '#FF5E00', // Naranja Brillante
-    '#13ADED', // Cian Variante
-    '#d403e1', // Magenta Alternativo
-    '#7C13A4', // Violeta Vibrante
-    '#FF3366', // Fresa Neón
-    '#00FF88', // Verde Primavera
-    '#FFD700'  // Oro Puro
+    '#6045F4', // Primario
+    '#00FF95', // Menta Neón
+    '#FF4D8A', // Categorías (Plasma)
+    '#2CE6D6', // Cyan Data
+    '#FCA311', // Naranja Alerta
+    '#7C13A4', // Púrpura Barras
+    '#FF871A', // Curva Naranja
+    '#1AA7EC', // Azul Etiquetas
+    '#F71735', // Rojo Plasma
+    '#09FBFF', // Inversiones Cyan
+    '#D403E1', // Origen Magenta
+    '#E5FF00', // Activo Amarillo
+    '#FF17A7', // Deudas Rosa
+    '#13ADED', // Borde Celeste
+    '#460071'  // Destino Violeta Oscuro
 ];
 
 export const ChartRenderer = {
     
     _createGradient(ctx, color) {
+        const isLightMode = document.documentElement.getAttribute('data-theme') === 'light';
         const gradient = ctx.createLinearGradient(0, 0, 0, 400);
-        let colorWithAlphaStart = color;
-        let colorWithAlphaEnd = 'transparent';
+        let colorWithAlphaStart, colorWithAlphaEnd;
 
-        if (color.startsWith('hsl')) {
-            colorWithAlphaStart = color.replace(')', ', 0.6)').replace('hsl', 'hsla');
-            colorWithAlphaEnd = color.replace(')', ', 0.0)').replace('hsl', 'hsla');
-        } else if (color.startsWith('#')) {
+        if (color.startsWith('#')) {
             let r = parseInt(color.substring(1,3), 16) || 0;
             let g = parseInt(color.substring(3,5), 16) || 0;
             let b = parseInt(color.substring(5,7), 16) || 0;
-            colorWithAlphaStart = `rgba(${r}, ${g}, ${b}, 0.6)`;
-            colorWithAlphaEnd = `rgba(${r}, ${g}, ${b}, 0.0)`;
+            
+            if (isLightMode) {
+                // Gradientes Pastel Intenso hacia blanco crema
+                colorWithAlphaStart = `rgba(${r}, ${g}, ${b}, 0.5)`;
+                colorWithAlphaEnd = `rgba(255, 255, 255, 0.5)`;
+            } else {
+                // Fading profundo hacia el negro abismal
+                colorWithAlphaStart = `rgba(${r}, ${g}, ${b}, 0.6)`;
+                colorWithAlphaEnd = `rgba(${r}, ${g}, ${b}, 0.0)`;
+            }
         } else if (color.startsWith('rgba')) {
-            colorWithAlphaStart = color.replace(/[\d\.]+\)$/g, '0.6)');
-            colorWithAlphaEnd = color.replace(/[\d\.]+\)$/g, '0.0)');
+            colorWithAlphaStart = color.replace(/[\d\.]+\)$/g, isLightMode ? '0.5)' : '0.6)');
+            colorWithAlphaEnd = color.replace(/[\d\.]+\)$/g, isLightMode ? '0.0)' : '0.0)');
+        } else {
+            colorWithAlphaStart = color;
+            colorWithAlphaEnd = 'transparent';
         }
 
         gradient.addColorStop(0, colorWithAlphaStart);
@@ -98,9 +138,8 @@ export const ChartRenderer = {
         const ctx = canvas.getContext('2d');
         const getCSS = (varName, fallBack) => getComputedStyle(document.documentElement).getPropertyValue(varName).trim() || fallBack;
         
-        // Uso de colores vibrantes para contraste absoluto
-        const colorUp = getCSS('--color-up', '#BFFF00');
-        const colorWarning = getCSS('--color-warning', '#FFD91F');
+        const colorUp = getCSS('--color-up', '#00FF95');
+        const colorWarning = getCSS('--color-warning', '#FCA311');
         const isLightMode = document.documentElement.getAttribute('data-theme') === 'light';
         
         if (chartInstances[wrapDOMId]) chartInstances[wrapDOMId].destroy();
@@ -123,10 +162,12 @@ export const ChartRenderer = {
                         data: dataCostoVida,
                         borderColor: colorWarning,
                         backgroundColor: 'transparent',
-                        borderWidth: 3, // Más grueso para presencia Neón/Pop
+                        borderWidth: 3, 
                         borderDash: [6, 6],
                         pointRadius: 4,
                         pointBackgroundColor: colorWarning,
+                        pointBorderColor: '#FFF',
+                        pointBorderWidth: 2,
                         tension: 0.4,
                         order: 1
                     },
@@ -135,9 +176,9 @@ export const ChartRenderer = {
                         label: 'Ingreso Operativo Total',
                         data: dataIngresos,
                         backgroundColor: colorUp,
-                        borderRadius: 6,
-                        borderWidth: isLightMode ? 2 : 0, // Borde negro duro en modo claro
-                        borderColor: '#000000',
+                        borderRadius: 8, // Barras elegantes redondeadas
+                        borderWidth: isLightMode ? 2 : 0, 
+                        borderColor: isLightMode ? '#FFFFFF' : 'transparent',
                         order: 2
                     }
                 ]
@@ -148,9 +189,8 @@ export const ChartRenderer = {
                 animation: { duration: 1000, easing: 'easeOutExpo' },
                 plugins: { 
                     legend: { 
-                        display: true,
-                        position: 'top',
-                        labels: { usePointStyle: true, boxWidth: 10, font: {size: 12, weight: 'bold'} }
+                        display: true, position: 'top',
+                        labels: { usePointStyle: true, boxWidth: 10, font: {size: 12, weight: 'bold', family: "'Inter', sans-serif"} }
                     },
                     tooltip: {
                         callbacks: {
@@ -164,12 +204,10 @@ export const ChartRenderer = {
                 scales: {
                     x: { 
                         grid: { display: false }, 
-                        ticks: { font: { size: 11, weight: 'bold' }, maxRotation: 45, minRotation: 0 } 
+                        ticks: { font: { size: 11, weight: 'bold', family: "'Inter', sans-serif" }, maxRotation: 45, minRotation: 0 } 
                     },
                     y: { 
-                        beginAtZero: true,
-                        border: { display: false },
-                        grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                        beginAtZero: true, border: { display: false },
                         ticks: {
                             callback: function(value) {
                                 if(value >= 1000000) return '$' + (value/1000000).toFixed(1) + 'M';
@@ -241,22 +279,23 @@ export const ChartRenderer = {
         let canvas = canvasContainer.querySelector('canvas');
         const ctx = canvas.getContext('2d');
         const getCSS = (varName, fallBack) => getComputedStyle(document.documentElement).getPropertyValue(varName).trim() || fallBack;
+        const isLightMode = document.documentElement.getAttribute('data-theme') === 'light';
         
         const colors = {
-            colorPrimary: getCSS('--color-primary', '#09FBFF'),
-            colorUp: getCSS('--color-up', '#BFFF00'),
-            colorAccent: getCSS('--color-accent', '#F50BBA'),
-            colorPuro: getCSS('--color-puro', '#FFFFFF'),
-            colorVida: getCSS('--color-down', '#EA00D9'),
-            colorMediaVida: getCSS('--color-warning', '#FFD91F'),
+            colorPrimary: getCSS('--color-primary', '#6045F4'),
+            colorUp: getCSS('--color-up', '#00FF95'),
+            colorAccent: getCSS('--color-accent', '#FF4D8A'),
+            colorPuro: isLightMode ? '#0A0D14' : '#FFFFFF',
+            colorVida: getCSS('--color-down', '#F71735'),
+            colorMediaVida: getCSS('--color-warning', '#FCA311'),
             colorInf: getCSS('--color-orange', '#FF871A')
         };
 
         const datasetsConfig = [
-            { label: 'Patrimonio Comercial Neto', data: dTotal, borderColor: colors.colorPrimary, backgroundColor: this._createGradient(ctx, colors.colorPrimary), borderWidth: 4, fill: true, order: 1, spanGaps: false, pointHoverBackgroundColor: colors.colorPrimary, pointHoverBorderColor: '#FFF', pointHoverBorderWidth: 2 },
+            { label: 'Patrimonio Comercial Neto', data: dTotal, borderColor: colors.colorPrimary, backgroundColor: this._createGradient(ctx, colors.colorPrimary), borderWidth: 4, fill: true, order: 1, spanGaps: false, pointHoverBorderColor: '#FFF' },
             { label: 'Patrimonio Puro (Ahorro Físico)', data: dPuro, borderColor: colors.colorPuro, backgroundColor: 'transparent', borderWidth: 2, borderDash: [6, 6], fill: false, order: 2, spanGaps: false },
-            { label: 'Capital Invertido Bursátil', data: dInv, borderColor: colors.colorAccent, backgroundColor: this._createGradient(ctx, colors.colorAccent), borderWidth: 3, borderDash: [8, 4], fill: true, order: 3, spanGaps: false },
-            { label: 'Liquidez en Caja', data: dLiq, borderColor: colors.colorUp, backgroundColor: 'transparent', borderWidth: 3, fill: false, order: 4, spanGaps: false },
+            { label: 'Capital Invertido Bursátil', data: dInv, borderColor: colors.colorAccent, backgroundColor: this._createGradient(ctx, colors.colorAccent), borderWidth: 3, borderDash: [8, 4], fill: isLightMode, order: 3, spanGaps: false }, // En modo claro rellenamos el área para más solidez visual
+            { label: 'Liquidez en Caja', data: dLiq, borderColor: colors.colorUp, backgroundColor: this._createGradient(ctx, colors.colorUp), borderWidth: 3, fill: isLightMode, order: 4, spanGaps: false },
             { label: 'Costo de Vida Acumulado', data: dVida, borderColor: colors.colorVida, backgroundColor: 'transparent', borderWidth: 2, fill: false, order: 5, hidden: true, spanGaps: false },
             { label: 'Media Móvil Costo Vida', data: dMediaVida, borderColor: colors.colorMediaVida, backgroundColor: 'transparent', borderWidth: 3, borderDash: [4, 4], fill: false, order: 6, hidden: true, spanGaps: true },
             { label: 'Inflación Proyectada', data: dInf, borderColor: colors.colorInf, backgroundColor: 'transparent', borderWidth: 3, borderDash: [5, 5], fill: false, order: 7, hidden: true, spanGaps: true }
@@ -267,6 +306,9 @@ export const ChartRenderer = {
             chart.data.labels = fFiltradas;
             datasetsConfig.forEach((ds, idx) => {
                 chart.data.datasets[idx].data = ds.data;
+                chart.data.datasets[idx].backgroundColor = ds.backgroundColor;
+                chart.data.datasets[idx].fill = ds.fill;
+                chart.data.datasets[idx].borderColor = ds.borderColor;
             });
             
             chart.options.plugins.tooltip.callbacks.label = function(context) {
@@ -288,8 +330,7 @@ export const ChartRenderer = {
                     datasets: datasetsConfig
                 },
                 options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
+                    responsive: true, maintainAspectRatio: false,
                     interaction: { mode: 'index', intersect: false },
                     animation: { duration: 1200, easing: 'easeOutQuart' },
                     plugins: {
@@ -318,11 +359,10 @@ export const ChartRenderer = {
                     scales: {
                         x: {
                             grid: { display: false },
-                            ticks: { maxTicksLimit: 8, maxRotation: 0, font: { size: 12, weight: 'bold' } }
+                            ticks: { maxTicksLimit: 8, maxRotation: 0, font: { size: 12, weight: 'bold', family: "'Inter', sans-serif" } }
                         },
                         y: {
-                            beginAtZero: true,
-                            border: { display: false },
+                            beginAtZero: true, border: { display: false },
                             ticks: {
                                 callback: function(value) {
                                     if (value >= 1000000) return (value / 1000000).toFixed(1) + 'M';
@@ -345,20 +385,20 @@ export const ChartRenderer = {
         const getCSS = (varName, fallBack) => getComputedStyle(document.documentElement).getPropertyValue(varName).trim() || fallBack;
 
         const legendItems = [
-            { index: 0, label: 'Patrimonio Comercial Neto', color: getCSS('--color-primary', '#09FBFF'), hidden: false, tooltip: 'La suma total de liquidez operativa, capital bursátil y valoración del inventario.' },
-            { index: 1, label: 'Patrimonio Puro (Ahorro Físico)', color: getCSS('--color-puro', '#FFFFFF'), hidden: false, tooltip: 'El flujo de capital aportado excluyendo rendimientos generados o ingresos por ventas.' },
-            { index: 2, label: 'Capital Invertido Bursátil', color: getCSS('--color-accent', '#F50BBA'), hidden: false, tooltip: 'El valor actual de mercado de todos los activos en el portafolio de inversión.' },
-            { index: 3, label: 'Liquidez en Caja', color: getCSS('--color-up', '#BFFF00'), hidden: false, tooltip: 'Capital circulante no invertido, disponible para cobertura de pasivos operativos.' },
-            { index: 4, label: 'Costo de Vida Acumulado', color: getCSS('--color-down', '#EA00D9'), hidden: true, tooltip: 'Sumatoria histórica de todos los egresos personales y comerciales.' },
-            { index: 5, label: 'Media Móvil Costo Vida', color: getCSS('--color-warning', '#FFD91F'), hidden: true, tooltip: 'Promedio móvil mensual del índice de egresos generales calculado sobre el histórico.' },
+            { index: 0, label: 'Patrimonio Comercial Neto', color: getCSS('--color-primary', '#6045F4'), hidden: false, tooltip: 'La suma total de liquidez operativa, capital bursátil y valoración del inventario.' },
+            { index: 1, label: 'Patrimonio Puro (Ahorro Físico)', color: getCSS('--text-main', '#FFFFFF'), hidden: false, tooltip: 'El flujo de capital aportado excluyendo rendimientos generados o ingresos por ventas.' },
+            { index: 2, label: 'Capital Invertido Bursátil', color: getCSS('--color-accent', '#FF4D8A'), hidden: false, tooltip: 'El valor actual de mercado de todos los activos en el portafolio de inversión.' },
+            { index: 3, label: 'Liquidez en Caja', color: getCSS('--color-up', '#00FF95'), hidden: false, tooltip: 'Capital circulante no invertido, disponible para cobertura de pasivos operativos.' },
+            { index: 4, label: 'Costo de Vida Acumulado', color: getCSS('--color-down', '#F71735'), hidden: true, tooltip: 'Sumatoria histórica de todos los egresos personales y comerciales.' },
+            { index: 5, label: 'Media Móvil Costo Vida', color: getCSS('--color-warning', '#FCA311'), hidden: true, tooltip: 'Promedio móvil mensual del índice de egresos generales calculado sobre el histórico.' },
             { index: 6, label: 'Inflación Proyectada', color: getCSS('--color-orange', '#FF871A'), hidden: true, tooltip: 'Índice base estadístico para el cálculo del rendimiento real del patrimonio neto.' }
         ];
 
         let html = '';
         legendItems.forEach(item => {
             html += `
-                <div class="custom-legend-item" data-index="${item.index}" style="display: flex; align-items: center; gap: 8px; cursor: pointer; opacity: ${item.hidden ? 0.4 : 1}; transition: all 0.2s; padding: 4px 8px; border-radius: 6px;">
-                    <div class="legend-color-box" style="width: 16px; height: 16px; border-radius: 5px; background-color: ${item.color}; border: 1px solid rgba(255,255,255,0.2); box-shadow: 0 0 8px ${item.color}; pointer-events: none;"></div>
+                <div class="custom-legend-item" data-index="${item.index}" style="display: flex; align-items: center; gap: 8px; cursor: pointer; opacity: ${item.hidden ? 0.4 : 1}; transition: all 0.2s; padding: 4px 8px; border-radius: 8px;">
+                    <div class="legend-color-box" style="width: 16px; height: 16px; border-radius: 6px; background-color: ${item.color}; border: 1px solid rgba(255,255,255,0.2); pointer-events: none;"></div>
                     <span class="legend-text" style="font-size: 12px; color: var(--text-main); font-weight: 800; pointer-events: none; letter-spacing: 0.5px;">${item.label}</span>
                     <span data-tooltip-title="${item.label}" data-tooltip-desc="${item.tooltip}" class="legend-tooltip-icon custom-tooltip-trigger" style="color: var(--color-primary); background: var(--bg-input); border-radius: 50%; width: 20px; height: 20px; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 900; border: 1px solid var(--border-color); z-index: 10; cursor: help;">?</span>
                 </div>
@@ -367,21 +407,21 @@ export const ChartRenderer = {
 
         legendContainer.innerHTML = html;
 
-        // Estilos de Tooltip inyectados (Mantienen la estética de la UI global)
         if (!document.getElementById('custom-legend-styles')) {
             const style = document.createElement('style');
             style.id = 'custom-legend-styles';
             style.innerHTML = `
                 .floating-legend-tooltip {
-                    position: absolute; background: rgba(5, 4, 26, 0.98); color: #FFFFFF; padding: 16px; border-radius: 12px;
-                    font-size: 12px; line-height: 1.6; border: 1px solid var(--color-primary); box-shadow: 0 10px 30px rgba(0,0,0,0.8), 0 0 15px rgba(9, 251, 255, 0.2);
+                    position: absolute; background: rgba(17, 20, 26, 0.98); color: #F8F9FA; padding: 16px; border-radius: 16px;
+                    font-size: 12px; line-height: 1.6; border: 1px solid var(--color-primary); box-shadow: 0 10px 30px rgba(0,0,0,0.8), 0 0 15px rgba(96, 69, 244, 0.2);
                     z-index: 9999; pointer-events: none; width: 260px; transition: opacity 0.2s, transform 0.2s; opacity: 0; transform: translateY(10px);
                 }
-                .floating-legend-tooltip.active {
-                    opacity: 1; transform: translateY(0);
+                [data-theme="light"] .floating-legend-tooltip {
+                    background: #FFFFFF; color: #0A0D14; box-shadow: 0 10px 30px rgba(74, 53, 196, 0.15);
                 }
+                .floating-legend-tooltip.active { opacity: 1; transform: translateY(0); }
                 .floating-legend-tooltip strong { color: var(--color-primary); display: block; margin-bottom: 6px; font-family: 'Inter', sans-serif; text-transform: uppercase; letter-spacing: 1px; font-weight: 900; }
-                .custom-legend-item:hover { background: var(--bg-hover); transform: translateY(-1px); }
+                .custom-legend-item:hover { background: var(--bg-hover); transform: translateY(-2px); }
             `;
             document.head.appendChild(style);
         }
@@ -461,7 +501,8 @@ export const ChartRenderer = {
         const isLightMode = document.documentElement.getAttribute('data-theme') === 'light';
 
         const commonOptions = {
-            responsive: true, maintainAspectRatio: false, cutout: '72%',
+            responsive: true, maintainAspectRatio: false, 
+            cutout: '80%', // Segmentos gruesos
             animation: { duration: 1200, animateScale: true, easing: 'easeOutExpo' },
             plugins: {
                 legend: { display: false },
@@ -478,9 +519,10 @@ export const ChartRenderer = {
             },
             elements: { 
                 arc: { 
-                    borderWidth: isLightMode ? 2 : 0, // Brutalismo requiere bordes duros
-                    borderColor: '#000000', 
-                    hoverOffset: 12 // Más separación al pasar el mouse
+                    borderWidth: isLightMode ? 2 : 0, 
+                    borderColor: isLightMode ? '#FFFFFF' : 'transparent', 
+                    borderRadius: 15, // Esquinas redondeadas (Squircle inside donut)
+                    hoverOffset: 12 
                 } 
             }
         };
@@ -541,12 +583,13 @@ export const ChartRenderer = {
                     data: chartData.data, 
                     backgroundColor: paletaEstrategica, 
                     borderWidth: isLightMode ? 2 : 0, 
-                    borderColor: '#000000',
+                    borderColor: isLightMode ? '#FFFFFF' : 'transparent',
+                    borderRadius: 15,
                     hoverOffset: 12 
                 }]
             },
             options: {
-                responsive: true, maintainAspectRatio: false, cutout: '70%',
+                responsive: true, maintainAspectRatio: false, cutout: '80%',
                 animation: { duration: 1000, animateScale: true, easing: 'easeOutQuart' },
                 plugins: {
                     legend: { display: false },
@@ -636,15 +679,14 @@ export const ChartRenderer = {
 
         const getCSS = (varName, fallBack) => getComputedStyle(document.documentElement).getPropertyValue(varName).trim() || fallBack;
         
-        // Uso de colores vibrantes y neones correspondientes
         const baseColors = {
-            'Ingresos': getCSS('--color-primary', '#09FBFF'),
-            'Costos Op.': getCSS('--color-down', '#EA00D9'),
-            'Flujo Libre': getCSS('--color-up', '#BFFF00'),
-            'G. Personal': getCSS('--color-warning', '#FF871A'),
-            'Inversión': getCSS('--color-accent', '#4405E4'),
-            'Ahorros Previos': '#33264A',
-            'Excedente Líquido': '#2AAEB6'
+            'Ingresos': getCSS('--color-up', '#00FF95'),
+            'Costos Op.': getCSS('--color-down', '#F71735'),
+            'Flujo Libre': getCSS('--color-primary', '#6045F4'),
+            'G. Personal': getCSS('--color-orange', '#FF871A'),
+            'Inversión': getCSS('--color-accent', '#FF4D8A'),
+            'Ahorros Previos': getCSS('--border-color', '#2A2F3A'),
+            'Excedente Líquido': getCSS('--color-chart', '#2CE6D6')
         };
 
         const uniqueNodeIds = [...new Set(links.flatMap(l => [l.source, l.target]))];
@@ -663,7 +705,7 @@ export const ChartRenderer = {
                     data: links,
                     colorFrom: (c) => c.dataset.data[c.dataIndex].source,
                     colorTo: (c) => c.dataset.data[c.dataIndex].target,
-                    colorMode: 'gradient', alpha: 0.85, // Mayor solidez de color
+                    colorMode: 'gradient', alpha: 0.85, 
                     labels: uniqueNodeIds.reduce((acc, id) => { acc[id] = id; return acc; }, {}),
                     nodeColors: nodesData,
                     borderWidth: isLightMode ? 2 : 0, 
@@ -709,7 +751,8 @@ export const ChartRenderer = {
 
         const ctx = canvas.getContext('2d');
         const getCSS = (varName, fallBack) => getComputedStyle(document.documentElement).getPropertyValue(varName).trim() || fallBack;
-        const colorDown = getCSS('--color-down', '#EA00D9');
+        const colorDown = getCSS('--color-down', '#F71735');
+        const isLightMode = document.documentElement.getAttribute('data-theme') === 'light';
         
         if (chartInstances['chartDrawdown']) chartInstances['chartDrawdown'].destroy();
 
@@ -729,9 +772,9 @@ export const ChartRenderer = {
                 animation: { duration: 1000 },
                 plugins: { legend: { display: false } },
                 scales: {
-                    x: { grid: { display: false }, ticks: { maxTicksLimit: 6, font: { weight: 'bold' } } },
+                    x: { grid: { display: false }, ticks: { maxTicksLimit: 6, font: { weight: 'bold', family: "'Inter', sans-serif" } } },
                     y: { 
-                        position: 'right', max: 0, grid: { color: 'rgba(234, 0, 217, 0.1)' },
+                        position: 'right', max: 0, grid: { color: isLightMode ? 'rgba(217, 4, 41, 0.1)' : 'rgba(247, 23, 53, 0.1)' },
                         ticks: { callback: function(v) { return v.toFixed(0) + '%'; }, font: { family: "'Roboto Mono', monospace", weight: 'bold' } }
                     }
                 }
@@ -751,28 +794,24 @@ export const ChartRenderer = {
         if (chartInstances[canvasId]) chartInstances[canvasId].destroy();
 
         const isLightMode = document.documentElement.getAttribute('data-theme') === 'light';
-        const getCSS = (varName, fallBack) => getComputedStyle(document.documentElement).getPropertyValue(varName).trim() || fallBack;
         
-        const colorC1 = getCSS('--color-primary', '#09FBFF');
-        const colorC2 = getCSS('--color-up', '#BFFF00');
-
         chartInstances[canvasId] = new Chart(canvas.getContext('2d'), {
             type: 'bar',
             data: {
                 labels: labels,
                 datasets: [
-                    { label: 'Capital Aportado', data: dAp, backgroundColor: colorC1, borderRadius: 6, borderWidth: isLightMode?2:0, borderColor: '#000' },
-                    { label: 'Interés Compuesto', data: dInt, backgroundColor: colorC2, borderRadius: 6, borderWidth: isLightMode?2:0, borderColor: '#000' }
+                    { label: 'Capital Aportado', data: dAp, backgroundColor: c1, borderRadius: 8, borderWidth: isLightMode?2:0, borderColor: '#000' },
+                    { label: 'Interés Compuesto', data: dInt, backgroundColor: c2, borderRadius: 8, borderWidth: isLightMode?2:0, borderColor: '#000' }
                 ]
             },
             options: {
                 responsive: true, maintainAspectRatio: false,
                 animation: { duration: 800, easing: 'easeOutBack' },
-                plugins: { legend: { position: 'bottom', labels: { usePointStyle: true, boxWidth: 10, font: { weight: 'bold' } } } },
+                plugins: { legend: { position: 'bottom', labels: { usePointStyle: true, boxWidth: 10, font: { weight: 'bold', family: "'Inter', sans-serif" } } } },
                 scales: {
-                    x: { stacked: true, grid: { display: false }, ticks: { font: { weight: 'bold' } } },
+                    x: { stacked: true, grid: { display: false }, ticks: { font: { weight: 'bold', family: "'Inter', sans-serif" } } },
                     y: { 
-                        stacked: true, border: { display: false }, grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                        stacked: true, border: { display: false },
                         ticks: {
                             callback: function(value) {
                                 if(value >= 1000000) return '$' + (value/1000000).toFixed(1) + 'M';
@@ -795,12 +834,20 @@ export const ChartRenderer = {
 
         const ctx = canvas.getContext('2d');
         const labels = Array.from({length: dataArr.length}, (_, i) => i);
+        const isLightMode = document.documentElement.getAttribute('data-theme') === 'light';
 
         chartInstances[canvasId] = new Chart(ctx, {
             type: 'line',
             data: {
                 labels: labels,
-                datasets: [{ data: dataArr, borderColor: colorHex, borderWidth: 3, pointRadius: 0, pointHoverRadius: 0, tension: 0.4 }]
+                datasets: [{ 
+                    data: dataArr, 
+                    borderColor: colorHex, 
+                    backgroundColor: isLightMode ? this._createGradient(ctx, colorHex) : 'transparent',
+                    borderWidth: 3, 
+                    fill: isLightMode,
+                    pointRadius: 0, pointHoverRadius: 0, tension: 0.4 
+                }]
             },
             options: {
                 responsive: true, maintainAspectRatio: false, animation: { duration: 1200 },
@@ -825,12 +872,20 @@ export const ChartRenderer = {
 
         const ctx = canvas.getContext('2d');
         const labels = Array.from({length: dataArr.length}, (_, i) => i);
+        const isLightMode = document.documentElement.getAttribute('data-theme') === 'light';
 
         chartInstances[canvasId] = new Chart(ctx, {
             type: 'line',
             data: {
                 labels: labels,
-                datasets: [{ data: dataArr, borderColor: colorHex, borderWidth: 2, pointRadius: 0, tension: 0.3 }]
+                datasets: [{ 
+                    data: dataArr, 
+                    borderColor: colorHex, 
+                    backgroundColor: isLightMode ? this._createGradient(ctx, colorHex) : 'transparent',
+                    borderWidth: 2, 
+                    fill: isLightMode,
+                    pointRadius: 0, tension: 0.3 
+                }]
             },
             options: {
                 responsive: true, maintainAspectRatio: false, animation: false,
