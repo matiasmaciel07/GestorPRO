@@ -334,7 +334,7 @@ body.privacy-active .td-sensitive::after, body.privacy-active .stat__value::afte
 
 .market-dot { width: 0.85rem; height: 0.85rem; border-radius: 50%; display: inline-block; transition: background-color 0.3s; }
 .market-dot--open { background-color: var(--color-up); box-shadow: var(--shadow-neon-up); animation: pulseGlow 2s infinite; }
-.market-dot--closed { background-color: var(--text-muted); }
+.market-dot--closed { background-color: var(--color-down); box-shadow: var(--shadow-neon-down); }
 @keyframes pulseGlow { 0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(0, 255, 149, 0.6); } 70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(0, 255, 149, 0); } 100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(0, 255, 149, 0); } }
 
 #pin-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(5, 5, 7, 0.95); z-index: 9999; justify-content: center; align-items: flex-start; padding-top: 15vh; backdrop-filter: blur(25px); }
@@ -342,5 +342,6 @@ body.privacy-active .td-sensitive::after, body.privacy-active .stat__value::afte
 [data-tooltip] { position: relative; cursor: help; border-bottom: 1px dashed var(--color-primary); display: inline-block; transition: color 0.3s; }
 [data-tooltip]:hover { color: var(--color-primary); }
 [data-tooltip]::after, [data-tooltip]::before { opacity: 0; visibility: hidden; transition: opacity 0.3s ease, visibility 0.3s ease, transform 0.3s ease; pointer-events: none; }
-[data-tooltip]:hover::after { content: attr(data-tooltip); position: absolute; bottom: 140%; left: 50%; transform: translateX(-50%) translateY(5px); background: var(--bg-input); backdrop-filter: var(--glass-blur); color: var(--text-main); padding: 1.25rem; border-radius: 12px; font-size: 0.85rem; white-space: normal; width: max-content; max-width: 320px; z-index: 99999; box-shadow: var(--shadow-hover); border: 1px solid var(--color-primary); font-weight: 600; line-height: 1.5; text-align: left; opacity: 1; visibility: visible; }
+[data-tooltip]:hover::after { content: attr(data-tooltip); position: absolute; bottom: 140%; left: 50%; transform: translateX(-50%) translateY(5px); background: #050507; backdrop-filter: none; color: var(--text-main); padding: 0.75rem 1rem; border-radius: 8px; font-size: 0.75rem; white-space: normal; width: max-content; max-width: 260px; z-index: 99999; box-shadow: 0 5px 20px rgba(0,0,0,0.9); border: 1px solid var(--color-primary); font-weight: 600; line-height: 1.4; text-align: left; opacity: 1; visibility: visible; }
+[data-theme="light"] [data-tooltip]:hover::after { background: #FFFFFF; }
 [data-tooltip]:hover::before { content: ''; position: absolute; top: -40%; left: 50%; transform: translateX(-50%) translateY(5px); border-width: 6px; border-style: solid; border-color: var(--color-primary) transparent transparent transparent; z-index: 99999; opacity: 1; visibility: visible; }

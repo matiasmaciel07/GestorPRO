@@ -412,15 +412,15 @@ export const ChartRenderer = {
             style.id = 'custom-legend-styles';
             style.innerHTML = `
                 .floating-legend-tooltip {
-                    position: absolute; background: rgba(17, 20, 26, 0.98); color: #F8F9FA; padding: 16px; border-radius: 16px;
-                    font-size: 12px; line-height: 1.6; border: 1px solid var(--color-primary); box-shadow: 0 10px 30px rgba(0,0,0,0.8), 0 0 15px rgba(96, 69, 244, 0.2);
-                    z-index: 9999; pointer-events: none; width: 260px; transition: opacity 0.2s, transform 0.2s; opacity: 0; transform: translateY(10px);
+                    position: absolute; background: #11141A; color: #F8F9FA; padding: 10px 14px; border-radius: 10px;
+                    font-size: 11.5px; line-height: 1.4; border: 1px solid var(--color-primary); box-shadow: 0 10px 30px rgba(0,0,0,0.9);
+                    z-index: 9999; pointer-events: none; width: 240px; transition: opacity 0.2s, transform 0.2s; opacity: 0; transform: translateY(10px);
                 }
                 [data-theme="light"] .floating-legend-tooltip {
-                    background: #FFFFFF; color: #0A0D14; box-shadow: 0 10px 30px rgba(74, 53, 196, 0.15);
+                    background: #FFFFFF; color: #0A0D14; box-shadow: 0 10px 30px rgba(74, 53, 196, 0.2);
                 }
                 .floating-legend-tooltip.active { opacity: 1; transform: translateY(0); }
-                .floating-legend-tooltip strong { color: var(--color-primary); display: block; margin-bottom: 6px; font-family: 'Inter', sans-serif; text-transform: uppercase; letter-spacing: 1px; font-weight: 900; }
+                .floating-legend-tooltip strong { color: var(--color-primary); display: block; margin-bottom: 4px; font-family: 'Inter', sans-serif; text-transform: uppercase; letter-spacing: 1px; font-weight: 900; }
                 .custom-legend-item:hover { background: var(--bg-hover); transform: translateY(-2px); }
             `;
             document.head.appendChild(style);

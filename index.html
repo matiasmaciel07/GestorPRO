@@ -24,27 +24,28 @@
         /* Estructura UI: Tooltips Interactivos de Leyendas Cyber-Finance */
         .floating-legend-tooltip {
             position: absolute; 
-            background: rgba(17, 20, 26, 0.98); 
+            background: #11141A; /* Fondo sólido oscuro */
             color: #F8F9FA; 
-            padding: 16px; 
-            border-radius: 16px;
-            font-size: 13px; 
-            line-height: 1.6; 
+            padding: 10px 14px; /* Padding reducido */
+            border-radius: 10px;
+            font-size: 11.5px; /* Fuente más pequeña */
+            line-height: 1.4; 
             border: 1px solid var(--color-primary); 
-            box-shadow: 0 10px 30px rgba(0,0,0,0.8), 0 0 15px rgba(96, 69, 244, 0.2);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.9);
             z-index: 9999; 
             pointer-events: none; 
-            width: 260px; 
+            width: 240px; /* Ancho reducido */
             transition: opacity 0.2s ease, transform 0.2s ease; 
             opacity: 0; 
             transform: translateY(10px);
         }
         [data-theme="light"] .floating-legend-tooltip {
-            background: #FFFFFF;
+            background: #FFFFFF; /* Fondo sólido claro */
             color: #0A0D14;
             border: 1px solid var(--color-primary);
-            box-shadow: 0 10px 30px rgba(74, 53, 196, 0.15);
+            box-shadow: 0 10px 30px rgba(74, 53, 196, 0.2);
         }
+        
         .floating-legend-tooltip.active { opacity: 1; transform: translateY(0); }
         .floating-legend-tooltip strong { 
             color: var(--color-primary); 
