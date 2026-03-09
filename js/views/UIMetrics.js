@@ -21,7 +21,10 @@ export const UIMetrics = {
 
     fmt(num, db, v) {
         let tag = v ? `<span class="tag--usd">USD</span>` : `<span class="tag--ars">ARS</span>`;
-        return `${tag} <span class="data-font privacy-mask" style="display:inline-block; font-weight: 900;">${this.fmtStr(num, db, v)}</span>`;
+        return `<span style="display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;">
+                    ${tag} 
+                    <span class="data-font privacy-mask" style="font-weight: 900;">${this.fmtStr(num, db, v)}</span>
+                </span>`;
     },
 
     animateValue(obj, end, formatter, duration = 800) {

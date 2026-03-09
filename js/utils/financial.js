@@ -276,6 +276,11 @@ export const FinancialMath = {
         if (tipoGasto) {
             txsFiltradas = txsFiltradas.filter(t => {
                 const tipo = t.tipo || t.contexto || "";
+                
+                // Mapeo estricto para conectar el contexto visual con el tipo de registro real
+                if (tipoGasto.toLowerCase() === 'local') return tipo.toLowerCase() === 'gasto local';
+                if (tipoGasto.toLowerCase() === 'personal') return tipo.toLowerCase() === 'gasto familiar' || tipo.toLowerCase() === 'gasto personal';
+                
                 return tipo.toLowerCase() === tipoGasto.toLowerCase();
             });
         }
