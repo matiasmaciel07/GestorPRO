@@ -132,15 +132,13 @@
 
     <div id="toast-container"></div>
   
-    <template id="tpl-pin-overlay">
-        <div id="pin-overlay" class="is-hidden" aria-hidden="true">
-            <div class="pin-box card" style="max-width: 450px; margin: 15vh auto; text-align: center; padding: 40px; border-radius: 24px;">
-                <h2 class="texto-primario" style="margin-bottom: 30px; font-size: 2rem; letter-spacing: 1px;">Bóveda de Seguridad</h2>
-                <input type="password" id="input-pin-login" class="pin-input data-font" maxlength="4" placeholder="••••" style="text-align:center; font-size:32px; letter-spacing:15px; margin-bottom: 30px; padding: 20px; border-radius: 16px;">
-                <button class="btn" style="width:100%; padding: 15px; font-size: 1.1rem;" data-action="verificar-pin">Desbloquear Autenticación</button>
-            </div>
+    <div id="pin-overlay" class="is-hidden" aria-hidden="true" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(5, 5, 7, 0.95); z-index: 9999; justify-content: center; align-items: flex-start; padding-top: 15vh; backdrop-filter: blur(25px);">
+        <div class="pin-box card" style="max-width: 450px; margin: 0 auto; text-align: center; padding: 40px; border-radius: 24px;">
+            <h2 class="texto-primario" style="margin-bottom: 30px; font-size: 2rem; letter-spacing: 1px;">Bóveda de Seguridad</h2>
+            <input type="password" id="input-pin-login" class="pin-input data-font" maxlength="4" placeholder="••••" style="text-align:center; font-size:32px; letter-spacing:15px; margin-bottom: 30px; padding: 20px; border-radius: 16px;">
+            <button class="btn" style="width:100%; padding: 15px; font-size: 1.1rem;" data-action="verificar-pin">Desbloquear Autenticación</button>
         </div>
-    </template>
+    </div>
 
     <div class="app-layout" style="padding: 12px; gap: 12px; background: transparent;">
         <aside class="sidebar" id="sidebar" style="margin: 0; border-radius: 24px; height: calc(100vh - 24px); box-shadow: var(--shadow-card);">
@@ -170,7 +168,10 @@
                     <span style="color:var(--text-muted); font-size:0.9rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;">Tasa de Cambio Base: <strong class="data-font texto-primario" style="font-size: 1.15rem; margin-left: 8px;">$<span id="lbl-dolar">...</span></strong></span>
                 </div>
                 <div class="is-visible-flex" style="gap:12px; align-items: center;">
-                    <button class="btn btn--outline" id="btn-save-manual" style="padding: 0.6rem 1.2rem; font-size: 0.8rem; font-weight: 900; border-radius: 10px;">💾 Forzar Guardado</button>
+                    <button class="btn btn--outline" id="btn-save-manual" style="padding: 0.6rem 1.2rem; font-size: 0.8rem; font-weight: 900; border-radius: 10px;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 6px;"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+                    Forzar Guardado
+                </button>
                     <button class="btn--icon" id="btn-zen" title="Modo Relativo (Porcentajes)" style="padding: 10px; background: var(--bg-input);"><svg width="20" height="20"><use href="#icon-zen"></use></svg></button>
                     <button class="btn--icon" id="btn-theme" title="Alternar Interfaz" style="padding: 10px; background: var(--bg-input);"><svg width="20" height="20" id="icon-theme-toggle"><use href="#icon-sun"></use></svg></button>
                     <button class="btn--icon" id="btn-privacy" title="Modo Privacidad Activo" style="padding: 10px; background: var(--bg-input);"><svg width="20" height="20" id="icon-privacy-toggle"><use href="#icon-privacy"></use></svg></button>
@@ -958,7 +959,7 @@
                 </section>
 
                 <section id="ajustes" class="tab-content" role="tabpanel">
-                    <div class="grid-4" style="align-items: start; gap: 35px;">
+                    <div class="grid-2" style="align-items: start; gap: 35px;">
                         <div class="card" style="text-align: center; padding: 40px; border-radius: 28px;">
                             <h2 style="margin-bottom: 25px; font-size:1.5rem; color:var(--color-primary); font-weight: 900; text-shadow: var(--shadow-neon-primary);">Reporte Institucional (PDF)</h2>
                             <p style="font-size:1rem; color:var(--text-muted); margin-bottom:30px; line-height: 1.6;">Genera un resumen detallado y profesional del flujo contable seleccionado.</p>
@@ -981,7 +982,10 @@
                                     <option value="Compra">Inyecciones y Compras de Mercado</option>
                                 </select>
                             </div>
-                            <button class="btn" id="btn-exportar-pdf" style="width:100%; margin-top:15px; padding: 1.4rem; font-size: 1.1rem; border-radius: 16px;">📄 Descargar Documento (PDF)</button>
+                            <button class="btn" id="btn-exportar-pdf" style="width:100%; margin-top:15px; padding: 1.4rem; font-size: 1.1rem; border-radius: 16px;">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 8px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                            Descargar Documento (PDF)
+                            </button>
                         </div>
                         
                         <div class="card" style="text-align: center; padding: 40px; border-radius: 28px;">
@@ -997,10 +1001,19 @@
                         <div class="card" style="text-align: center; padding: 40px; border-radius: 28px;">
                             <h2 style="margin-bottom: 25px; font-size:1.5rem; font-weight: 900;">Gestión de Base de Datos</h2>
                             <p style="font-size:1rem; color:var(--text-muted); margin-bottom:30px; line-height: 1.6;">Administración física de archivos JSON para evitar pérdida de registros.</p>
-                            <button class="btn" style="width:100%; margin-bottom:20px; background:var(--color-up); color:#000; box-shadow: var(--shadow-neon-up); padding: 1.4rem; font-size: 1.1rem; border-radius: 16px; font-weight: 900;" data-action="exportar">⬇️ Exportar Backup (JSON)</button>
-                            <button class="btn btn--outline" style="width:100%; margin-bottom:40px; padding: 1.4rem; font-size: 1.1rem; border-radius: 16px; font-weight: 900;" onclick="document.getElementById('file-import').click()">⬆️ Inyectar Archivo JSON</button>
+                            <button class="btn" style="width:100%; margin-bottom:20px; background:var(--color-up); color:#000; box-shadow: var(--shadow-neon-up); padding: 1.4rem; font-size: 1.1rem; border-radius: 16px; font-weight: 900;" data-action="exportar">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 8px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                            Exportar Backup (JSON)
+                            </button>
+                            <button class="btn btn--outline" style="width:100%; margin-bottom:40px; padding: 1.4rem; font-size: 1.1rem; border-radius: 16px; font-weight: 900;" onclick="document.getElementById('file-import').click()">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 8px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                            Inyectar Archivo JSON
+                            </button>
                             <input type="file" id="file-import" class="is-hidden" accept=".json">
-                            <button class="btn btn--danger" style="width:100%; padding: 1.4rem; font-size: 1.1rem; border-radius: 16px;" data-action="borrar-todo">⚠️ Formatear Sistema Total</button>
+                            <button class="btn btn--danger" style="width:100%; padding: 1.4rem; font-size: 1.1rem; border-radius: 16px;" data-action="borrar-todo">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 8px;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+                            Formatear Sistema Total
+                            </button>
                         </div>
                         
                         <div class="card" style="padding: 40px; border-radius: 28px;">
@@ -1009,7 +1022,7 @@
                             <div class="form-row" style="margin-bottom: 25px; flex-wrap: nowrap; gap: 15px;">
                                 <div class="form-group" style="min-width: 0; margin-bottom: 0;"><input type="month" id="inf-mes" style="padding: 1.2rem; font-size: 1.1rem; border-radius: 12px;"></div>
                                 <div class="form-group" style="min-width: 0; width:120px; margin-bottom: 0;"><input type="text" id="inf-val" placeholder="%" style="padding: 1.2rem; font-size: 1.1rem; border-radius: 12px;" class="data-font"></div>
-                                <div class="form-group" style="min-width: 0; margin-bottom: 0;"><button class="btn" style="width:100%; padding: 1.2rem; font-size: 1.1rem; border-radius: 12px;" data-action="guardar-inflacion">✔</button></div>
+                                <div class="form-group" style="min-width: 0; margin-bottom: 0;"><button class="btn" style="width:100%; padding: 1.2rem; font-size: 1.1rem; border-radius: 12px;" data-action="guardar-inflacion"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg></button></div>
                             </div>
                             <div id="lista-inflacion"></div>
                         </div>
