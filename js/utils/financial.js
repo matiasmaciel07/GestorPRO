@@ -303,14 +303,7 @@ export const FinancialMath = {
         const esHistorico = !temporalidad || temporalidad.toLowerCase() === 'histórico' || temporalidad.toLowerCase() === 'historico';
 
         Object.keys(distribucion).forEach(cat => {
-            if (esHistorico) {
-                distribucionPromediada[cat] = distribucion[cat];
-            } else {
-                const promedios = this.calcularPromediosDesglosados(distribucion[cat], temporalidad, txsFiltradas);
-                if (temporalidad.toLowerCase() === 'anual') distribucionPromediada[cat] = promedios.mes;
-                else if (temporalidad.toLowerCase() === 'mensual') distribucionPromediada[cat] = promedios.semana;
-                else if (temporalidad.toLowerCase() === 'semanal') distribucionPromediada[cat] = promedios.dia;
-            }
+            distribucionPromediada[cat] = distribucion[cat];
         });
 
         const labels = Object.keys(distribucionPromediada);
