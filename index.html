@@ -21,6 +21,7 @@
     <link rel="stylesheet" href="css/utilities.css">
     
     <style>
+        /* Estructura UI: Tooltips Interactivos de Leyendas Cyber-Finance */
         .floating-legend-tooltip {
             position: absolute; 
             background: rgba(17, 20, 26, 0.98); 
@@ -55,6 +56,7 @@
             font-weight: 900;
         }
 
+        /* Contenedores con Desplazamiento Optimizado y Respiro */
         .lista-gastos-container {
             margin-top: 25px; 
             max-height: 250px; 
@@ -76,6 +78,33 @@
                 navigator.serviceWorker.register('./sw.js').catch(err => console.error('[PWA] SW Error:', err));
             });
         }
+
+        document.addEventListener("DOMContentLoaded", () => {
+            const SVG_VERSION = 'v1.1';
+            const SVG_URL = 'assets/sprite.svg';
+            const cachedSvg = localStorage.getItem('gfp_svg_cache');
+            const cachedVersion = localStorage.getItem('gfp_svg_version');
+
+            const injectSvg = (svgString) => {
+                const div = document.createElement('div');
+                div.style.display = 'none';
+                div.innerHTML = svgString;
+                document.body.insertBefore(div, document.body.firstChild);
+            };
+
+            if (cachedSvg && cachedVersion === SVG_VERSION) {
+                injectSvg(cachedSvg);
+            } else {
+                fetch(SVG_URL)
+                    .then(res => res.text())
+                    .then(svg => {
+                        localStorage.setItem('gfp_svg_cache', svg);
+                        localStorage.setItem('gfp_svg_version', SVG_VERSION);
+                        injectSvg(svg);
+                    })
+                    .catch(err => console.error('[DOM] Error cargando SVG Sprite:', err));
+            }
+        });
     </script>
     
     <script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
@@ -86,36 +115,6 @@
     <script type="module" src="js/controller.js" defer></script>
 </head>
 <body>
-    <svg style="display: none;" xmlns="http://www.w3.org/2000/svg">
-        <symbol id="icon-logo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></symbol>
-        <symbol id="icon-dash" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></symbol>
-        <symbol id="icon-shop" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.29 5.14A2 2 0 0 0 6.53 21h10.94a2 2 0 0 0 1.82-2.86L17 13"/></symbol>
-        <symbol id="icon-operar" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></symbol>
-        <symbol id="icon-portafolio" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.21 15.89A10 10 0 1 1 8 2.83M22 12A10 10 0 0 0 12 2v10z"/></symbol>
-        <symbol id="icon-calendar" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></symbol>
-        <symbol id="icon-historial" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></symbol>
-        <symbol id="icon-tools" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></symbol>
-        <symbol id="icon-fire" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></symbol>
-        <symbol id="icon-settings" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></symbol>
-        <symbol id="icon-menu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></symbol>
-        <symbol id="icon-save" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></symbol>
-        <symbol id="icon-zen" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></symbol>
-        <symbol id="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></symbol>
-        <symbol id="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></symbol>
-        <symbol id="icon-privacy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></symbol>
-        <symbol id="icon-privacy-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></symbol>
-        <symbol id="icon-note" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></symbol>
-        <symbol id="icon-trash" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></symbol>
-        <symbol id="icon-edit" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></symbol>
-        <symbol id="icon-left" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></symbol>
-        <symbol id="icon-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></symbol>
-        <symbol id="icon-pdf" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></symbol>
-        <symbol id="icon-download" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></symbol>
-        <symbol id="icon-upload" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></symbol>
-        <symbol id="icon-alert" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></symbol>
-        <symbol id="icon-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></symbol>
-        <symbol id="icon-empty" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="8" y1="12" x2="16" y2="12"/></symbol>
-    </svg>
 
     <datalist id="lista-activos">
         <option value="SPY"><option value="QQQ"><option value="DIA"><option value="IWM">
@@ -133,13 +132,15 @@
 
     <div id="toast-container"></div>
   
-    <div id="pin-overlay" class="is-hidden" aria-hidden="true">
-        <div class="pin-box card" style="max-width: 450px; margin: 15vh auto; text-align: center; padding: 40px; border-radius: 24px;">
-            <h2 class="texto-primario" style="margin-bottom: 30px; font-size: 2rem; letter-spacing: 1px;">Bóveda de Seguridad</h2>
-            <input type="password" id="input-pin-login" class="pin-input data-font" maxlength="4" placeholder="••••" style="text-align:center; font-size:32px; letter-spacing:15px; margin-bottom: 30px; padding: 20px; border-radius: 16px;">
-            <button class="btn" style="width:100%; padding: 15px; font-size: 1.1rem;" data-action="verificar-pin">Desbloquear Autenticación</button>
+    <template id="tpl-pin-overlay">
+        <div id="pin-overlay" class="is-hidden" aria-hidden="true">
+            <div class="pin-box card" style="max-width: 450px; margin: 15vh auto; text-align: center; padding: 40px; border-radius: 24px;">
+                <h2 class="texto-primario" style="margin-bottom: 30px; font-size: 2rem; letter-spacing: 1px;">Bóveda de Seguridad</h2>
+                <input type="password" id="input-pin-login" class="pin-input data-font" maxlength="4" placeholder="••••" style="text-align:center; font-size:32px; letter-spacing:15px; margin-bottom: 30px; padding: 20px; border-radius: 16px;">
+                <button class="btn" style="width:100%; padding: 15px; font-size: 1.1rem;" data-action="verificar-pin">Desbloquear Autenticación</button>
+            </div>
         </div>
-    </div>
+    </template>
 
     <div class="app-layout" style="padding: 12px; gap: 12px; background: transparent;">
         <aside class="sidebar" id="sidebar" style="margin: 0; border-radius: 24px; height: calc(100vh - 24px); box-shadow: var(--shadow-card);">
@@ -169,7 +170,7 @@
                     <span style="color:var(--text-muted); font-size:0.9rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;">Tasa de Cambio Base: <strong class="data-font texto-primario" style="font-size: 1.15rem; margin-left: 8px;">$<span id="lbl-dolar">...</span></strong></span>
                 </div>
                 <div class="is-visible-flex" style="gap:12px; align-items: center;">
-                    <button class="btn btn--outline" id="btn-save-manual" style="padding: 0.6rem 1.2rem; font-size: 0.8rem; font-weight: 900; border-radius: 10px;"><svg width="14" height="14"><use href="#icon-save"></use></svg> Forzar Guardado</button>
+                    <button class="btn btn--outline" id="btn-save-manual" style="padding: 0.6rem 1.2rem; font-size: 0.8rem; font-weight: 900; border-radius: 10px;">💾 Forzar Guardado</button>
                     <button class="btn--icon" id="btn-zen" title="Modo Relativo (Porcentajes)" style="padding: 10px; background: var(--bg-input);"><svg width="20" height="20"><use href="#icon-zen"></use></svg></button>
                     <button class="btn--icon" id="btn-theme" title="Alternar Interfaz" style="padding: 10px; background: var(--bg-input);"><svg width="20" height="20" id="icon-theme-toggle"><use href="#icon-sun"></use></svg></button>
                     <button class="btn--icon" id="btn-privacy" title="Modo Privacidad Activo" style="padding: 10px; background: var(--bg-input);"><svg width="20" height="20" id="icon-privacy-toggle"><use href="#icon-privacy"></use></svg></button>
@@ -200,7 +201,7 @@
                     <div class="grid-3" style="margin-bottom: var(--spacing-xl);">
                         <div class="card card--stat" style="padding: 35px; border-radius: 24px;">
                             <h3 class="stat__title" data-tooltip="Representa el valor patrimonial consolidado. Es la sumatoria de la liquidez operativa, la valoración del inventario, el capital líquido y el portafolio de inversión.">Patrimonio Comercial Neto</h3>
-                            <div class="stat__value data-font" id="dash-total" style="text-align:center; margin-top: 15px;">-</div>
+                            <div class="stat__value data-font" id="dash-total" style="text-align:center; font-size: 3.2rem; margin-top: 15px;">-</div>
                             <div style="height: 60px; margin-top: 30px; width: 100%;"><canvas id="spark-dash-total"></canvas></div>
                             <div class="stat-extra"><span id="lbl-pat-sub1">TIR Proyectada (XIRR)</span> <strong id="val-pat-sub1" style="font-size: 1.15rem;">-</strong></div>
                             <div class="stat-extra"><span id="lbl-pat-sub2">Ahorro de Bolsillo Total</span> <strong id="val-pat-sub2" style="font-size: 1.15rem;">-</strong></div>
@@ -208,7 +209,7 @@
         
                         <div class="card card--stat" style="padding: 35px; border-radius: 24px;">
                             <h3 class="stat__title" data-tooltip="Capital circulante o liquidez primaria. Representa los fondos retenidos disponibles para ser asignados a instrumentos de inversión o cobertura de contingencias.">Liquidez en Caja (Retenida)</h3>
-                            <div class="stat__value data-font texto-verde" id="dash-liquidez" style="text-align:center; margin-top: 15px;">-</div>
+                            <div class="stat__value data-font texto-verde" id="dash-liquidez" style="text-align:center; font-size: 3.2rem; margin-top: 15px;">-</div>
                             <div style="height: 60px; margin-top: 30px; width: 100%;"><canvas id="spark-dash-liquidez"></canvas></div>
                             <div class="stat-extra"><span id="lbl-liq-sub1">Fondo Supervivencia Local</span> <strong id="val-liq-sub1" style="font-size: 1.15rem;">-</strong></div>
                             <div class="stat-extra"><span id="lbl-liq-sub2">Tasa de Retención Real</span> <strong id="val-liq-sub2" style="font-size: 1.15rem;">-</strong></div>
@@ -216,7 +217,7 @@
    
                         <div class="card card--stat" style="padding: 35px; border-radius: 24px;">
                             <h3 class="stat__title" data-tooltip="Valor total de los aportes de capital transferidos al mercado bursátil para la adquisición de instrumentos financieros.">Capital Invertido Bursátil</h3>
-                            <div class="stat__value data-font texto-accent" id="dash-invertido" style="text-align:center; margin-top: 15px;">-</div>
+                            <div class="stat__value data-font texto-accent" id="dash-invertido" style="text-align:center; font-size: 3.2rem; margin-top: 15px;">-</div>
                             <div style="height: 60px; margin-top: 30px; width: 100%;"><canvas id="spark-dash-invertido"></canvas></div>
                             <div class="stat-extra"><span id="lbl-inv-sub1" data-tooltip="Precio promedio ponderado de adquisición de la divisa de referencia a lo largo del tiempo histórico.">Dólar Promedio Histórico</span> <strong id="val-inv-sub1" style="font-size: 1.15rem;">-</strong></div>
                             <div class="stat-extra"><span id="lbl-inv-sub2">Trades Ejecutados</span> <strong id="val-inv-sub2" style="font-size: 1.15rem;">-</strong></div>
@@ -334,19 +335,19 @@
                         <div class="grid-4" style="gap:25px; margin-bottom: 0;">
                             <div style="background:var(--bg-input); padding:25px; border-radius:20px; text-align:center; border: 1px solid var(--border-color);">
                                 <div class="stat__title" data-tooltip="Costo contable de adquisición de todos los productos, insumos y suministros operativos que conforman el inventario físico actual.">Inventario Base (Costo)</div>
-                                <div class="stat__value data-font" id="met-stock-costo" style="margin-top: 15px;">$0</div>
+                                <div class="stat__value data-font" id="met-stock-costo" style="font-size:2rem; margin-top: 15px;">$0</div>
                             </div>
                             <div style="background:var(--bg-input); padding:25px; border-radius:20px; text-align:center; border: 1px solid var(--border-color);">
                                 <div class="stat__title" data-tooltip="Proyección de ingresos brutos asumiendo la liquidación total del inventario físico a los precios comerciales actuales fijados al público.">Valor Llave (Precio Retail)</div>
-                                <div class="stat__value data-font texto-primario" id="met-stock-retail" style="margin-top: 15px;">$0</div>
+                                <div class="stat__value data-font texto-primario" id="met-stock-retail" style="font-size:2rem; margin-top: 15px;">$0</div>
                             </div>
                             <div style="background:var(--bg-input); padding:25px; border-radius:20px; text-align:center; border: 1px solid var(--border-color);">
                                 <div class="stat__title" data-tooltip="Ratios técnicos que evalúan la capacidad para cubrir pasivos de corto plazo utilizando únicamente los activos líquidos (Ácida) o complementando con el inventario (Corriente).">Liquidez Ácida / Corriente</div>
                                 <div class="stat__value data-font" id="met-ratio-liquidez" style="font-size:1.8rem; margin-top: 15px;">0.00x / 0.00x</div>
                             </div>
-                            <div style="background:rgba(0, 255, 149, 0.05); padding:25px; border-radius:20px; text-align:center; border: 1px solid var(--color-up); box-shadow: inset 0 0 20px rgba(0, 255, 149, 0.1);">
+                            <div style="background:rgba(0, 255, 149, 0.05); padding:25px; border-radius:20px; text-align:center; border: 1px solid var(--color-up); box-shadow: inset 0 0 20px rgba(0,255,149,0.1);">
                                 <div class="stat__title texto-verde" data-tooltip="Índice que evalúa la velocidad de actualización de los precios comerciales del inventario frente a los datos inflacionarios oficiales.">Hedge vs Inflación Local</div>
-                                <div class="stat__value data-font texto-verde" id="met-hedge-stock" style="margin-top: 15px;">0%</div>
+                                <div class="stat__value data-font texto-verde" id="met-hedge-stock" style="font-size:2.2rem; margin-top: 15px;">0%</div>
                             </div>
                         </div>
                     </div>
@@ -411,11 +412,11 @@
                     <div class="grid-2" style="margin-bottom: var(--spacing-xl);">
                         <div class="card card--stat" style="padding: 35px; border-radius: 28px;">
                             <div class="stat__title">Ingreso Total Consolidado (Histórico)</div>
-                            <div class="stat__value data-font texto-verde" id="met-ingreso-local" style="margin-top: 15px;">$0</div>
+                            <div class="stat__value data-font texto-verde" id="met-ingreso-local" style="font-size: 3rem; margin-top: 15px;">$0</div>
                         </div>
                         <div class="card card--stat" style="padding: 35px; border-radius: 28px;">
                             <div class="stat__title">Egresos y Distribución (Histórico)</div>
-                            <div class="stat__value data-font texto-rojo" id="met-egreso-local" style="margin-top: 15px;">$0</div>
+                            <div class="stat__value data-font texto-rojo" id="met-egreso-local" style="font-size: 3rem; margin-top: 15px;">$0</div>
                         </div>
                     </div>
 
@@ -567,7 +568,7 @@
                                     <small id="hint-cantidad" class="texto-rojo is-hidden" style="display:block; margin-top:10px; font-weight:800; font-size: 0.85rem; text-transform: uppercase;"></small>
                                 </div>
                             </div>
-                            <div class="form__group"><label class="form__label" id="lbl-monto">Impacto Consolidado (ARS)</label><input type="text" id="op-monto" class="format-number data-font" style="font-size: 1.8rem; color: var(--color-primary); background: rgba(96, 69, 244, 0.05); border-color: rgba(96, 69, 244, 0.3);"></div>
+                            <div class="form__group"><label class="form__label" id="lbl-monto">Monto Consolidado de la Operación (ARS)</label><input type="text" id="op-monto" class="format-number data-font" style="font-size: 1.8rem; color: var(--color-primary); background: rgba(96, 69, 244, 0.05); border-color: rgba(96, 69, 244, 0.3);"></div>
                             <div class="form__group" id="bloque-dolares"><label class="form__label">Contravalor en USD (Metadato Adicional)</label><input type="number" id="op-usd" step="0.01" class="data-font" style="font-size: 1.4rem; color: var(--color-up); background: rgba(0, 255, 149, 0.05); border-color: rgba(0, 255, 149, 0.3);"></div>
                             
                             <div class="form__group" style="margin-bottom: 0;">
@@ -616,8 +617,8 @@
                                     <div class="form__group" style="margin-bottom:0; width:100%;">
                                         <label class="form__label texto-warning">Estado Financiero de la Compra</label>
                                         <select id="eco-estado-pago" style="border-color: var(--color-warning); background: rgba(252, 163, 17, 0.05); color: var(--color-warning); font-weight: 800;">
-                                            <option value="Pagado">Liquidado (Descuenta de Caja)</option>
-                                            <option value="Pendiente">Deuda Pendiente (Cuenta Corriente)</option>
+                                            <option value="Pagado">Pagado al Contado (Descuenta de Caja)</option>
+                                            <option value="Pendiente">Abonar en el Futuro (Cuenta Corriente / Deuda)</option>
                                         </select>
                                     </div>
                                 </div>
@@ -625,7 +626,7 @@
                                     <div class="form__group" style="margin-bottom:0;">
                                         <label class="form__label texto-primario">Proyección de Precio Retail (Liquidación)</label>
                                         <input type="text" id="eco-valor-venta" class="format-number data-font" placeholder="Precio fijado al público" style="border-color: var(--color-primary); background: rgba(96, 69, 244, 0.05); font-size: 1.4rem;">
-                                        <small style="color:var(--text-muted); display:block; margin-top:10px; font-size: 0.8rem; text-transform: uppercase; font-weight: 800; letter-spacing: 0.5px;" id="hint-valor-venta">Nota: La omisión asume un margen de utilidad nulo para este asiento.</small>
+                                        <small style="color:var(--text-muted); display:block; margin-top:10px; font-size: 0.8rem; text-transform: uppercase; font-weight: 800; letter-spacing: 0.5px;" id="hint-valor-venta">Nota: Si se omite, el sistema reconocerá utilidad neutra (Precio Venta = Costo).</small>
                                     </div>
                                 </div>
                             </div>
@@ -740,6 +741,8 @@
                                         <th>Precio Promedio</th>
                                         <th>Inversión Base</th>
                                         <th>Valor Actual</th>
+                                        <th>Media 50D</th>
+                                        <th>Media 200D</th>
                                         <th>Desempeño Neto</th>
                                     </tr>
                                 </thead>
@@ -753,9 +756,9 @@
                      <div class="grid-2">
                          <div class="card" style="padding: 35px; border-radius: 28px;">
                             <div class="is-visible-flex" style="justify-content: space-between; align-items: center; margin-bottom: 30px;">
-                                <button class="btn btn--outline" data-action="cambiar-mes" data-dir="-1" style="padding: 12px 24px; font-size: 1.2rem; border-radius: 12px;"><svg width="18" height="18"><use href="#icon-left"></use></svg></button>
+                                <button class="btn btn--outline" data-action="cambiar-mes" data-dir="-1" style="padding: 12px 24px; font-size: 1.2rem; border-radius: 12px;">◀</button>
                                 <h2 id="cal-mes-ano" style="font-size: 1.8rem; font-weight: 900; letter-spacing: 0.5px; text-transform: uppercase;">...</h2>
-                                <button class="btn btn--outline" data-action="cambiar-mes" data-dir="1" style="padding: 12px 24px; font-size: 1.2rem; border-radius: 12px;"><svg width="18" height="18"><use href="#icon-right"></use></svg></button>
+                                <button class="btn btn--outline" data-action="cambiar-mes" data-dir="1" style="padding: 12px 24px; font-size: 1.2rem; border-radius: 12px;">▶</button>
                             </div>
                             <div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px; text-align: center; margin-bottom: 15px;">
                                 <div class="stat__title">Lun</div><div class="stat__title">Mar</div><div class="stat__title">Mié</div><div class="stat__title">Jue</div><div class="stat__title">Vie</div><div class="stat__title texto-primario">Sáb</div><div class="stat__title texto-primario">Dom</div>
@@ -763,7 +766,7 @@
                             <div id="cal-dias" style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px; text-align: center;"></div>
                         </div>
                         <div class="card" id="cal-detalle" style="padding: 35px; border-radius: 28px;">
-                            <h3 class="stat__title" style="margin-bottom: 15px; font-size: 1.2rem;">Seleccione una fecha auditable</h3>
+                            <h3 class="stat__title" style="margin-bottom: 15px; font-size: 1.2rem;">Selecciona una fecha auditable</h3>
                         </div>
                     </div>
                 </section>
@@ -817,7 +820,7 @@
                         </div>
                         <div class="card" style="padding: 35px; border-radius: 28px;">
                             <h3 class="stat__title" style="margin-bottom: 25px; font-size: 1rem;">Asignación de Rendimientos por Sector (PnL)</h3>
-                            <div id="info-atribucion-sector" style="padding-right: 15px;"></div>
+                            <div id="info-atribucion-sector" style="max-height: 250px; overflow-y: auto; padding-right: 15px;"></div>
                         </div>
                     </div>
                     
@@ -835,7 +838,7 @@
 
                 <section id="fire" class="tab-content" role="tabpanel">
                     <h2 style="margin-bottom: 20px; font-size: 2rem; font-weight: 900; letter-spacing: 0.5px; display: flex; align-items: center; gap: 15px;" class="texto-accent">
-                        <span style="background: rgba(225, 29, 72, 0.15); padding: 10px; border-radius: 12px; display: inline-flex;"><svg width="28" height="28"><use href="#icon-fire"></use></svg></span>
+                        <span style="background: rgba(255, 77, 138, 0.15); padding: 10px; border-radius: 12px; display: inline-flex;"><svg width="28" height="28"><use href="#icon-fire"></use></svg></span>
                         Proyección de Autosuficiencia Financiera (Modelo FIRE)
                     </h2>
                     <p style="color:var(--text-muted); margin-bottom: 40px; font-size: 1.05rem; max-width:900px; line-height: 1.6;">Algoritmo predictivo nutrido directamente con el costo de vida base estandarizado, omitiendo de forma íntegra cualquier obligación dependiente de la dinámica comercial operativa o societaria.</p>
@@ -863,12 +866,12 @@
                                     <div class="stat__title">Carga Económica Ponderada (Vida Mensual)</div>
                                     <div class="stat__value data-font texto-rojo" id="fire-res-gasto" style="font-size:2.5rem; margin-top: 15px;">$0</div>
                                 </div>
-                                <div style="background:rgba(225, 29, 72, 0.05); padding:30px; border-radius:20px; border: 1px solid rgba(225, 29, 72, 0.3); box-shadow: var(--shadow-neon-accent);">
+                                <div style="background:rgba(255, 77, 138, 0.05); padding:30px; border-radius:20px; border: 1px solid rgba(255, 77, 138, 0.3); box-shadow: var(--shadow-neon-accent);">
                                     <div class="stat__title texto-accent" data-tooltip="Capital umbral requerido para que la rentabilidad pasiva de mercado, ajustada a la Tasa Segura de Retiro (SWR), absorba perpetuamente las obligaciones del costo de vida estimado.">Patrimonio Umbral (FIRE Number)</div>
                                     <div class="stat__value data-font texto-accent" id="fire-res-objetivo" style="font-size:2.5rem; margin-top: 15px;">$0</div>
                                 </div>
                             </div>
-                            <div style="text-align:center; padding: 40px; background: rgba(5, 150, 105, 0.05); border: 1px solid rgba(5, 150, 105, 0.3); border-radius: 24px; margin-top: auto; box-shadow: inset 0 0 30px rgba(5, 150, 105, 0.1);">
+                            <div style="text-align:center; padding: 40px; background: rgba(0, 255, 149, 0.05); border: 1px solid rgba(0, 255, 149, 0.3); border-radius: 24px; margin-top: auto; box-shadow: inset 0 0 30px rgba(0,255,149,0.1);">
                                 <h4 class="stat__title texto-verde" style="font-size:1.1rem; margin-bottom:20px;">Horizonte de Tiempo Teórico</h4>
                                 <div class="data-font texto-verde" id="fire-res-anos" style="font-size:5rem; font-weight:900; line-height: 1; text-shadow: var(--shadow-neon-up);">0 Años</div>
                             </div>
@@ -960,7 +963,7 @@
                 </section>
 
                 <section id="ajustes" class="tab-content" role="tabpanel">
-                    <div class="settings-grid">
+                    <div class="grid-4" style="align-items: start; gap: 35px;">
                         <div class="card" style="text-align: center; padding: 40px; border-radius: 28px;">
                             <h2 style="margin-bottom: 25px; font-size:1.5rem; color:var(--color-primary); font-weight: 900; text-shadow: var(--shadow-neon-primary);">Reporte Institucional (PDF)</h2>
                             <p style="font-size:1rem; color:var(--text-muted); margin-bottom:30px; line-height: 1.6;">Genera un resumen detallado y profesional del flujo contable seleccionado.</p>
@@ -983,7 +986,7 @@
                                     <option value="Compra">Inyecciones y Compras de Mercado</option>
                                 </select>
                             </div>
-                            <button class="btn" id="btn-exportar-pdf" style="width:100%; margin-top:15px; padding: 1.4rem; font-size: 1.1rem; border-radius: 16px;"><svg width="18" height="18"><use href="#icon-pdf"></use></svg> Descargar Documento (PDF)</button>
+                            <button class="btn" id="btn-exportar-pdf" style="width:100%; margin-top:15px; padding: 1.4rem; font-size: 1.1rem; border-radius: 16px;">📄 Descargar Documento (PDF)</button>
                         </div>
                         
                         <div class="card" style="text-align: center; padding: 40px; border-radius: 28px;">
@@ -999,10 +1002,10 @@
                         <div class="card" style="text-align: center; padding: 40px; border-radius: 28px;">
                             <h2 style="margin-bottom: 25px; font-size:1.5rem; font-weight: 900;">Gestión de Base de Datos</h2>
                             <p style="font-size:1rem; color:var(--text-muted); margin-bottom:30px; line-height: 1.6;">Administración física de archivos JSON para evitar pérdida de registros.</p>
-                            <button class="btn" style="width:100%; margin-bottom:20px; background:var(--color-up); color:#000; box-shadow: var(--shadow-neon-up); padding: 1.4rem; font-size: 1.1rem; border-radius: 16px; font-weight: 900;" data-action="exportar"><svg width="18" height="18"><use href="#icon-download"></use></svg> Exportar Backup (JSON)</button>
-                            <button class="btn btn--outline" style="width:100%; margin-bottom:40px; padding: 1.4rem; font-size: 1.1rem; border-radius: 16px; font-weight: 900;" onclick="document.getElementById('file-import').click()"><svg width="18" height="18"><use href="#icon-upload"></use></svg> Inyectar Archivo JSON</button>
+                            <button class="btn" style="width:100%; margin-bottom:20px; background:var(--color-up); color:#000; box-shadow: var(--shadow-neon-up); padding: 1.4rem; font-size: 1.1rem; border-radius: 16px; font-weight: 900;" data-action="exportar">⬇️ Exportar Backup (JSON)</button>
+                            <button class="btn btn--outline" style="width:100%; margin-bottom:40px; padding: 1.4rem; font-size: 1.1rem; border-radius: 16px; font-weight: 900;" onclick="document.getElementById('file-import').click()">⬆️ Inyectar Archivo JSON</button>
                             <input type="file" id="file-import" class="is-hidden" accept=".json">
-                            <button class="btn btn--danger" style="width:100%; padding: 1.4rem; font-size: 1.1rem; border-radius: 16px;" data-action="borrar-todo"><svg width="18" height="18"><use href="#icon-alert"></use></svg> Formatear Sistema Total</button>
+                            <button class="btn btn--danger" style="width:100%; padding: 1.4rem; font-size: 1.1rem; border-radius: 16px;" data-action="borrar-todo">⚠️ Formatear Sistema Total</button>
                         </div>
                         
                         <div class="card" style="padding: 40px; border-radius: 28px;">
@@ -1011,9 +1014,9 @@
                             <div class="form-row" style="margin-bottom: 25px; flex-wrap: nowrap; gap: 15px;">
                                 <div class="form-group" style="min-width: 0; margin-bottom: 0;"><input type="month" id="inf-mes" style="padding: 1.2rem; font-size: 1.1rem; border-radius: 12px;"></div>
                                 <div class="form-group" style="min-width: 0; width:120px; margin-bottom: 0;"><input type="text" id="inf-val" placeholder="%" style="padding: 1.2rem; font-size: 1.1rem; border-radius: 12px;" class="data-font"></div>
-                                <div class="form-group" style="min-width: 0; margin-bottom: 0;"><button class="btn" style="width:100%; padding: 1.2rem; font-size: 1.1rem; border-radius: 12px;" data-action="guardar-inflacion"><svg width="18" height="18"><use href="#icon-check"></use></svg></button></div>
+                                <div class="form-group" style="min-width: 0; margin-bottom: 0;"><button class="btn" style="width:100%; padding: 1.2rem; font-size: 1.1rem; border-radius: 12px;" data-action="guardar-inflacion">✔</button></div>
                             </div>
-                            <div id="lista-inflacion" style="width: 100%; overflow: hidden;"></div>
+                            <div id="lista-inflacion"></div>
                         </div>
                     </div>
                 </section>
@@ -1026,6 +1029,8 @@
                         <td class="td-ppp data-font td-sensitive"></td>
                         <td class="td-costo data-font td-sensitive"></td>
                         <td class="td-precio data-font"></td>
+                        <td class="td-sma50 data-font"></td>
+                        <td class="td-sma200 data-font"></td>
                         <td class="td-gnr data-font"></td>
                     </tr>
                 </template>

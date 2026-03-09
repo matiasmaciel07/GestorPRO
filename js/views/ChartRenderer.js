@@ -3,39 +3,34 @@ import { UIMetrics } from './UIMetrics.js';
 import { FinancialMath } from '../utils/financial.js';
 
 // -----------------------------------------------------------------------------
-// FASE 2: PLUGIN CUSTOM PARA GLOW NEÓN DIRECTO EN CANVAS (DEPURADO)
+// FASE 4: PLUGIN CUSTOM PARA GLOW NEÓN DIRECTO EN CANVAS
 // -----------------------------------------------------------------------------
 const NeonGlowPlugin = {
     id: 'neonGlow',
     beforeDatasetDraw(chart, args, pluginOptions) {
         const isLightMode = document.documentElement.getAttribute('data-theme') === 'light';
-        if (isLightMode) return; 
-        
-        // Blindaje: Solo aplicamos Glow a curvas y donas. 
-        // Esto previene la corrupción del contexto y el bloque negro en Sankey o barras.
-        if (chart.config.type !== 'line' && chart.config.type !== 'doughnut') return;
+        if (isLightMode) return; // En modo claro apagamos el Glow para usar Sombras Ambientales CSS
         
         const ctx = chart.ctx;
         ctx.save();
         const dataset = chart.data.datasets[args.index];
         
-        let color = dataset.borderColor || dataset.backgroundColor;
-        if (Array.isArray(color)) color = color[0];
-        
-        // Inyección de filtro Drop-Shadow en el contexto 2D
-        ctx.shadowColor = color || 'transparent';
-        ctx.shadowBlur = chart.config.type === 'line' ? 12 : 20;
-        ctx.shadowOffsetX = 0;
-        ctx.shadowOffsetY = 0;
+        if (chart.config.type === 'line' || chart.config.type === 'doughnut') {
+            let color = dataset.borderColor || dataset.backgroundColor;
+            if (Array.isArray(color)) color = color[0];
+            
+            // Inyección de filtro Drop-Shadow en el contexto 2D
+            ctx.shadowColor = color;
+            ctx.shadowBlur = chart.config.type === 'line' ? 12 : 20;
+            ctx.shadowOffsetX = 0;
+            ctx.shadowOffsetY = 0;
+        }
     },
     afterDatasetDraw(chart, args, pluginOptions) {
         const isLightMode = document.documentElement.getAttribute('data-theme') === 'light';
-        if (isLightMode) return;
-        
-        // Blindaje de restauración simétrica
-        if (chart.config.type !== 'line' && chart.config.type !== 'doughnut') return;
-        
-        chart.ctx.restore();
+        if (!isLightMode) {
+            chart.ctx.restore();
+        }
     }
 };
 
@@ -104,11 +99,11 @@ export const ChartRenderer = {
             let b = parseInt(color.substring(5,7), 16) || 0;
             
             if (isLightMode) {
-                // Gradientes Pastel Intenso hacia blanco
+                // Gradientes Pastel Intenso hacia blanco crema
                 colorWithAlphaStart = `rgba(${r}, ${g}, ${b}, 0.5)`;
                 colorWithAlphaEnd = `rgba(255, 255, 255, 0.5)`;
             } else {
-                // Fading profundo hacia transparente
+                // Fading profundo hacia el negro abismal
                 colorWithAlphaStart = `rgba(${r}, ${g}, ${b}, 0.6)`;
                 colorWithAlphaEnd = `rgba(${r}, ${g}, ${b}, 0.0)`;
             }
@@ -181,7 +176,7 @@ export const ChartRenderer = {
                         label: 'Ingreso Operativo Total',
                         data: dataIngresos,
                         backgroundColor: colorUp,
-                        borderRadius: 8,
+                        borderRadius: 8, // Barras elegantes redondeadas
                         borderWidth: isLightMode ? 2 : 0, 
                         borderColor: isLightMode ? '#FFFFFF' : 'transparent',
                         order: 2
@@ -299,7 +294,7 @@ export const ChartRenderer = {
         const datasetsConfig = [
             { label: 'Patrimonio Comercial Neto', data: dTotal, borderColor: colors.colorPrimary, backgroundColor: this._createGradient(ctx, colors.colorPrimary), borderWidth: 4, fill: true, order: 1, spanGaps: false, pointHoverBorderColor: '#FFF' },
             { label: 'Patrimonio Puro (Ahorro Físico)', data: dPuro, borderColor: colors.colorPuro, backgroundColor: 'transparent', borderWidth: 2, borderDash: [6, 6], fill: false, order: 2, spanGaps: false },
-            { label: 'Capital Invertido Bursátil', data: dInv, borderColor: colors.colorAccent, backgroundColor: this._createGradient(ctx, colors.colorAccent), borderWidth: 3, borderDash: [8, 4], fill: isLightMode, order: 3, spanGaps: false },
+            { label: 'Capital Invertido Bursátil', data: dInv, borderColor: colors.colorAccent, backgroundColor: this._createGradient(ctx, colors.colorAccent), borderWidth: 3, borderDash: [8, 4], fill: isLightMode, order: 3, spanGaps: false }, // En modo claro rellenamos el área para más solidez visual
             { label: 'Liquidez en Caja', data: dLiq, borderColor: colors.colorUp, backgroundColor: this._createGradient(ctx, colors.colorUp), borderWidth: 3, fill: isLightMode, order: 4, spanGaps: false },
             { label: 'Costo de Vida Acumulado', data: dVida, borderColor: colors.colorVida, backgroundColor: 'transparent', borderWidth: 2, fill: false, order: 5, hidden: true, spanGaps: false },
             { label: 'Media Móvil Costo Vida', data: dMediaVida, borderColor: colors.colorMediaVida, backgroundColor: 'transparent', borderWidth: 3, borderDash: [4, 4], fill: false, order: 6, hidden: true, spanGaps: true },
@@ -507,7 +502,7 @@ export const ChartRenderer = {
 
         const commonOptions = {
             responsive: true, maintainAspectRatio: false, 
-            cutout: '80%', 
+            cutout: '80%', // Segmentos gruesos
             animation: { duration: 1200, animateScale: true, easing: 'easeOutExpo' },
             plugins: {
                 legend: { display: false },
@@ -526,7 +521,7 @@ export const ChartRenderer = {
                 arc: { 
                     borderWidth: isLightMode ? 2 : 0, 
                     borderColor: isLightMode ? '#FFFFFF' : 'transparent', 
-                    borderRadius: 15,
+                    borderRadius: 15, // Esquinas redondeadas (Squircle inside donut)
                     hoverOffset: 12 
                 } 
             }

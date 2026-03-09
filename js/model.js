@@ -71,13 +71,13 @@ export const model = {
         if (inflacionGuardada) this.inflacionINDEC = inflacionGuardada;
         
         const watch = await storage.get('gfp_watchlist');
-        if (watch) this._data.watchlist = watch;
+        if(watch) this._data.watchlist = watch;
 
         const provs = await storage.get('gfp_proveedores');
-        if (provs) this._data.proveedores = provs;
+        if(provs) this._data.proveedores = provs;
         
         const cats = await storage.get('gfp_categorias');
-        if (cats) {
+        if(cats) {
             let migratedCats = { Local: [], Personal: [] };
             
             if (cats['Operativo Local']) migratedCats.Local = cats['Operativo Local'];
@@ -127,7 +127,7 @@ export const model = {
     },
 
     initWorker() {
-        if (this.worker) this.worker.terminate();
+        if(this.worker) this.worker.terminate();
         
         this.worker = new Worker('js/worker.js', { type: 'module' });
         
@@ -135,6 +135,7 @@ export const model = {
             const { type, payload } = e.data;
             
             if (type === 'ENGINE_RESULT') {
+                // Auditoría Comercial Correctiva antes de inyectar al estado global
                 const auditoria = FinancialMath.calcularAuditoriaComercial(payload.movimientosOrdenados);
                 payload.stats.ingresosNetosAuditoria = auditoria.ingresosBrutosNetos;
                 payload.stats.inventarioBaseCorregido = auditoria.inventarioBaseCosto;
@@ -153,8 +154,8 @@ export const model = {
         };
 
         this.worker.onerror = (err) => {
-            console.error("[Núcleo] Falla en el subproceso de cálculo (Web Worker):", err);
-            if (this._engineResolver) this._engineResolver(err);
+            console.error("Error en Web Worker:", err);
+            if(this._engineResolver) this._engineResolver(err);
         };
     },
 
@@ -190,7 +191,7 @@ export const model = {
     async guardarProveedor(nombre, categoriaAsociada = 'General') {
         const nombreLimpio = nombre.trim();
         const existe = this._rawData.proveedores.find(p => p.nombre.toLowerCase() === nombreLimpio.toLowerCase());
-        if (!existe) {
+        if(!existe) {
             const provsActualizados = [...this._rawData.proveedores, { nombre: nombreLimpio, categoria: categoriaAsociada }];
             this._data.proveedores = provsActualizados; 
             await storage.set('gfp_proveedores', this._rawData.proveedores);
@@ -224,7 +225,7 @@ export const model = {
         let existe = this._rawData.watchlist.find(w => w.activo === activo);
         let nuevaWatchlist = [...this._rawData.watchlist];
         
-        if (!existe) {
+        if(!existe) {
             nuevaWatchlist.push({ activo, precioObjetivo: precio });
         } else {
             let idx = nuevaWatchlist.findIndex(w => w.activo === activo);
@@ -310,7 +311,7 @@ export const model = {
         let movimientosBase = [...this._rawData.movimientos];
 
         if (filtros.tipo && filtros.tipo !== 'Todos') {
-            if (filtros.tipo === 'Gasto Local' || filtros.tipo === 'Gasto Personal' || filtros.tipo === 'Gasto Familiar') {
+            if (filtros.tipo === 'Gasto Local' || filtros.tipo === 'Gasto Personal') {
                 const contextoBuscado = filtros.tipo === 'Gasto Local' ? 'Local' : 'Personal';
                 movimientosBase = movimientosBase.filter(m => m.tipo === 'Gasto' && m.contexto === contextoBuscado);
             } else {
