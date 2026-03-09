@@ -1438,7 +1438,7 @@ export const view = {
         ErrorHandler.catchBoundary('Portafolio Bursátil', 'portafolio', () => {
             this.DOM.tbodyPortafolio.innerHTML = '';
             if(Object.keys(modelData.portafolio).length === 0) {
-                this.DOM.tbodyPortafolio.innerHTML = `<tr><td colspan="9" style="text-align:center; padding: 60px; color:var(--text-muted); font-size: 1.1rem; font-weight: 800;"><svg width="64" height="64" style="margin-bottom:15px; opacity:0.5;"><use href="#icon-empty"></use></svg><br>Tu portafolio de inversión está vacío. Registra compras para comenzar el seguimiento.</td></tr>`;
+                this.DOM.tbodyPortafolio.innerHTML = `<tr><td colspan="7" style="text-align:center; padding: 60px; color:var(--text-muted); font-size: 1.1rem; font-weight: 800;"><svg width="64" height="64" style="margin-bottom:15px; opacity:0.5;"><use href="#icon-empty"></use></svg><br>Tu portafolio de inversión está vacío. Registra compras para comenzar el seguimiento.</td></tr>`;
                 if (this.DOM.divBar) this.DOM.divBar.innerHTML = '';
                 if (this.DOM.divLabels) this.DOM.divLabels.innerHTML = '';
                 return;
@@ -1480,13 +1480,9 @@ export const view = {
                 let sparkWrap = row.querySelector('.td-spark div');
                 let tdPrecio = row.querySelector('.td-precio');
                 let tdGnr = row.querySelector('.td-gnr');
-                let tdSma50 = row.querySelector('.td-sma50');
-                let tdSma200 = row.querySelector('.td-sma200');
                 
                 tdPrecio.style.textAlign = 'right';
                 tdGnr.style.textAlign = 'right';
-                tdSma50.style.textAlign = 'right';
-                tdSma200.style.textAlign = 'right';
 
                 if(apiData && apiData.price) {
                     let precio = apiData.price;
@@ -1498,8 +1494,6 @@ export const view = {
                     tdPrecio.innerHTML = `<span class="td-sensitive"><strong style="font-size: 1.15rem; color: ${pColor};">${this.zenMode ? '---' : this.fmt(precio, modelData.dolarBlue, modelData.vistaUSD)}</strong></span>`;
                     tdGnr.innerHTML = `<span class="td-sensitive ${ganancia>=0?'texto-verde':'texto-rojo'}" style="font-size: 1.15rem;">${ganancia>=0?'+':''}${this.zenMode ? pct.toFixed(2)+'%' : this.fmt(ganancia, modelData.dolarBlue, modelData.vistaUSD)} ${this.zenMode ? '' : '<small style="font-size: 0.85rem; opacity: 0.8;">('+pct.toFixed(2)+'%)</small>'}</span>`;
                     
-                    tdSma50.innerHTML = apiData.sma50 ? (this.zenMode ? '---' : `<span class="privacy-mask">${this.fmt(apiData.sma50, modelData.dolarBlue, modelData.vistaUSD)}</span>`) : '-';
-                    tdSma200.innerHTML = apiData.sma200 ? (this.zenMode ? '---' : `<span class="privacy-mask">${this.fmt(apiData.sma200, modelData.dolarBlue, modelData.vistaUSD)}</span>`) : '-';
                     
                     if(apiData.history && apiData.history.length > 0) {
                         const getCSS = (varName, fallBack) => getComputedStyle(document.documentElement).getPropertyValue(varName).trim() || fallBack;
@@ -1521,8 +1515,6 @@ export const view = {
                 } else if (apiData === null) {
                     tdPrecio.innerHTML = `<span class="texto-rojo" title="Sin cotización local" style="font-weight: 900;">N/D</span>`;
                     tdGnr.innerHTML = `<strong style="color: var(--text-muted);">-</strong>`;
-                    tdSma50.innerHTML = '-';
-                    tdSma200.innerHTML = '-';
                     sparkWrap.innerHTML = '-';
                     
                     basePatrimonio += d.costo;
@@ -1533,8 +1525,6 @@ export const view = {
                 } else {
                     tdPrecio.innerHTML = `<div class="skeleton" style="width:80px; margin-left:auto;"></div>`;
                     tdGnr.innerHTML = `<div class="skeleton" style="width:100px; margin-left:auto;"></div>`;
-                    tdSma50.innerHTML = `<div class="skeleton" style="width:70px; margin-left:auto;"></div>`;
-                    tdSma200.innerHTML = `<div class="skeleton" style="width:70px; margin-left:auto;"></div>`;
                     sparkWrap.innerHTML = `<div class="skeleton" style="width:70px; height:35px; border-radius:6px;"></div>`;
                 }
                 fragment.appendChild(row);
