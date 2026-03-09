@@ -145,7 +145,7 @@
             <div class="logo"><div style="background: rgba(96,69,244,0.15); padding: 8px; border-radius: 12px; display: flex;"><svg width="24" height="24"><use href="#icon-logo"></use></svg></div><span class="logo__text">Gestor Pro</span></div>
             <nav class="nav__links" role="tablist">
                 <button class="nav__item nav__item--active" role="tab" aria-selected="true" aria-controls="dashboard"><span style="padding: 8px; background: rgba(139, 149, 165, 0.1); border-radius: 10px; display: flex;"><svg width="20" height="20"><use href="#icon-dash"></use></svg></span><span class="nav__text">Resumen Global</span></button>
-                <button class="nav__item" role="tab" aria-selected="false" aria-controls="finanza-general"><span style="padding: 8px; background: rgba(139, 149, 165, 0.1); border-radius: 10px; display: flex;"><svg width="20" height="20"><use href="#icon-shop"></use></svg></span><span class="nav__text texto-primario">Operativa Comercial</span></button>
+                <button class="nav__item" role="tab" aria-selected="false" aria-controls="finanza-general"><span style="padding: 8px; background: rgba(139, 149, 165, 0.1); border-radius: 10px; display: flex;"><svg width="20" height="20"><use href="#icon-shop"></use></svg></span><span class="nav__text texto-primario">Flujo Operativo</span></button>
                 <button class="nav__item" role="tab" aria-selected="false" aria-controls="operar"><span style="padding: 8px; background: rgba(139, 149, 165, 0.1); border-radius: 10px; display: flex;"><svg width="20" height="20"><use href="#icon-operar"></use></svg></span><span class="nav__text">Operar / Registrar</span></button>
                 <button class="nav__item" role="tab" aria-selected="false" aria-controls="portafolio"><span style="padding: 8px; background: rgba(139, 149, 165, 0.1); border-radius: 10px; display: flex;"><svg width="20" height="20"><use href="#icon-portafolio"></use></svg></span><span class="nav__text">Portafolio Activo</span></button>
                 <button class="nav__item" role="tab" aria-selected="false" aria-controls="calendario"><span style="padding: 8px; background: rgba(139, 149, 165, 0.1); border-radius: 10px; display: flex;"><svg width="20" height="20"><use href="#icon-calendar"></use></svg></span><span class="nav__text">Calendario</span></button>
@@ -212,7 +212,7 @@
                             <h3 class="stat__title" data-tooltip="Capital circulante o liquidez primaria. Representa los fondos retenidos disponibles para ser asignados a instrumentos de inversión o cobertura de contingencias.">Liquidez en Caja (Retenida)</h3>
                             <div class="stat__value data-font texto-verde" id="dash-liquidez" style="text-align:center; font-size: 3.2rem; margin-top: 15px;">-</div>
                             <div style="height: 60px; margin-top: 30px; width: 100%;"><canvas id="spark-dash-liquidez"></canvas></div>
-                            <div class="stat-extra"><span id="lbl-liq-sub1">Fondo Supervivencia Local</span> <strong id="val-liq-sub1" style="font-size: 1.15rem;">-</strong></div>
+                            <div class="stat-extra"><span id="lbl-liq-sub1">Fondo de Reserva Operativo</span> <strong id="val-liq-sub1" style="font-size: 1.15rem;">-</strong></div>
                             <div class="stat-extra"><span id="lbl-liq-sub2">Tasa de Retención Real</span> <strong id="val-liq-sub2" style="font-size: 1.15rem;">-</strong></div>
                         </div>
    
@@ -247,7 +247,7 @@
                         <div style="background: rgba(96, 69, 244, 0.15); padding: 12px; border-radius: 16px; display: flex; box-shadow: inset 0 0 20px rgba(96,69,244,0.1);">
                             <svg width="32" height="32"><use href="#icon-shop"></use></svg>
                         </div>
-                        Inteligencia Operativa y Caja Comercial
+                        Gestión Operativa y Flujos de Caja
                     </h2>
 
                     <div class="grid-2" style="margin-bottom: var(--spacing-xl);">
@@ -307,7 +307,7 @@
                     <div class="grid-2" style="margin-bottom: var(--spacing-xl);">
                         <div class="card" style="padding: 35px; border-radius: 28px;">
                             <div class="is-visible-flex" style="justify-content:space-between; align-items:center; margin-bottom:30px; flex-wrap:wrap; gap:15px;">
-                                <h3 class="stat__title" style="margin:0; font-size: 0.85rem;">Estructura Operativa (Local)</h3>
+                                <h3 class="stat__title" style="margin:0; font-size: 0.85rem;">Estructura de Gastos Operativos</h3>
                                 <div class="chart-filters gastos-filter-group" id="filtros-gastos-local" style="padding: 6px; border-radius: 12px;">
                                     <button class="btn--filter active gastos-filter-btn" data-filter="Histórico">Histórico</button>
                                     <button class="btn--filter gastos-filter-btn" data-filter="Anual">Anual</button>
@@ -332,14 +332,14 @@
                     </div>
                     
                     <div class="card" style="margin-bottom: var(--spacing-xl); padding: 35px; border-radius: 28px; border-color: rgba(96, 69, 244, 0.4); box-shadow: var(--shadow-neon-primary);">
-                        <h3 class="stat__title" style="margin-bottom: 30px; border-bottom: 1px solid rgba(139, 149, 165, 0.1); padding-bottom: 20px;">Valoración Comercial e Inventario (Auditoría Continua)</h3>
+                        <h3 class="stat__title" style="margin-bottom: 30px; border-bottom: 1px solid rgba(139, 149, 165, 0.1); padding-bottom: 20px;">Valoración de Activos e Inventario (Auditoría Continua)</h3>
                         <div class="grid-4" style="gap:25px; margin-bottom: 0;">
                             <div style="background:var(--bg-input); padding:25px; border-radius:20px; text-align:center; border: 1px solid var(--border-color);">
                                 <div class="stat__title" data-tooltip="Costo contable de adquisición de todos los productos, insumos y suministros operativos que conforman el inventario físico actual.">Inventario Base (Costo)</div>
                                 <div class="stat__value data-font" id="met-stock-costo" style="font-size:2rem; margin-top: 15px;">$0</div>
                             </div>
                             <div style="background:var(--bg-input); padding:25px; border-radius:20px; text-align:center; border: 1px solid var(--border-color);">
-                                <div class="stat__title" data-tooltip="Proyección de ingresos brutos asumiendo la liquidación total del inventario físico a los precios comerciales actuales fijados al público.">Valor Llave (Precio Retail)</div>
+                                <div class="stat__title" data-tooltip="Proyección de ingresos brutos asumiendo la liquidación total del inventario físico a los precios comerciales actuales fijados al público.">Valor de Mercado (Estimado)</div>
                                 <div class="stat__value data-font texto-primario" id="met-stock-retail" style="font-size:2rem; margin-top: 15px;">$0</div>
                             </div>
                             <div style="background:var(--bg-input); padding:25px; border-radius:20px; text-align:center; border: 1px solid var(--border-color);">

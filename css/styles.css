@@ -41,36 +41,38 @@
 }
 
 [data-theme="light"] {
-    /* FASE 1: Paleta Candy UI (Modo Súper Claro 80/20) */
-    --bg-base: #F4F5F7; /* Moon Dust / Crema gélido */
-    --bg-panel: rgba(255, 255, 255, 0.95); /* Blanco puro con leve glassmorphism */
-    --bg-input: #F4EFDF; /* Tono Sidebar / Cream input */
-    --bg-hover: rgba(74, 53, 196, 0.08);
-    --border-color: #E2E5EA; /* Trazos ultra finos */
-    --text-main: #0A0D14; /* Tipografía de Alto Anclaje */
-    --text-muted: #5C677D;
+    /* FASE 1: Paleta Clean Fintech (Modo Súper Claro 80/20) */
+    --bg-base: #F0F2F5; /* Gris frío muy sutil, aspecto corporativo limpio */
+    --bg-panel: rgba(255, 255, 255, 0.95); /* Blanco puro con glassmorphism */
+    --bg-input: #FFFFFF; /* Inputs en blanco puro para máximo contraste y seriedad */
+    --bg-hover: rgba(74, 53, 196, 0.06);
+    --border-color: #E2E8F0; /* Trazos ultra finos en gris pizarra claro */
+    --text-main: #0F172A; /* Tipografía de Alto Anclaje (Slate oscuro) */
+    --text-muted: #64748B; /* Gris técnico para lecturas secundarias */
     
-    /* Colores Sólidos (Pasteles Intensos) */
-    --color-up: #00C272;
-    --color-down: #D90429;
-    --color-primary: #4A35C4;
-    --color-primary-hover: #6045F4;
-    --color-accent: #D81B60;
-    --color-warning: #E68A00;
-    --color-orange: #E65C00;
-    --color-purple: #4405E4;
-    --color-chart: #00A8A8;
+    /* Colores Sólidos (Intensos y legibles sobre fondos claros) */
+    --color-up: #059669; /* Verde esmeralda financiero */
+    --color-down: #E11D48; /* Rojo carmesí técnico */
+    --color-primary: #4F46E5; /* Índigo corporativo */
+    --color-primary-hover: #4338CA;
+    --color-accent: #DB2777; /* Rosa técnico */
+    --color-warning: #D97706; /* Ámbar alerta */
+    --color-orange: #EA580C;
+    --color-purple: #7C3AED;
+    --color-chart: #0D9488;
     
-    /* Sombras Ambientales Tintadas (No gris/negro sucio) */
-    --shadow-card: 0 15px 35px rgba(74, 53, 196, 0.06);
-    --shadow-hover: 0 20px 40px rgba(74, 53, 196, 0.12), 0 0 0 1px var(--color-primary);
-    --shadow-neon-primary: 0 8px 25px rgba(74, 53, 196, 0.25);
-    --shadow-neon-up: 0 8px 25px rgba(0, 194, 114, 0.25);
-    --shadow-neon-down: 0 8px 25px rgba(217, 4, 41, 0.25);
-    --shadow-neon-accent: 0 8px 25px rgba(216, 27, 96, 0.25);
-    --shadow-neon-warning: 0 8px 25px rgba(230, 138, 0, 0.25);
-    --shadow-neon-orange: 0 8px 25px rgba(230, 92, 0, 0.25);
-    --shadow-neon-purple: 0 8px 25px rgba(68, 5, 228, 0.25);
+    /* Sombras Ambientales Mejoradas: Profundidad similar al modo oscuro pero en luz */
+    --shadow-card: 0 10px 30px rgba(15, 23, 42, 0.04), 0 1px 3px rgba(15, 23, 42, 0.02);
+    --shadow-hover: 0 20px 40px rgba(79, 70, 229, 0.08), 0 0 0 1px var(--color-primary);
+    
+    /* Sombras Neón adaptadas a "Glow" diurno (Soft Glows) */
+    --shadow-neon-primary: 0 8px 20px rgba(79, 70, 229, 0.15);
+    --shadow-neon-up: 0 8px 20px rgba(5, 150, 105, 0.15);
+    --shadow-neon-down: 0 8px 20px rgba(225, 29, 72, 0.15);
+    --shadow-neon-accent: 0 8px 20px rgba(219, 39, 119, 0.15);
+    --shadow-neon-warning: 0 8px 20px rgba(217, 119, 6, 0.15);
+    --shadow-neon-orange: 0 8px 20px rgba(234, 88, 12, 0.15);
+    --shadow-neon-purple: 0 8px 20px rgba(124, 58, 237, 0.15);
 
     --glass-blur: blur(25px);
 }

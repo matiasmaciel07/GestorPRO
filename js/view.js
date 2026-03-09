@@ -948,7 +948,7 @@ export const view = {
                 let supStr = `<strong style="color: var(--color-primary); text-shadow: var(--shadow-neon-primary);">${(s.fondoSupervivenciaMeses || 0).toFixed(1)} Meses</strong>`;
                 let tasaAhStr = `<span class="texto-verde privacy-mask">${(s.tasaAhorroReal || 0).toFixed(1)}%</span>`;
                 
-                this.DOM.lblLiqSub1.innerText = "Fondo Supervivencia Local";
+                this.DOM.lblLiqSub1.innerText = "Fondo de Reserva Operativo";
                 this.DOM.valLiqSub1.innerHTML = supStr;
                 
                 this.DOM.lblLiqSub2.innerText = "Tasa de Retención Real";
@@ -1249,7 +1249,7 @@ export const view = {
                 
                 let provHtml = [];
                 if (provArray.length === 0) {
-                    provHtml.push('<tr><td colspan="2" style="text-align:center; padding: 60px; color:var(--text-muted); font-size: 1.1rem; font-weight: 800;"><svg width="64" height="64" style="margin-bottom:15px; opacity:0.5;"><use href="#icon-empty"></use></svg><br>Sin registros logísticos recientes</td></tr>');
+                    provHtml.push('<tr><td colspan="2" style="text-align:center; padding: 60px; color:var(--text-muted); font-size: 1.1rem; font-weight: 800;"><svg width="64" height="64" style="margin-bottom:15px; opacity:0.5;"><use href="#icon-empty"></use></svg><br>Sin registros u obligaciones logísticas recientes</td></tr>');
                 } else {
                     provArray.forEach((p, index) => {
                         let pColor = index === 0 ? 'var(--color-accent)' : 'var(--color-primary)';
@@ -1308,7 +1308,7 @@ export const view = {
                 }
 
                 if (pArray.length === 0) {
-                    prestamosHtml.push('<tr><td colspan="7" style="text-align:center; padding: 60px; color:var(--text-muted); font-size: 1.1rem; font-weight: 800;"><svg width="64" height="64" style="margin-bottom:15px; opacity:0.5;"><use href="#icon-empty"></use></svg><br>Sistema libre de deudas financieras</td></tr>');
+                    prestamosHtml.push('<tr><td colspan="7" style="text-align:center; padding: 60px; color:var(--text-muted); font-size: 1.1rem; font-weight: 800;"><svg width="64" height="64" style="margin-bottom:15px; opacity:0.5;"><use href="#icon-empty"></use></svg><br>No se registran pasivos ni deudas financieras activas</td></tr>');
                 } else {
                     pArray.forEach(p => {
                         let pct = Math.min(100, (p.pagado / p.totalDevolver) * 100);
@@ -1438,7 +1438,7 @@ export const view = {
         ErrorHandler.catchBoundary('Portafolio Bursátil', 'portafolio', () => {
             this.DOM.tbodyPortafolio.innerHTML = '';
             if(Object.keys(modelData.portafolio).length === 0) {
-                this.DOM.tbodyPortafolio.innerHTML = `<tr><td colspan="7" style="text-align:center; padding: 60px; color:var(--text-muted); font-size: 1.1rem; font-weight: 800;"><svg width="64" height="64" style="margin-bottom:15px; opacity:0.5;"><use href="#icon-empty"></use></svg><br>Tu portafolio de inversión está vacío. Registra compras para comenzar el seguimiento.</td></tr>`;
+                this.DOM.tbodyPortafolio.innerHTML = `<tr><td colspan="7" style="text-align:center; padding: 60px; color:var(--text-muted); font-size: 1.1rem; font-weight: 800;"><svg width="64" height="64" style="margin-bottom:15px; opacity:0.5;"><use href="#icon-empty"></use></svg><br>Portafolio sin posiciones activas. Registre nuevas operaciones bursátiles para iniciar el seguimiento de mercado.</td></tr>`;
                 if (this.DOM.divBar) this.DOM.divBar.innerHTML = '';
                 if (this.DOM.divLabels) this.DOM.divLabels.innerHTML = '';
                 return;
@@ -1629,7 +1629,7 @@ export const view = {
         }
 
         if(!datosAmostrar || datosAmostrar.length === 0) {
-            this.DOM.vsTbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding: 100px; color:var(--text-muted);"><svg width="80" height="80" style="margin-bottom:20px; opacity:0.3; filter: drop-shadow(0 0 10px rgba(9, 251, 255, 0.5));"><use href="#icon-empty"></use></svg><br><h3 style="margin-bottom:10px; font-weight: 900; letter-spacing: 1px;">El Libro Mayor está en blanco</h3><p style="font-size:1rem; font-weight: 600;">Registra un movimiento para comenzar a rastrear el flujo.</p></td></tr>`;
+            this.DOM.vsTbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding: 100px; color:var(--text-muted);"><svg width="80" height="80" style="margin-bottom:20px; opacity:0.3; filter: drop-shadow(0 0 10px rgba(9, 251, 255, 0.5));"><use href="#icon-empty"></use></svg><br><h3 style="margin-bottom:10px; font-weight: 900; letter-spacing: 1px;">Libro Mayor sin transacciones</h3><p style="font-size:1rem; font-weight: 600;">Ingrese los primeros asientos contables para iniciar el seguimiento del flujo patrimonial.</p></td></tr>`;
             this.DOM.vsSpacer.style.height = '0px';
             this.DOM.vsTable.style.transform = `translateY(0px)`;
             return;
@@ -1858,7 +1858,7 @@ export const view = {
                 let sectores = Object.entries(s.atribucionSector || {}).sort((a,b) => b[1] - a[1]);
                 
                 if(sectores.length === 0) {
-                    attribBuffer.push('<tr><td style="color:var(--text-muted); text-align:center; padding:30px; font-weight: 800; border: 2px dashed var(--border-color); border-radius: 12px;">El mercado te espera. Aún no hay ventas cerradas.</td></tr>');
+                    attribBuffer.push('<tr><td style="color:var(--text-muted); text-align:center; padding:30px; font-weight: 800; border: 2px dashed var(--border-color); border-radius: 12px;">No se registran liquidaciones de activos en el período evaluado.</td></tr>');
                 } else {
                     sectores.forEach(([sector, resultado]) => {
                         let color = resultado >= 0 ? 'var(--color-up)' : 'var(--color-down)';
