@@ -1863,7 +1863,8 @@ export const view = {
             }
 
             if (this.DOM.infoAtribucionSector) {
-                let attribBuffer = ['<table class="dataTable-table" style="width:100%; font-size:1rem; margin-top:10px; border-collapse: separate; border-spacing: 0 5px;">'];
+                // SE ELIMINÓ class="dataTable-table" PARA EVITAR EL MIN-WIDTH DE 800PX Y EL SCROLL HORIZONTAL INNECESARIO
+                let attribBuffer = ['<table style="width:100%; font-size:1rem; margin-top:10px; border-collapse: separate; border-spacing: 0 5px;">'];
                 let sectores = Object.entries(s.atribucionSector || {}).sort((a,b) => b[1] - a[1]);
                 
                 if(sectores.length === 0) {
@@ -1873,7 +1874,7 @@ export const view = {
                         let color = resultado >= 0 ? 'var(--color-up)' : 'var(--color-down)';
                         let signo = resultado > 0 ? '+' : (resultado < 0 ? '-' : '');
                         attribBuffer.push(
-                            `<tr style="background: var(--bg-input);">`,
+                            `<tr style="background: var(--bg-input); transition: transform 0.2s;">`,
                             `<td style="padding: 15px 20px; color:var(--text-main); font-weight: 900; border-radius: 12px 0 0 12px;">${DOMPurify.sanitize(sector)}</td>`,
                             `<td class="data-font privacy-mask" style="text-align:right; color:${color}; font-weight:900; font-size: 1.15rem; padding: 15px 20px; border-radius: 0 12px 12px 0;">${signo}${this.zenMode ? '---' : this.fmtStr(Math.abs(resultado), modelData.dolarBlue, modelData.vistaUSD)}</td>`,
                             `</tr>`
