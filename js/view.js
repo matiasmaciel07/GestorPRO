@@ -15,7 +15,7 @@ export const view = {
     // FASE 3: Paleta de Colores Vibrantes para gráficos e inyecciones JS
     sectorColors: ['#00FF95', '#FF4D8A', '#2CE6D6', '#FCA311', '#6045F4', '#FF871A', '#7C13A4', '#1AA7EC', '#F71735'],
     CEDEAR_RATIOS: {
-        'SPY': 20, 'QQQ': 20, 'DIA': 20, 'IWM': 20, 'AAPL': 10, 'MSFT': 30, 
+        'SPY': 20, 'QQQ': 20, 'DIA': 20, 'IWM': 20, 'SPXL': 10, 'AAPL': 10, 'MSFT': 30, 
         'GOOGL': 58, 'AMZN': 144, 'TSLA': 15, 'NVDA': 24, 'META': 24, 'NFLX': 48,
         'KO': 5, 'MCD': 24, 'WMT': 18, 'PG': 5, 'V': 18, 'DIS': 12, 'JNJ': 5, 'MELI': 60
     },
@@ -1517,6 +1517,9 @@ export const view = {
                 let mainColor = this.sectorColors[cIdx];
                 const row = document.importNode(template, true);
                 
+                let apiDataObj = cachePrecios[activo];
+                let apiData = apiDataObj ? apiDataObj.data : null;
+
                 let ratioText = this.CEDEAR_RATIOS[activo] ? `<br><span style="font-size:10px; color:var(--color-primary); font-weight:900;">RATIO ${this.CEDEAR_RATIOS[activo]}:1</span>` : '';
                 let origPriceText = (apiData && apiData.originalPrice) ? ` | <span style="font-size:10px; color:var(--color-up); font-weight:900;">USD ${apiData.originalPrice.toFixed(2)}</span>` : '';
                 
@@ -1532,9 +1535,10 @@ export const view = {
                 
                 let sparkWrap = row.querySelector('.td-spark div');
                 let tdPrecio = row.querySelector('.td-precio');
+                let tdGnr = row.querySelector('.td-gnr');
                 
-                tdPrecio.style.textAlign = 'right';
-                tdGnr.style.textAlign = 'right';
+                if (tdPrecio) tdPrecio.style.textAlign = 'right';
+                if (tdGnr) tdGnr.style.textAlign = 'right';
 
                 if(apiData && apiData.price) {
                     let precio = apiData.price;
@@ -1543,19 +1547,20 @@ export const view = {
                     let pct = (ganancia / d.costo) * 100;
                     
                     let pColor = document.documentElement.getAttribute('data-theme') === 'light' ? '#0A0D14' : 'var(--text-main)';
-                    tdPrecio.innerHTML = `<span class="td-sensitive"><strong style="font-size: 1.15rem; color: ${pColor};">${this.zenMode ? '---' : this.fmt(precio, modelData.dolarBlue, modelData.vistaUSD)}</strong></span>`;
-                    tdGnr.innerHTML = `<span class="td-sensitive ${ganancia>=0?'texto-verde':'texto-rojo'}" style="font-size: 1.15rem;">${ganancia>=0?'+':''}${this.zenMode ? pct.toFixed(2)+'%' : this.fmt(ganancia, modelData.dolarBlue, modelData.vistaUSD)} ${this.zenMode ? '' : '<small style="font-size: 0.85rem; opacity: 0.8;">('+pct.toFixed(2)+'%)</small>'}</span>`;
-                    
+                    if (tdPrecio) tdPrecio.innerHTML = `<span class="td-sensitive"><strong style="font-size: 1.15rem; color: ${pColor};">${this.zenMode ? '---' : this.fmt(precio, modelData.dolarBlue, modelData.vistaUSD)}</strong></span>`;
+                    if (tdGnr) tdGnr.innerHTML = `<span class="td-sensitive ${ganancia>=0?'texto-verde':'texto-rojo'}" style="font-size: 1.15rem;">${ganancia>=0?'+':''}${this.zenMode ? pct.toFixed(2)+'%' : this.fmt(ganancia, modelData.dolarBlue, modelData.vistaUSD)} ${this.zenMode ? '' : '<small style="font-size: 0.85rem; opacity: 0.8;">('+pct.toFixed(2)+'%)</small>'}</span>`;
                     
                     if(apiData.history && apiData.history.length > 0) {
                         const getCSS = (varName, fallBack) => getComputedStyle(document.documentElement).getPropertyValue(varName).trim() || fallBack;
                         let sparkColor = apiData.history[apiData.history.length-1] >= apiData.history[0] ? getCSS('--color-up', '#00FF95') : getCSS('--color-down', '#F71735');
-                        sparkWrap.id = `spark-${actSafe}`;
-                        sparkWrap.style.height = '35px';
-                        sparkWrap.style.width = '70px';
-                        sparksToDraw.push({ id: sparkWrap.id, history: apiData.history.slice(-7), color: sparkColor });
+                        if (sparkWrap) {
+                            sparkWrap.id = `spark-${actSafe}`;
+                            sparkWrap.style.height = '35px';
+                            sparkWrap.style.width = '70px';
+                        }
+                        sparksToDraw.push({ id: `spark-${actSafe}`, history: apiData.history.slice(-7), color: sparkColor });
                     } else {
-                        sparkWrap.innerHTML = '-';
+                        if (sparkWrap) sparkWrap.innerHTML = '-';
                     }
 
                     basePatrimonio += valorMercado;
@@ -1565,9 +1570,9 @@ export const view = {
                     totalInvertidoMercado += valorMercado;
 
                 } else if (apiData === null) {
-                    tdPrecio.innerHTML = `<span class="texto-rojo" title="Sin cotización local" style="font-weight: 900;">N/D</span>`;
-                    tdGnr.innerHTML = `<strong style="color: var(--text-muted);">-</strong>`;
-                    sparkWrap.innerHTML = '-';
+                    if (tdPrecio) tdPrecio.innerHTML = `<span class="texto-rojo" title="Sin cotización local" style="font-weight: 900;">N/D</span>`;
+                    if (tdGnr) tdGnr.innerHTML = `<strong style="color: var(--text-muted);">-</strong>`;
+                    if (sparkWrap) sparkWrap.innerHTML = '-';
                     
                     basePatrimonio += d.costo;
                     sectorChartData[d.sector] = (sectorChartData[d.sector]||0) + d.costo;
@@ -1575,9 +1580,9 @@ export const view = {
                     expSectorialValor[d.sector] = (expSectorialValor[d.sector]||0) + d.costo;
                     totalInvertidoMercado += d.costo;
                 } else {
-                    tdPrecio.innerHTML = `<div class="skeleton" style="width:80px; margin-left:auto;"></div>`;
-                    tdGnr.innerHTML = `<div class="skeleton" style="width:100px; margin-left:auto;"></div>`;
-                    sparkWrap.innerHTML = `<div class="skeleton" style="width:70px; height:35px; border-radius:6px;"></div>`;
+                    if (tdPrecio) tdPrecio.innerHTML = `<div class="skeleton" style="width:80px; margin-left:auto;"></div>`;
+                    if (tdGnr) tdGnr.innerHTML = `<div class="skeleton" style="width:100px; margin-left:auto;"></div>`;
+                    if (sparkWrap) sparkWrap.innerHTML = `<div class="skeleton" style="width:70px; height:35px; border-radius:6px;"></div>`;
                 }
                 fragment.appendChild(row);
             }
