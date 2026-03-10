@@ -35,6 +35,68 @@ export const view = {
         return parseFloat(str) || 0;
     },
 
+    customDialog(type, message, inputType = 'text', maxLength = 255) {
+        return new Promise((resolve) => {
+            let existing = document.getElementById('custom-dialog-overlay');
+            if (existing) existing.remove();
+
+            const overlay = document.createElement('div');
+            overlay.id = 'custom-dialog-overlay';
+            Object.assign(overlay.style, {
+                position: 'fixed', top: '0', left: '0', right: '0', bottom: '0',
+                background: 'rgba(5, 5, 7, 0.95)', zIndex: '10000',
+                display: 'flex', justifyContent: 'center', alignItems: 'flex-start',
+                paddingTop: '15vh', backdropFilter: 'blur(15px)'
+            });
+
+            let inputHtml = type === 'prompt' ? `<input type="${inputType}" id="custom-dialog-input" maxlength="${maxLength}" class="data-font" style="width:100%; text-align:center; font-size:1.8rem; letter-spacing: ${inputType === 'password' ? '15px' : '2px'}; padding: 20px; border-radius: 16px; margin-bottom: 30px; border: 1px solid var(--color-primary); background: rgba(96, 69, 244, 0.05); color: var(--text-main);" autocomplete="off">` : '';
+
+            overlay.innerHTML = `
+                <div class="card" style="max-width: 450px; width: 90%; text-align: center; padding: 40px; border-radius: 24px; border: 1px solid rgba(96, 69, 244, 0.5); box-shadow: var(--shadow-neon-primary);">
+                    <h3 style="margin-bottom: 25px; font-size: 1.4rem; font-weight: 900; color: var(--text-main); line-height: 1.5;">${message}</h3>
+                    ${inputHtml}
+                    <div style="display:flex; gap: 20px; justify-content: center;">
+                        <button id="custom-dialog-cancel" class="btn btn--outline" style="flex: 1; padding: 15px; border-radius: 16px; font-size: 1.1rem;">Cancelar</button>
+                        <button id="custom-dialog-confirm" class="btn" style="flex: 1; padding: 15px; border-radius: 16px; font-size: 1.1rem; ${type === 'prompt' ? '' : 'background: var(--color-down); box-shadow: var(--shadow-neon-down); color: #fff; border-color: transparent;'}">${type === 'prompt' ? 'Aceptar' : 'Confirmar Acción'}</button>
+                    </div>
+                </div>
+            `;
+
+            document.body.appendChild(overlay);
+
+            const btnConfirm = document.getElementById('custom-dialog-confirm');
+            const btnCancel = document.getElementById('custom-dialog-cancel');
+            const inputEl = document.getElementById('custom-dialog-input');
+
+            if (inputEl) inputEl.focus();
+
+            const closeAndResolve = (val) => {
+                overlay.remove();
+                resolve(val);
+            };
+
+            btnConfirm.addEventListener('click', () => {
+                if (type === 'prompt') closeAndResolve(inputEl.value.trim());
+                else closeAndResolve(true);
+            });
+
+            btnCancel.addEventListener('click', () => closeAndResolve(type === 'prompt' ? null : false));
+
+            if (inputEl) {
+                inputEl.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') btnConfirm.click();
+                    if (e.key === 'Escape') btnCancel.click();
+                });
+            }
+        });
+    },
+    customConfirm(message) {
+        return this.customDialog('confirm', message);
+    },
+    customPrompt(message, inputType = 'text', maxLength = 255) {
+        return this.customDialog('prompt', message, inputType, maxLength);
+    },
+
     // FASE 3: Insignias Vibrantes (Mapeo estricto con FASE 1 CSS)
     getBadgeClass(tipo) {
         switch (tipo) {
@@ -329,7 +391,7 @@ export const view = {
     },
 
     bindBusinessEvents() {
-        document.body.addEventListener('click', (e) => {
+        document.body.addEventListener('click', async (e) => {
             const target = e.target;
             const actionBtn = target.closest('[data-action]');
             if (actionBtn) {
@@ -337,7 +399,14 @@ export const view = {
                 if (action === 'guardar-operacion') events.emit('ui:guardar-operacion', this.getOperacionFormData());
                 if (action === 'editar-operacion') events.emit('ui:editar-operacion', actionBtn.dataset.id);
                 if (action === 'cancelar-edicion') events.emit('ui:cancelar-edicion');
-                if (action === 'borrar-operacion' && confirm("¿Borrar este registro permanentemente?")) events.emit('ui:borrar-operacion', actionBtn.dataset.id);
+                
+                // Reemplazo de confirm()
+                if (action === 'borrar-operacion') {
+                    if (await this.customConfirm("¿Borrar este registro permanentemente?")) {
+                        events.emit('ui:borrar-operacion', actionBtn.dataset.id);
+                    }
+                }
+                
                 if (action === 'add-watchlist') events.emit('ui:add-watchlist', { activo: DOMPurify.sanitize(document.getElementById('wl-activo').value.trim().toUpperCase()), precio: parseFloat(document.getElementById('wl-precio').value) });
                 if (action === 'del-watchlist') events.emit('ui:del-watchlist', actionBtn.dataset.id);
                 if (action === 'filtrar-historial') events.emit('ui:filtrar-historial', { desde: document.getElementById('filtro-desde').value, hasta: document.getElementById('filtro-hasta').value, tipo: document.getElementById('filtro-tipo').value });
@@ -354,17 +423,31 @@ export const view = {
                     let valParsed = parseFloat(inputVal.replace(',', '.'));
                     events.emit('ui:guardar-inflacion', { mes: DOMPurify.sanitize(document.getElementById('inf-mes').value), val: valParsed });
                 }
-                if (action === 'borrar-inflacion' && confirm(`¿Borrar dato de ${actionBtn.dataset.mes}?`)) events.emit('ui:borrar-inflacion', actionBtn.dataset.mes);
+                
+                // Reemplazo de confirm()
+                if (action === 'borrar-inflacion') {
+                    if (await this.customConfirm(`¿Borrar dato de inflación del período ${actionBtn.dataset.mes}?`)) {
+                        events.emit('ui:borrar-inflacion', actionBtn.dataset.mes);
+                    }
+                }
                 
                 if (action === 'verificar-pin') events.emit('ui:verificar-pin', document.getElementById('input-pin-login').value);
                 if (action === 'guardar-pin') events.emit('ui:guardar-pin', document.getElementById('nuevo-pin').value);
+                
+                // Reemplazo de prompt()
                 if (action === 'eliminar-pin') {
-                    let p = prompt("Ingresa tu PIN actual:");
-                    if(p !== null) events.emit('ui:eliminar-pin', p);
+                    let p = await this.customPrompt("Ingresa tu PIN actual para desactivar la Bóveda:", "password", 4);
+                    if(p !== null && p.trim() !== '') events.emit('ui:eliminar-pin', p);
                 }
                 
                 if (action === 'exportar') events.emit('ui:exportar');
-                if (action === 'borrar-todo' && prompt("Escribe BORRAR") === 'BORRAR') events.emit('ui:borrar-todo');
+                
+                // Reemplazo de prompt() crítico
+                if (action === 'borrar-todo') {
+                    let p = await this.customPrompt("Escribe BORRAR para formatear el sistema completo (Irreversible):", "text", 10);
+                    if (p === 'BORRAR') events.emit('ui:borrar-todo');
+                }
+                
                 if (action === 'cambiar-mes') this.cambiarMesCalendario(parseInt(actionBtn.dataset.dir));
             }
         });
