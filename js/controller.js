@@ -6,7 +6,6 @@ import { storage } from './utils/storage.js';
 import { backup } from './utils/backup.js';
 import { events } from './utils/events.js';
 import { UIMetrics } from './views/UIMetrics.js';
-
 import { ChartRenderer } from './views/ChartRenderer.js';
 import { FinancialMath } from './utils/financial.js';
 import { PDFGenerator } from './utils/pdfGenerator.js';
@@ -32,6 +31,16 @@ const controller = {
         zenMode: false,
         vistaRentabilidadBruta: false
     },
+    
+    _isFetchingPrices: false, // Lock para evitar Race Conditions en llamadas a la API
+
+    // Utilidad interna segura para evitar NaN en bases de datos
+    _safeParse(val) {
+        if (!val) return 0;
+        if (typeof val === 'number') return val;
+        let str = String(val).replace(/[^0-9,-]/g, '').replace(',', '.');
+        return parseFloat(str) || 0;
+    },
 
     async init() {
         document.body.classList.add('privacy-active');
@@ -40,16 +49,27 @@ const controller = {
         await this.comprobarBloqueo(); 
         view.initUI();
 
-        const [dolarCache] = await Promise.all([
-            api.fetchDolar(),
-            model.inicializar()
-        ]);
+        try {
+            // ARRANQUE RESILIENTE (Preparado para entorno Offline/Electron)
+            // Separamos el modelo local de la dependencia de red (API Dólar)
+            await model.inicializar();
+            
+            // Intentamos obtener el dólar, pero si falla la red, no bloqueamos la app
+            const dolarCache = await api.fetchDolar().catch((err) => {
+                console.warn("[Controlador] API de Dólar inaccesible. Operando con caché local.", err);
+                return null;
+            });
 
-        this.actualizarEstadoMercado();
-        if(dolarCache) model.setDolarBlue(dolarCache);
-        
-        events.emit('state:tabChanged', TabFSM.state);
-        this.iniciarFetchPrecios();
+            this.actualizarEstadoMercado();
+            if(dolarCache) model.setDolarBlue(dolarCache);
+            
+            events.emit('state:tabChanged', TabFSM.state);
+            this.iniciarFetchPrecios();
+            
+        } catch (err) {
+            console.error("[Controlador] Falla Crítica en el Arranque del Motor:", err);
+            events.emit('app:toast', { msg: "Error fatal al cargar la base de datos.", type: "error" });
+        }
     },
 
     setupEventListeners() {
@@ -57,28 +77,30 @@ const controller = {
             if (e.target.closest('#btn-eliminar-categoria')) {
                 const inputCat = document.getElementById('eco-categoria');
                 const tipoActivo = document.getElementById('eco-tipo').value;
-                const categoriaABorrar = inputCat.value.trim();
+                const categoriaABorrar = inputCat?.value.trim();
                 
-                if(categoriaABorrar !== "") {
-                    // Emitimos al modelo para depurar el estado global
+                if(categoriaABorrar) {
                     events.emit('ui:borrar-categoria', { tipo: tipoActivo, categoria: categoriaABorrar });
-                    inputCat.value = ""; // Limpiamos el UI
+                    inputCat.value = ""; 
                 }
             }
         });
 
-        // Manejador del evento
+        // Mutación inmutable segura compatible con la Fase 1 del Modelo
         events.on('ui:borrar-categoria', async (data) => {
             let ctx = data.tipo === 'Gasto Local' ? 'Local' : 'Personal';
-            if (model.data.categorias[ctx]) {
-                const index = model._rawData.categorias[ctx].findIndex(c => c.toLowerCase() === data.categoria.toLowerCase());
-                if(index > -1) {
-                    model._rawData.categorias[ctx].splice(index, 1);
-                    model._data.categorias = { ...model._rawData.categorias }; 
-                    await storage.set('gfp_categorias', model._rawData.categorias);
-                    events.emit('app:toast', { msg: `Categoría "${data.categoria}" eliminada`, type: "success" });
-                    view.adaptarFormularioEconomia(); // Recargamos el form
-                }
+            const categoriasActuales = model.data.categorias[ctx] || [];
+            
+            const index = categoriasActuales.findIndex(c => c.toLowerCase() === data.categoria.toLowerCase());
+            if(index > -1) {
+                const nuevasCategorias = categoriasActuales.filter((_, i) => i !== index);
+                
+                // Forzamos actualización reactiva inmutable a través del Proxy
+                model._data.categorias = { ...model.data.categorias, [ctx]: nuevasCategorias }; 
+                await storage.set('gfp_categorias', model.data.categorias);
+                
+                events.emit('app:toast', { msg: `Categoría "${data.categoria}" eliminada`, type: "success" });
+                view.adaptarFormularioEconomia(); 
             }
         });
 
@@ -153,7 +175,7 @@ const controller = {
         events.on('ui:cancelar-edicion', () => this.limpiarModoEdicion());
 
         events.on('ui:deshacer-operacion', () => { model.deshacer(); events.emit('app:toast', { msg: "Operación deshecha", type: "success" }); });
-        events.on('ui:borrar-operacion', (id) => { model.borrarMovimiento(parseInt(id)); events.emit('app:toast', { msg: "Registro eliminado", type: "success" }); });
+        events.on('ui:borrar-operacion', (id) => { model.borrarMovimiento(parseInt(id, 10)); events.emit('app:toast', { msg: "Registro eliminado", type: "success" }); });
 
         events.on('ui:add-watchlist', (data) => {
             if(!data.activo || isNaN(data.precio) || data.precio<=0) return events.emit('app:toast', { msg:"Datos inválidos", type:"error" });
@@ -186,9 +208,9 @@ const controller = {
                     model._data.movimientos = model.curarDatos(datos); 
                     model.guardarLocal(); 
                     model.procesarMotor();
-                    events.emit('app:toast', { msg: "Backup Restaurado", type: "success" }); 
+                    events.emit('app:toast', { msg: "Backup Restaurado y Sincronizado", type: "success" }); 
                 },
-                () => events.emit('app:toast', { msg: "Archivo Inválido", type: "error" })
+                () => events.emit('app:toast', { msg: "Archivo Inválido o Dañado", type: "error" })
             );
         });
 
@@ -197,7 +219,7 @@ const controller = {
 
         events.on('ui:guardar-manual', async () => {
             await model.guardarLocal();
-            events.emit('app:toast', { msg: "Cambios guardados correctamente", type: "success" }); 
+            events.emit('app:toast', { msg: "Sincronización manual forzada", type: "success" }); 
         });
 
         events.on('ui:verificar-pin', async (pin) => {
@@ -214,7 +236,7 @@ const controller = {
         events.on('ui:guardar-pin', async (pin) => {
             if(pin.length !== 4 || isNaN(pin)) return events.emit('app:toast', { msg: "Debe tener 4 números", type: "error" });
             await storage.set('gestor_pin', pin); 
-            events.emit('app:toast', { msg: "Bóveda Activada", type: "success" }); 
+            events.emit('app:toast', { msg: "Bóveda Cifrada Activada", type: "success" }); 
             await this.comprobarBloqueo();
         });
 
@@ -224,7 +246,7 @@ const controller = {
                 await storage.remove('gestor_pin'); 
                 location.reload(); 
             } else { 
-                events.emit('app:toast', { msg: "PIN Incorrecto", type: "error" }); 
+                events.emit('app:toast', { msg: "Credenciales Inválidas", type: "error" }); 
             }
         });
 
@@ -236,15 +258,14 @@ const controller = {
                 if (typeof PDFGenerator !== 'undefined' && PDFGenerator.exportarLibroMayor) {
                     PDFGenerator.exportarLibroMayor(datosFiltrados, filtros, statsGlobales);
                 } else {
-                    events.emit('app:toast', { msg: "Módulo de Reportes no disponible aún", type: "error" });
+                    events.emit('app:toast', { msg: "Módulo de Reportes no cargado en memoria", type: "error" });
                 }
             } catch (e) {
-                console.error(e);
+                console.error("[Controlador] Error al compilar PDF:", e);
                 events.emit('app:toast', { msg: "Error interno al compilar PDF", type: "error" });
             }
         });
 
-        // Eventos para Cambio de Temporalidad Modular
         events.on('ui:cambio-temporalidad-sankey', (temporalidad) => {
             model.setTemporalidadUi('sankeyTemporalidad', temporalidad);
             if (model.data && model.data.stats && view.actualizarSankey) {
@@ -272,7 +293,7 @@ const controller = {
 
         events.on('ui:actualizar-distribucion-gastos', (config) => {
             const datosGenerados = FinancialMath.calcularDistribucionGastos(
-                model._rawData.movimientos, 
+                model.data.movimientos, // Aseguramos usar el estado memoizado limpio
                 config.contexto, 
                 config.temporalidad
             );
@@ -405,7 +426,7 @@ const controller = {
 
     prepararEdicion(id) {
         const mov = model.getMovimiento(id);
-        if(!mov) return events.emit('app:toast', { msg: "Error al cargar registro", type: "error" });
+        if(!mov) return events.emit('app:toast', { msg: "Error de lectura del registro en base de datos", type: "error" });
         
         this.state.editingId = id;
         TabFSM.transition('operar');
@@ -419,13 +440,15 @@ const controller = {
 
     guardarOperacion(formData) {
         let isAltaPrestamo = formData.tipo === 'Alta Préstamo';
+        
+        // Extracción segura del DOM acoplado al fallback, parseado estrictamente
         let capInput = document.getElementById('eco-prestamo-capital');
-        let capitalAdicional = capInput && capInput.value ? parseFloat(capInput.value.replace(/\./g, '').replace(',', '.')) : 0;
+        let capitalAdicional = capInput && capInput.value ? this._safeParse(capInput.value) : 0;
         
         let montoOperacion = isAltaPrestamo && capitalAdicional > 0 ? capitalAdicional : formData.monto;
 
         if(!formData.fecha || isNaN(montoOperacion) || montoOperacion <= 0) { 
-            return events.emit('app:toast', { msg: "Monto inválido o cero", type: "error" });
+            return events.emit('app:toast', { msg: "Impacto monetario inválido o nulo", type: "error" });
         }
         
         let mov = { 
@@ -438,7 +461,7 @@ const controller = {
         if (formData.notas) mov.notas = formData.notas;
 
         if(['Compra','Venta','Dividendo'].includes(formData.tipo)) {
-            if(!formData.activo) return events.emit('app:toast', { msg: "Debe proveer un identificador de activo (Ticker)", type: "error" });
+            if(!formData.activo) return events.emit('app:toast', { msg: "Identificador de activo (Ticker) ausente", type: "error" });
             mov.activo = formData.activo;
             
             if(formData.cant > 0) mov.cantidad = formData.cant;
@@ -470,7 +493,7 @@ const controller = {
         } 
         else if (formData.tipo === 'Amortización Deuda a Proveedor') {
             if (!formData.deudaAsociadaId) {
-                return events.emit('app:toast', { msg: "Debe seleccionar la deuda a amortizar", type: "error" });
+                return events.emit('app:toast', { msg: "Vínculo a deuda pendiente requerido", type: "error" });
             }
             mov.deudaAsociadaId = formData.deudaAsociadaId;
             mov.proveedor = formData.proveedor;
@@ -489,23 +512,23 @@ const controller = {
             
             let cuotasInput = document.getElementById('eco-prestamo-cuotas');
             mov.capital = montoOperacion;
-            mov.cuotas = cuotasInput && cuotasInput.value ? parseInt(cuotasInput.value) : 1;
+            mov.cuotas = cuotasInput && cuotasInput.value ? parseInt(cuotasInput.value, 10) : 1;
 
-            if(!mov.entidad) return events.emit('app:toast', { msg: "Falta el nombre de la entidad", type: "error" });
+            if(!mov.entidad) return events.emit('app:toast', { msg: "Entidad emisora no definida", type: "error" });
         } 
         else if (formData.tipo === 'Pago Préstamo') {
             mov.prestamoAsociado = formData.prestamoAsociado;
-            if(!mov.prestamoAsociado) return events.emit('app:toast', { msg: "Seleccione una deuda activa", type: "error" });
+            if(!mov.prestamoAsociado) return events.emit('app:toast', { msg: "Vínculo a pasivo activo requerido", type: "error" });
         }
         
         if (this.state.editingId) {
             model.actualizarMovimiento(this.state.editingId, mov);
-            events.emit('app:toast', { msg: "Registro actualizado exitosamente", type: "success" });
+            events.emit('app:toast', { msg: "Transacción modificada con éxito", type: "success" });
             this.limpiarModoEdicion();
         } else {
-            mov.id = Date.now(); 
+            // Delega la generación del ID seguro al modelo
             model.agregarMovimiento(mov);
-            events.emit('app:toast', { msg: "Operación registrada", type: "success" });
+            events.emit('app:toast', { msg: "Asiento contable consolidado", type: "success" });
             
             events.emit('ui:reset-form-operacion');
             if (['Gasto Local', 'Gasto Familiar', 'Ingreso Local'].includes(formData.tipo)) {
@@ -532,27 +555,38 @@ const controller = {
     },
 
     async actualizarPreciosPortafolioDirecto() {
-        const portafolio = model.data.portafolio;
-        const watch = model.data.watchlist || [];
-        let activos = Object.keys(portafolio).filter(a => portafolio[a].cant > 0.0001);
-        watch.forEach(w => { if(!activos.includes(w.activo)) activos.push(w.activo); });
-        
-        priceStream.unsubscribeAll(); 
-        activos.forEach(ticker => {
-            priceStream.subscribe(ticker, (t, result) => {
-                if (result) {
-                    let nuevosPrecios = { [t]: { data: result, time: Date.now() } };
-                    model.actualizarPreciosPortafolio(nuevosPrecios);
-                }
-            });
-        });
+        // LOCK ESTRICTO: Previene el bombardeo a la API si el usuario cambia pestañas frenéticamente
+        if (this._isFetchingPrices) return;
+        this._isFetchingPrices = true;
 
-        let nuevosPrecios = {};
-        for (const ticker of activos) {
-            let apiData = await api.fetchPrecioUnico(ticker, model.cachePrecios);
-            if (apiData) nuevosPrecios[ticker] = { data: apiData, time: Date.now() };
+        try {
+            const portafolio = model.data.portafolio;
+            const watch = model.data.watchlist || [];
+            let activos = Object.keys(portafolio).filter(a => portafolio[a].cant > 0.0001);
+            watch.forEach(w => { if(!activos.includes(w.activo)) activos.push(w.activo); });
+            
+            priceStream.unsubscribeAll(); 
+            activos.forEach(ticker => {
+                priceStream.subscribe(ticker, (t, result) => {
+                    if (result) {
+                        let nuevosPrecios = { [t]: { data: result, time: Date.now() } };
+                        model.actualizarPreciosPortafolio(nuevosPrecios);
+                    }
+                });
+            });
+
+            let nuevosPrecios = {};
+            for (const ticker of activos) {
+                let apiData = await api.fetchPrecioUnico(ticker, model.data.cachePrecios);
+                if (apiData) nuevosPrecios[ticker] = { data: apiData, time: Date.now() };
+            }
+            if(Object.keys(nuevosPrecios).length > 0) {
+                model.actualizarPreciosPortafolio(nuevosPrecios);
+            }
+        } finally {
+            // Liberación del lock pase lo que pase
+            this._isFetchingPrices = false;
         }
-        if(Object.keys(nuevosPrecios).length > 0) model.actualizarPreciosPortafolio(nuevosPrecios);
     },
 
     async comprobarBloqueo() {
