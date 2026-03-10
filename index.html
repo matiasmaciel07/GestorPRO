@@ -153,7 +153,7 @@
                 <button class="nav__item" role="tab" aria-selected="false" aria-controls="informes"><span style="padding: 8px; background: rgba(139, 149, 165, 0.1); border-radius: 10px; display: flex;"><svg width="20" height="20"><use href="#icon-logo"></use></svg></span><span class="nav__text">Análisis Bursátil</span></button>
                 <button class="nav__item" role="tab" aria-selected="false" aria-controls="historial"><span style="padding: 8px; background: rgba(139, 149, 165, 0.1); border-radius: 10px; display: flex;"><svg width="20" height="20"><use href="#icon-historial"></use></svg></span><span class="nav__text">Libro Mayor</span></button>
                 <button class="nav__item" role="tab" aria-selected="false" aria-controls="herramientas"><span style="padding: 8px; background: rgba(139, 149, 165, 0.1); border-radius: 10px; display: flex;"><svg width="20" height="20"><use href="#icon-tools"></use></svg></span><span class="nav__text">Herramientas</span></button>
-                <button class="nav__item" role="tab" aria-selected="false" aria-controls="fire"><span style="padding: 8px; background: rgba(139, 149, 165, 0.1); border-radius: 10px; display: flex;"><svg width="20" height="20"><use href="#icon-fire"></use></svg></span><span class="nav__text texto-accent">Proyección FIRE</span></button>
+                <button class="nav__item" role="tab" aria-selected="false" aria-controls="fire"><span style="padding: 8px; background: rgba(139, 149, 165, 0.1); border-radius: 10px; display: flex;"><svg width="20" height="20"><use href="#icon-fire"></use></svg></span><span class="nav__text texto-purple">Proyección FIRE</span></button>
                 <button class="nav__item" role="tab" aria-selected="false" aria-controls="ajustes"><span style="padding: 8px; background: rgba(139, 149, 165, 0.1); border-radius: 10px; display: flex;"><svg width="20" height="20"><use href="#icon-settings"></use></svg></span><span class="nav__text">Ajustes BD</span></button>
             </nav>
         </aside>
@@ -838,11 +838,10 @@
                     </div>
                 </section>
 
-                <section id="fire" class="tab-content" role="tabpanel">
-                    <h2 style="margin-bottom: 20px; font-size: 2rem; font-weight: 900; letter-spacing: 0.5px; display: flex; align-items: center; gap: 15px;" class="texto-accent">
-                        <span style="background: rgba(255, 77, 138, 0.15); padding: 10px; border-radius: 12px; display: inline-flex;"><svg width="28" height="28"><use href="#icon-fire"></use></svg></span>
-                        Proyección de Autosuficiencia Financiera (Modelo FIRE)
-                    </h2>
+                <h2 style="margin-bottom: 20px; font-size: 2rem; font-weight: 900; letter-spacing: 0.5px; display: flex; align-items: center; gap: 15px;" class="texto-purple">
+    <span style="background: rgba(124, 19, 164, 0.15); padding: 10px; border-radius: 12px; display: inline-flex;"><svg width="28" height="28"><use href="#icon-fire"></use></svg></span>
+    Proyección de Autosuficiencia Financiera (Modelo FIRE)
+</h2>
                     <p style="color:var(--text-muted); margin-bottom: 40px; font-size: 1.05rem; max-width:900px; line-height: 1.6;">Algoritmo predictivo nutrido directamente con el costo de vida base estandarizado, omitiendo de forma íntegra cualquier obligación dependiente de la dinámica comercial operativa o societaria.</p>
                     
                     <div class="grid-2" style="margin-bottom: var(--spacing-xl);">
@@ -873,12 +872,17 @@
                                     <div class="stat__value data-font texto-accent" id="fire-res-objetivo" style="font-size:2.5rem; margin-top: 15px;">$0</div>
                                 </div>
                             </div>
-                            <div style="text-align:center; padding: 40px; background: rgba(0, 255, 149, 0.05); border: 1px solid rgba(0, 255, 149, 0.3); border-radius: 24px; margin-top: auto; box-shadow: inset 0 0 30px rgba(0,255,149,0.1);">
-                                <h4 class="stat__title texto-verde" style="font-size:1.1rem; margin-bottom:20px;">Horizonte de Tiempo Teórico</h4>
-                                <div class="data-font texto-verde" id="fire-res-anos" style="font-size:5rem; font-weight:900; line-height: 1; text-shadow: var(--shadow-neon-up);">0 Años</div>
+                            <div style="text-align:center; padding: 30px; background: rgba(0, 255, 149, 0.05); border: 1px solid rgba(0, 255, 149, 0.3); border-radius: 24px; margin-top: auto; box-shadow: inset 0 0 30px rgba(0,255,149,0.1);">
+                            
+                            <h4 class="stat__title texto-verde" style="font-size:1.1rem; margin-bottom:15px;">Horizonte de Tiempo Teórico</h4>
+                            <div class="data-font texto-verde" id="fire-res-anos" style="font-size:4rem; font-weight:900; line-height: 1; text-shadow: var(--shadow-neon-up);">0 Años</div>
+                            
+                            <div style="margin-top: 25px; padding-top: 25px; border-top: 1px dashed rgba(0, 255, 149, 0.3);">
+                                <h4 class="stat__title" style="font-size:0.9rem; margin-bottom:10px; color: var(--color-primary);" data-tooltip="Generado mediante 1,000 iteraciones Montecarlo utilizando la volatilidad histórica del portafolio y SWR variable en caídas.">Probabilidad de Éxito (Montecarlo)</h4>
+                                <div class="data-font" id="fire-res-probabilidad" style="font-size:2.5rem; font-weight:900; color: var(--color-primary); text-shadow: var(--shadow-neon-primary);">0%</div>
                             </div>
+
                         </div>
-                    </div>
                     
                     <div class="card" style="padding: 40px; border-radius: 28px;">
                         <h3 class="stat__title" style="margin-bottom: 30px; font-size:1rem; text-align: center;">Modelado Gráfico de Convergencia</h3>
@@ -940,27 +944,86 @@
                 </section>
 
                 <section id="herramientas" class="tab-content" role="tabpanel">
-                    <h2 class="texto-primario" style="margin-bottom: 35px; font-size: 2rem; font-weight: 900; letter-spacing: 0.5px; display: flex; align-items: center; gap: 15px;">
-                        <span style="background: rgba(96, 69, 244, 0.15); padding: 12px; border-radius: 16px; display: inline-flex;"><svg width="32" height="32"><use href="#icon-tools"></use></svg></span>
-                        Modelador de Interés Compuesto
+                    <h2 style="margin-bottom: 20px; font-size: 2rem; font-weight: 900; letter-spacing: 0.5px; display: flex; align-items: center; gap: 15px;" class="texto-purple">
+                        <span style="background: rgba(124, 19, 164, 0.15); padding: 10px; border-radius: 12px; display: inline-flex;"><svg width="28" height="28"><use href="#icon-fire"></use></svg></span>
+                        Proyección de Autosuficiencia Financiera (Modelo FIRE)
                     </h2>
+                    
                     <div class="grid-2">
                         <div class="card" style="padding: 40px; border-radius: 28px;">
-                            <div class="form-group"><label class="form__label">Colocación Inicial Principal</label><input type="text" id="calc-inicial" class="format-number data-font calc-input" value="0" style="padding: 1.4rem; font-size: 1.4rem; border-radius: 16px;"></div>
-                            <div class="form-group"><label class="form__label">Volumen Mensual de Refuerzo</label><input type="text" id="calc-mensual" class="format-number data-font calc-input" value="100000" style="padding: 1.4rem; font-size: 1.4rem; border-radius: 16px;"></div>
+                            
                             <div class="form-row">
-                                <div class="form-group"><label class="form__label">Ventana de Duración (Años)</label><input type="number" id="calc-anos" class="data-font calc-input" value="10" style="padding: 1.4rem; font-size: 1.4rem; border-radius: 16px;"></div>
-                                <div class="form-group"><label class="form__label">Tasa Anual Esperada (%)</label><input type="number" id="calc-tasa" class="data-font calc-input" value="8" step="0.1" style="padding: 1.4rem; font-size: 1.4rem; border-radius: 16px;"></div>
+                                <div class="form-group">
+                                    <label class="form__label">Colocación Inicial Principal</label>
+                                    <input type="text" id="calc-inicial" class="format-number data-font calc-input" value="0" style="padding: 1.4rem; font-size: 1.4rem; border-radius: 16px;">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form__label">Volumen Mensual de Refuerzo</label>
+                                    <input type="text" id="calc-mensual" class="format-number data-font calc-input" value="100000" style="padding: 1.4rem; font-size: 1.4rem; border-radius: 16px;">
+                                </div>
                             </div>
+                            
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label class="form__label">Ventana de Duración (Años)</label>
+                                    <input type="number" id="calc-anos" class="data-font calc-input" value="10" style="padding: 1.4rem; font-size: 1.4rem; border-radius: 16px;">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form__label">Tasa Anual Nominal (%)</label>
+                                    <input type="number" id="calc-tasa" class="data-font calc-input" value="8" step="0.1" style="padding: 1.4rem; font-size: 1.4rem; border-radius: 16px;">
+                                </div>
+                            </div>
+                            
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label class="form__label">Frecuencia de Capitalización</label>
+                                    <select id="calc-frecuencia" class="calc-input" style="padding: 1.4rem; font-size: 1.1rem; border-radius: 16px;">
+                                        <option value="anual">Anual (Compuesto Simple)</option>
+                                        <option value="mensual" selected>Mensual (Estándar)</option>
+                                        <option value="trimestral">Trimestral (Dividendos)</option>
+                                        <option value="diaria">Diaria (Cauciones/FCI)</option>
+                                        <option value="continua">Continua (Exponencial Pura)</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form__label">Incremento Anual Aporte (%)</label>
+                                    <input type="number" id="calc-inc-aporte" class="data-font calc-input" value="0" step="0.1" style="padding: 1.4rem; font-size: 1.4rem; border-radius: 16px;" placeholder="Ej: Ajuste por sueldo">
+                                </div>
+                            </div>
+                            
+                            <div class="form-row" style="margin-bottom:0;">
+                                <div class="form-group">
+                                    <label class="form__label">Inflación Proyectada Anual (%)</label>
+                                    <input type="number" id="calc-inflacion" class="data-font calc-input" value="0" step="0.1" style="padding: 1.4rem; font-size: 1.4rem; border-radius: 16px; color: var(--color-warning);">
+                                </div>
+                                <div class="form-group" style="margin-bottom:0;">
+                                    <label class="form__label">Carga Impositiva sobre Ganancia (%)</label>
+                                    <input type="number" id="calc-impuestos" class="data-font calc-input" value="0" step="0.1" style="padding: 1.4rem; font-size: 1.4rem; border-radius: 16px; color: var(--color-down);">
+                                </div>
+                            </div>
+
                         </div>
+
                         <div class="card is-visible-flex" style="flex-direction:column; justify-content:space-between; padding: 40px; border-radius: 28px;">
+                            
                             <div class="grid-3" style="gap: 25px; margin-bottom:30px;">
-                                <div style="background:var(--bg-input); padding: 25px; border-radius: 20px; border: 1px solid var(--border-color); text-align: center;"><div class="stat__title">Monto Absoluto Aportado</div><div class="stat__value data-font" id="calc-res-aportado" style="font-size:1.8rem; margin-top: 15px;">$0</div></div>
-                                <div style="background:var(--bg-input); padding: 25px; border-radius: 20px; border: 1px solid var(--border-color); text-align: center;"><div class="stat__title">Rendimiento Proyectado (Interés)</div><div class="stat__value data-font texto-verde" id="calc-res-interes" style="font-size:1.8rem; margin-top: 15px;">$0</div></div>
-                                <div style="background:rgba(96, 69, 244, 0.05); padding: 25px; border-radius: 20px; border: 1px solid rgba(96, 69, 244, 0.4); box-shadow: var(--shadow-neon-primary); text-align: center;"><div class="stat__title texto-primario">Valor Final de Capitalización</div><div class="stat__value data-font texto-primario" id="calc-res-final" style="font-size:2.2rem; font-weight: 900; margin-top: 15px;">$0</div></div>
+                                <div style="background:var(--bg-input); padding: 25px; border-radius: 20px; border: 1px solid var(--border-color); text-align: center;">
+                                    <div class="stat__title">Monto Absoluto Aportado</div>
+                                    <div class="stat__value data-font" id="calc-res-aportado" style="font-size:1.8rem; margin-top: 15px;">$0</div>
+                                </div>
+                                <div style="background:var(--bg-input); padding: 25px; border-radius: 20px; border: 1px solid var(--border-color); text-align: center;">
+                                    <div class="stat__title">Rendimiento Proyectado (Interés)</div>
+                                    <div class="stat__value data-font texto-verde" id="calc-res-interes" style="font-size:1.8rem; margin-top: 15px;">$0</div>
+                                </div>
+                                <div style="background:rgba(96, 69, 244, 0.05); padding: 25px; border-radius: 20px; border: 1px solid rgba(96, 69, 244, 0.4); box-shadow: var(--shadow-neon-primary); text-align: center;">
+                                    <div class="stat__title texto-primario">Valor Final de Capitalización</div>
+                                    <div class="stat__value data-font texto-primario" id="calc-res-final" style="font-size:2.2rem; font-weight: 900; margin-top: 15px;">$0</div>
+                                </div>
                             </div>
+                            
                             <div id="wrap-calc" style="height: 380px; width: 100%; position: relative;"></div>
                         </div>
+                        
                     </div>
                 </section>
 

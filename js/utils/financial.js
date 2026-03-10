@@ -116,18 +116,21 @@ export const FinancialMath = {
      * Tasa Interna de Retorno (XIRR)
      */
     calculateXIRR(cashFlows, guess = 0.1) {
-        if (cashFlows.length < 2) return 0;
-        let t0 = cashFlows[0].date;
+        if (!cashFlows || cashFlows.length < 2) return 0;
+        
+        const sortedFlows = [...cashFlows].sort((a, b) => a.date - b.date);
+        
+        let t0 = sortedFlows[0].date;
         let r = guess; 
         let maxIter = 100;
         let tol = 1e-6;
 
         for (let i = 0; i < maxIter; i++) {
             let f = 0, df = 0;
-            for (let j = 0; j < cashFlows.length; j++) {
-                let t = (cashFlows[j].date - t0) / (1000 * 3600 * 24 * 365.25);
-                f += cashFlows[j].amount / Math.pow(1 + r, t);
-                df -= (t * cashFlows[j].amount) / Math.pow(1 + r, t + 1);
+            for (let j = 0; j < sortedFlows.length; j++) {
+                let t = (sortedFlows[j].date - t0) / (1000 * 3600 * 24 * 365.25);
+                f += sortedFlows[j].amount / Math.pow(1 + r, t);
+                df -= (t * sortedFlows[j].amount) / Math.pow(1 + r, t + 1);
             }
             if (Math.abs(f) < tol) return r;
             if (df === 0) return r; 

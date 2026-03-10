@@ -2066,25 +2066,57 @@ export const view = {
             const cMen = this.cleanNum(this.DOM.calcMensual.value);
             const ans = this.cleanNum(this.DOM.calcAnos.value);
             const tAnual = this.cleanNum(this.DOM.calcTasa.value);
+            
+            // Evaluadores dinámicos 
+            const inIncAporte = document.getElementById('calc-inc-aporte');
+            const incAporte = inIncAporte ? (this.cleanNum(inIncAporte.value) / 100) : 0;
+            
+            const inInflacion = document.getElementById('calc-inflacion');
+            const inflacion = inInflacion ? (this.cleanNum(inInflacion.value) / 100) : 0;
+            
+            const inImpuestos = document.getElementById('calc-impuestos');
+            const impuestos = inImpuestos ? (this.cleanNum(inImpuestos.value) / 100) : 0;
+            
+            const inFrec = document.getElementById('calc-frecuencia');
+            const frecCapitalizacion = inFrec ? inFrec.value : 'mensual';
 
             if (ans <= 0 || tAnual < 0) return;
             
-            let r = tAnual / 100;
-            let t = ans;
-            let pmtAnual = cMen * 12;
+            // 1. Tasa Nominal Neta de Carga Impositiva (Tax Drag)
+            const tAnualNeto = (tAnual / 100) * (1 - impuestos); 
+            
+            // 2. Tasa Real Ajustada por Inflación (Ecuación de Fisher)
+            const rAnualReal = ((1 + tAnualNeto) / (1 + inflacion)) - 1;
+
+            // 3. Frecuencia de Capitalización Dinámica (Derivación de Tasa Efectiva)
+            let rMensual = 0;
+            if (frecCapitalizacion === 'anual') rMensual = Math.pow(1 + rAnualReal, 1/12) - 1;
+            else if (frecCapitalizacion === 'trimestral') rMensual = Math.pow(1 + rAnualReal/4, 4/12) - 1; 
+            else if (frecCapitalizacion === 'mensual') rMensual = rAnualReal / 12; 
+            else if (frecCapitalizacion === 'diaria') rMensual = Math.pow(1 + rAnualReal/365, 365/12) - 1; 
+            else if (frecCapitalizacion === 'continua') rMensual = Math.exp(rAnualReal/12) - 1; // Euler - Continuously Compounded
 
             let lbl = [];
             let dAp = [];
             let dInt = [];
 
-            for(let i=1; i<=t; i++) {
-                let aportado = cIni + (pmtAnual * i);
-                let capCrecido = cIni * Math.pow(1 + r, i);
-                let aportesCrecidos = r > 0 ? pmtAnual * ((Math.pow(1 + r, i) - 1) / r) : pmtAnual * i;
-                let bal = capCrecido + aportesCrecidos;
-                lbl.push(`Año ${i}`);
-                dAp.push(aportado);
-                dInt.push(bal - aportado);
+            let capitalActual = cIni;
+            let aportesAcumulados = cIni;
+            let cuotaMensualEnCurso = cMen;
+
+            for(let anio = 1; anio <= ans; anio++) {
+                for (let mes = 1; mes <= 12; mes++) {
+                    aportesAcumulados += cuotaMensualEnCurso;
+                    capitalActual += cuotaMensualEnCurso;
+                    capitalActual *= (1 + rMensual); // Capitalización iterativa
+                }
+                
+                // Incremento anual escalonado de aportes (Ajuste por paritarias / ascensos)
+                cuotaMensualEnCurso *= (1 + incAporte);
+                
+                lbl.push(`Año ${anio}`);
+                dAp.push(aportesAcumulados);
+                dInt.push(capitalActual - aportesAcumulados);
             }
 
             let totalAportadoF = dAp[dAp.length-1] || 0;
@@ -2130,22 +2162,19 @@ export const view = {
             const capIni = this.cleanNum(document.getElementById('fire-capital').value);
             const ahorroMes = this.cleanNum(document.getElementById('fire-ahorro').value);
             
-            // --- NUEVO: Ajuste de Realismo Económico (Tasa Nominal vs Real) ---
             const cagrNominal = parseFloat(document.getElementById('fire-cagr').value) || 8;
-            const inflacionFija = 3.0; // Promedio histórico de inflación en USD a largo plazo
+            const inflacionFija = 3.0; // Promedio histórico estructural
             const cagrRealPct = cagrNominal - inflacionFija; 
             const swrPct = parseFloat(document.getElementById('fire-swr').value) || 4;
             const swrSeguro = swrPct > 0 ? swrPct : 0.01; 
-            // -------------------------------------------------------------------
 
             const gastoTotal = gastoBase + gastoExtra;
             const gastoAnual = gastoTotal * 12;
             const targetFIRE = gastoAnual / (swrSeguro / 100);
 
             document.getElementById('fire-res-gasto').innerHTML = this.zenMode ? '---' : `<span class="privacy-mask" style="font-size: 2.5rem; font-weight: 900; color: var(--color-down); text-shadow: var(--shadow-neon-down);">$ ${this.fmtStr(gastoTotal, 1, false)}</span>`;
-            document.getElementById('fire-res-objetivo').innerHTML = this.zenMode ? '---' : `<span class="privacy-mask" style="font-size: 2.5rem; font-weight: 900; color: var(--color-accent); text-shadow: var(--shadow-neon-accent);">$ ${this.fmtStr(targetFIRE, 1, false)}</span>`;
+            document.getElementById('fire-res-objetivo').innerHTML = this.zenMode ? '---' : `<span class="privacy-mask" style="font-size: 2.5rem; font-weight: 900; color: var(--color-purple); text-shadow: var(--shadow-neon-purple);">$ ${this.fmtStr(targetFIRE, 1, false)}</span>`;
 
-            // Usamos la tasa REAL para la proyección, en lugar de la nominal
             let r = cagrRealPct / 100;
             let capitalAcumulado = capIni;
             let anos = 0;
@@ -2180,6 +2209,60 @@ export const view = {
                 elAnos.style.fontSize = "5rem";
             }
 
+            // SIMULACIÓN DE MONTECARLO (Sequence of Returns Risk Mitigation)
+            const elProbabilidad = document.getElementById('fire-res-probabilidad');
+            if (elProbabilidad) {
+                const inVol = document.getElementById('info-volatilidad');
+                let volTxt = inVol ? inVol.innerText.replace('%', '').trim() : '15';
+                let volatilidad = parseFloat(volTxt) || 15;
+                if(volatilidad === 0) volatilidad = 15; 
+                let volReal = volatilidad / 100;
+
+                let exitos = 0;
+                let iteraciones = 1000;
+                let horizonteSimulacion = 40; 
+
+                for(let i = 0; i < iteraciones; i++) {
+                    let capMC = capIni;
+                    let esRetiro = capMC >= targetFIRE;
+                    let fracaso = false;
+
+                    for(let y = 1; y <= horizonteSimulacion; y++) {
+                        // Transformación Box-Muller para distribución normal aleatoria
+                        let u1 = Math.random(), u2 = Math.random();
+                        if(u1 === 0) u1 = 0.00001;
+                        let z0 = Math.sqrt(-2.0 * Math.log(u1)) * Math.cos(2.0 * Math.PI * u2);
+                        let rSim = r + z0 * volReal;
+
+                        if (!esRetiro) {
+                            capMC = (capMC * (1 + rSim)) + (ahorroMes * 12);
+                            if (capMC >= targetFIRE) esRetiro = true;
+                        } else {
+                            let currentSwr = swrSeguro / 100;
+                            // Algoritmo dinámico: Caída del mercado reduce SWR un 20% temporalmente
+                            if (rSim < 0) {
+                                currentSwr = currentSwr * 0.8;
+                            }
+                            let retiro = capMC * currentSwr;
+                            capMC = (capMC * (1 + rSim)) - retiro;
+                        }
+
+                        if (capMC <= 0) {
+                            fracaso = true;
+                            break;
+                        }
+                    }
+                    if (!fracaso) exitos++;
+                }
+
+                let probabilidad = (exitos / iteraciones) * 100;
+                elProbabilidad.innerText = `${probabilidad.toFixed(1)}%`;
+                
+                if (probabilidad >= 90) elProbabilidad.className = 'data-font texto-verde';
+                else if (probabilidad >= 75) elProbabilidad.className = 'data-font texto-warning';
+                else elProbabilidad.className = 'data-font texto-rojo';
+            }
+
             const wrapChart = document.getElementById('wrap-fire-chart');
             if (wrapChart) {
                 let canvas = wrapChart.querySelector('canvas');
@@ -2192,7 +2275,7 @@ export const view = {
 
                 const getCSS = (varName, fallBack) => getComputedStyle(document.documentElement).getPropertyValue(varName).trim() || fallBack;
                 const c1 = getCSS('--color-up', '#00FF95');
-                const c2 = getCSS('--color-accent', '#FF4D8A');
+                const c2 = getCSS('--color-purple', '#7C13A4'); // Cambio a tonalidad violeta
 
                 const gradient = canvas.getContext('2d').createLinearGradient(0, 0, 0, 400);
                 gradient.addColorStop(0, c1.replace(')', ', 0.3)').replace('rgb', 'rgba'));
@@ -2236,5 +2319,4 @@ export const view = {
                 });
             }
         });
-    }
-};
+    }}
