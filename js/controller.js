@@ -53,6 +53,35 @@ const controller = {
     },
 
     setupEventListeners() {
+        document.body.addEventListener('click', (e) => {
+            if (e.target.id === 'btn-eliminar-categoria') {
+                const inputCat = document.getElementById('eco-categoria');
+                const tipoActivo = document.getElementById('eco-tipo').value;
+                const categoriaABorrar = inputCat.value.trim();
+                
+                if(categoriaABorrar !== "") {
+                    // Emitimos al modelo para depurar el estado global
+                    events.emit('ui:borrar-categoria', { tipo: tipoActivo, categoria: categoriaABorrar });
+                    inputCat.value = ""; // Limpiamos el UI
+                }
+            }
+        });
+
+        // Manejador del evento
+        events.on('ui:borrar-categoria', async (data) => {
+            let ctx = data.tipo === 'Gasto Local' ? 'Local' : 'Personal';
+            if (model.data.categorias[ctx]) {
+                const index = model._rawData.categorias[ctx].findIndex(c => c.toLowerCase() === data.categoria.toLowerCase());
+                if(index > -1) {
+                    model._rawData.categorias[ctx].splice(index, 1);
+                    model._data.categorias = { ...model._rawData.categorias.categorias };
+                    await storage.set('gfp_categorias', model._rawData.categorias);
+                    events.emit('app:toast', { msg: `Categoría "${data.categoria}" eliminada`, type: "success" });
+                    view.adaptarFormularioEconomia(); // Recargamos el form
+                }
+            }
+        });
+
         window.addEventListener('network:circuit-breaker', (e) => {
             if (e.detail.state === 'OPEN') {
                 events.emit('app:toast', { msg: "Mercado Desconectado (Usando Caché Local)", type: "warning" });
@@ -203,8 +232,9 @@ const controller = {
             try {
                 events.emit('app:toast', { msg: "Generando Reporte Financiero PDF...", type: "success" });
                 const datosFiltrados = model.getLibroMayorData(filtros);
+                const statsGlobales = model.data.stats;
                 if (typeof PDFGenerator !== 'undefined' && PDFGenerator.exportarLibroMayor) {
-                    PDFGenerator.exportarLibroMayor(datosFiltrados, filtros);
+                    PDFGenerator.exportarLibroMayor(datosFiltrados, filtros, statsGlobales);
                 } else {
                     events.emit('app:toast', { msg: "Módulo de Reportes no disponible aún", type: "error" });
                 }

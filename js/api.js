@@ -6,7 +6,7 @@ const ENDPOINTS = {
     YAHOO_FINANCE: (ticker) => `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?range=200d&interval=1d`,
     BINANCE: (symbol) => `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=1d&limit=200`,
     FCI_ARGENTINA: 'https://api.argentinadatos.com/v1/finanzas/fci/cafci/valores',
-    PROXY: (url) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`
+    PROXY: (url) => `https://corsproxy.io/?${encodeURIComponent(url)}`
 };
 
 // --- FASE 5: PATRÓN CIRCUIT BREAKER ---
@@ -187,12 +187,12 @@ class APIManager {
                 return null;
             } 
             else {
-                let searchTicker = ticker.endsWith('.BA') ? ticker : ticker + '.BA';
+                let searchTicker = ticker.endsWith('.BA') || ticker.match(/^[A-Z]{2,5}\d{1,2}[A-Z]?$/) ? ticker : ticker + '.BA';
                 
                 const urlFinal = ENDPOINTS.PROXY(ENDPOINTS.YAHOO_FINANCE(searchTicker));
                 const json = await this.enqueueRequest(urlFinal, {}, `precio_${ticker}`);
                 
-                if(!json.chart || !json.chart.result) throw new Error("Formato de respuesta inválido");
+                if(!json || !json.chart || !json.chart.result) throw new Error("Formato de respuesta inválido");
                 let result = json.chart.result[0];
                 price = result.meta.regularMarketPrice;
                 history = result.indicators.quote[0].close.filter(p => p !== null) || [];

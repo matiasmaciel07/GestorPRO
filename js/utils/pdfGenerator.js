@@ -2,12 +2,12 @@
 
 export const PDFGenerator = {
     /**
-     * Genera y descarga un archivo PDF profesional del Libro Mayor.
-     * @param {Array} movimientos - Lista de transacciones ya filtradas y ordenadas por el Modelo.
-     * @param {Object} filtros - Objeto con los filtros aplicados (temporalidad y tipo) para mostrar en el membrete.
+     * Genera y descarga un archivo PDF profesional del Libro Mayor o Estado de Proveedores.
+     * @param {Array} movimientos - Lista de transacciones.
+     * @param {Object} filtros - Filtros aplicados (temporalidad y tipo).
+     * @param {Object} statsGlobales - Métricas globales del modelo (necesario para proveedores).
      */
-    exportarLibroMayor(movimientos, filtros) {
-        // Validamos la existencia de las librerías inyectadas en el HTML
+    exportarLibroMayor(movimientos, filtros, statsGlobales) {
         if (!window.jspdf || !window.jspdf.jsPDF) {
             console.error("Las librerías jsPDF no están cargadas.");
             return;
@@ -16,18 +16,17 @@ export const PDFGenerator = {
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF();
 
-        // Configuración de dimensiones de página
         const pageWidth = doc.internal.pageSize.getWidth();
         const pageHeight = doc.internal.pageSize.getHeight();
 
-        // 1. MEMBRETE / ENCABEZADO (Diseño Neutro y Profesional)
+        // 1. MEMBRETE / ENCABEZADO
         doc.setFillColor(30, 41, 59); // Color corporativo Slate 800
         doc.rect(0, 0, pageWidth, 28, 'F');
         
         doc.setTextColor(255, 255, 255);
         doc.setFontSize(16);
         doc.setFont("helvetica", "bold");
-        doc.text("REPORTE FINANCIERO - LIBRO MAYOR", 14, 18);
+        doc.text("REPORTE FINANCIERO", 14, 18);
 
         // 2. METADATOS Y FILTROS APLICADOS
         doc.setTextColor(51, 65, 85); // Slate 700
@@ -42,6 +41,58 @@ export const PDFGenerator = {
         doc.text(`Filtro Temporal: ${filtros.temporalidad}`, 14, 44);
         doc.text(`Filtro de Transacción: ${filtros.tipo}`, 14, 50);
 
+        const formatCurrency = (val) => new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(val);
+
+        // =========================================================================
+        // BIFURCACIÓN LÓGICA: REPORTE DE DEUDAS A PROVEEDORES
+        // =========================================================================
+        if (filtros.tipo === "Deuda Proveedores") {
+            const tableColumn = ["Proveedor", "Capital Servido", "Total Exigible", "Deuda Pendiente Neta"];
+            const tableRows = [];
+            let totalDeuda = 0;
+
+            const deudas = statsGlobales?.deudaProveedoresDetalle || {};
+            for (let key in deudas) {
+                let d = deudas[key];
+                if (d.activo) {
+                    let pendiente = d.capitalExigibleTotal - d.capitalServido;
+                    totalDeuda += pendiente;
+                    tableRows.push([d.proveedor, formatCurrency(d.capitalServido), formatCurrency(d.capitalExigibleTotal), formatCurrency(pendiente)]);
+                }
+            }
+
+            doc.autoTable({
+                head: [tableColumn],
+                body: tableRows,
+                startY: 56,
+                styles: { font: 'helvetica', fontSize: 9, cellPadding: 4, textColor: [15, 23, 42] },
+                headStyles: { fillColor: [51, 65, 85], textColor: [255, 255, 255], fontStyle: 'bold' },
+                alternateRowStyles: { fillColor: [248, 250, 252] },
+                columnStyles: { 3: { halign: 'right', fontStyle: 'bold' } }, // Alinear última columna derecha
+                didDrawPage: function (data) {
+                    const pageCount = doc.internal.getNumberOfPages();
+                    doc.setFontSize(8);
+                    doc.setTextColor(148, 163, 184);
+                    doc.text(`Página ${data.pageNumber} de ${pageCount}`, pageWidth / 2, pageHeight - 10, { align: 'center' });
+                }
+            });
+            
+            const finalY = doc.lastAutoTable.finalY || 56;
+            doc.setFontSize(11);
+            doc.setFont("helvetica", "bold");
+            doc.text(`TOTAL DEUDA EXIGIBLE (PENDIENTE): ${formatCurrency(totalDeuda)}`, 14, finalY + 15);
+
+            const sufijo = filtros.tipo.replace(/\s+/g, '_');
+            doc.save(`Reporte_Auditoria_${sufijo}.pdf`);
+            
+            return; // Detiene la ejecución para no imprimir la tabla de movimientos normal
+        }
+
+
+        // =========================================================================
+        // LÓGICA ORIGINAL: REPORTE DE MOVIMIENTOS / LIBRO MAYOR
+        // =========================================================================
+
         // 3. PREPARACIÓN DE DATOS PARA LA TABLA
         const tableColumn = ["Fecha", "Tipo de Operación", "Categoría / Sector", "Detalle Registrado", "Monto"];
         const tableRows = [];
@@ -50,28 +101,23 @@ export const PDFGenerator = {
         let totalEgresos = 0;
 
         movimientos.forEach(m => {
-            // Formateo de Fecha
             const fechaObj = new Date(m.fecha + "T00:00:00");
             const fechaStr = isNaN(fechaObj) ? m.fecha : fechaObj.toLocaleDateString('es-AR');
             
             const tipo = m.tipo || "Desconocido";
             
-            // Resolución inteligente de Categoría o Sector según el tipo de registro
             let categoria = "-";
             if (m.categoria) categoria = m.categoria;
             else if (m.sector) categoria = m.sector;
 
-            // Resolución de Detalles adicionales
             let detalle = "-";
             if (m.proveedor) detalle = `Prov: ${m.proveedor}`;
             else if (m.activo) detalle = `Activo: ${m.activo}`;
             else if (m.entidad) detalle = `Entidad: ${m.entidad}`;
 
-            // Formateo de Moneda
             const montoOriginal = parseFloat(m.monto || 0);
-            const montoFormat = new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(montoOriginal);
+            const montoFormat = formatCurrency(montoOriginal);
 
-            // Clasificación contable para el resumen del documento
             if (['Ingreso Local', 'Rendimiento', 'Dividendo', 'Venta', 'Ajuste Stock Inicial', 'Alta Préstamo'].includes(tipo)) {
                 totalIngresos += montoOriginal;
             } else if (['Gasto Local', 'Gasto Familiar', 'Pago Proveedor', 'Compra', 'Pago Préstamo', 'Retiro', 'Reparto Sociedad', 'Ahorro', 'Transferencia Ahorro'].includes(tipo)) {
@@ -81,38 +127,30 @@ export const PDFGenerator = {
             tableRows.push([fechaStr, tipo, categoria, detalle, montoFormat]);
         });
 
-        // 4. GENERACIÓN DE LA TABLA (Usando jspdf-autotable)
+        // 4. GENERACIÓN DE LA TABLA
         doc.autoTable({
             head: [tableColumn],
             body: tableRows,
             startY: 56,
             styles: { 
-                font: 'helvetica',
-                fontSize: 9,
-                cellPadding: 4,
-                textColor: [15, 23, 42]
+                font: 'helvetica', fontSize: 9, cellPadding: 4, textColor: [15, 23, 42]
             },
             headStyles: { 
-                fillColor: [51, 65, 85], 
-                textColor: [255, 255, 255],
-                fontStyle: 'bold'
+                fillColor: [51, 65, 85], textColor: [255, 255, 255], fontStyle: 'bold'
             },
             alternateRowStyles: { 
-                fillColor: [248, 250, 252] // Slate 50 muy tenue
+                fillColor: [248, 250, 252]
             },
             columnStyles: {
-                4: { halign: 'right', fontStyle: 'bold' } // Alinear montos a la derecha
+                4: { halign: 'right', fontStyle: 'bold' } 
             },
             didDrawPage: function (data) {
-                // Pie de página estandarizado en cada hoja
                 const pageCount = doc.internal.getNumberOfPages();
                 doc.setFontSize(8);
-                doc.setTextColor(148, 163, 184); // Slate 400
+                doc.setTextColor(148, 163, 184);
                 doc.text(
                     `Página ${data.pageNumber} de ${pageCount} - Generado por Sistema de Gestión Financiera`,
-                    pageWidth / 2, 
-                    pageHeight - 10, 
-                    { align: 'center' }
+                    pageWidth / 2, pageHeight - 10, { align: 'center' }
                 );
             }
         });
@@ -120,21 +158,18 @@ export const PDFGenerator = {
         // 5. CUADRO DE RESUMEN DE TOTALES
         const finalY = doc.lastAutoTable.finalY || 56;
         
-        // Evitar que el resumen se corte en el final de la página
         if (finalY > pageHeight - 40) {
             doc.addPage();
             doc.setPage(doc.internal.getNumberOfPages());
         }
 
-        doc.setFillColor(241, 245, 249); // Slate 100
+        doc.setFillColor(241, 245, 249); 
         doc.rect(14, finalY + 10, pageWidth - 28, 28, 'F');
         
         doc.setTextColor(15, 23, 42); 
         doc.setFontSize(11);
         doc.setFont("helvetica", "bold");
         
-        const formatCurrency = (val) => new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(val);
-
         doc.text("Resumen Contable del Período Filtrado", 20, finalY + 18);
         
         doc.setFontSize(10);

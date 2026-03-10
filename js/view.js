@@ -814,7 +814,12 @@ export const view = {
             listData.forEach(c => { datalistHtml += `<option value="${DOMPurify.sanitize(c)}">`; });
             datalistHtml += '</datalist>';
             
-            this.DOM.ecoCategoria.outerHTML = `<input type="text" id="eco-categoria" list="lista-categorias-eco" placeholder="Selecciona de la lista o escribe una nueva...">` + datalistHtml;
+            this.DOM.ecoCategoria.outerHTML = `
+                <div style="display:flex; gap:10px; width:100%;">
+                    <input type="text" id="eco-categoria" list="lista-categorias-eco" placeholder="Selecciona o escribe..." style="flex:1;">
+                    <button type="button" class="btn--danger" id="btn-eliminar-categoria" title="Eliminar categoría seleccionada" style="padding: 0 15px; border-radius: 12px; font-weight:900;">X</button>
+                </div>
+            ` + datalistHtml;
             this.DOM.ecoCategoria = document.getElementById('eco-categoria');
         } 
         else if (t === 'Pago Proveedor') {
@@ -1442,9 +1447,9 @@ export const view = {
             
             let inflacion = this.currentModelData.inflacion;
             let htmlBuffer = [
-                '<div style="max-height: 250px; overflow-y: auto; background:var(--bg-base); border: 1px solid var(--border-color); border-radius:12px;">',
+                '<div style="background:var(--bg-base); border: 1px solid var(--border-color); border-radius:12px;">',
                 '<table class="dataTable-table" style="width:100%; text-align:left; border-collapse: collapse;">',
-                '<thead style="position: sticky; top: 0; background: var(--bg-panel); backdrop-filter: var(--glass-blur);"><tr><th style="padding:15px; font-weight: 900; text-transform: uppercase;">Período</th><th style="padding:15px; font-weight: 900; text-transform: uppercase; text-align:right;">Índice</th><th style="padding:15px; text-align:right;"></th></tr></thead>',
+                '<thead style="background: var(--bg-panel); backdrop-filter: var(--glass-blur);"><tr><th style="padding:15px; font-weight: 900;">Período</th><th style="padding:15px; font-weight: 900; text-align:right;">Índice</th><th style="padding:15px;"></th></tr></thead>',
                 '<tbody>'
             ];
 
