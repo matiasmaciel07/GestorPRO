@@ -54,7 +54,7 @@ const controller = {
 
     setupEventListeners() {
         document.body.addEventListener('click', (e) => {
-            if (e.target.id === 'btn-eliminar-categoria') {
+            if (e.target.closest('#btn-eliminar-categoria')) {
                 const inputCat = document.getElementById('eco-categoria');
                 const tipoActivo = document.getElementById('eco-tipo').value;
                 const categoriaABorrar = inputCat.value.trim();

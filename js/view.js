@@ -284,7 +284,7 @@ export const view = {
                 events.emit('ui:set-filtro', btnFilter.dataset.filter);
             }
             
-            if (target.id === 'btn-toggle-moneda') events.emit('ui:toggle-moneda');
+            if (target.closest('#btn-toggle-moneda')) events.emit('ui:toggle-moneda');
             if (target.closest('#btn-sidebar-toggle')) document.getElementById('sidebar').classList.toggle('sidebar--collapsed');
             if (target.closest('#btn-privacy')) this.togglePrivacy();
             if (target.closest('#btn-save-manual')) events.emit('ui:guardar-manual');

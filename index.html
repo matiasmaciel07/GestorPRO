@@ -159,16 +159,16 @@
         </aside>
 
         <main class="main-content" style="border-radius: 24px; background: transparent;">
-            <header class="topbar" style="margin-bottom: 12px; border-radius: 24px; box-shadow: var(--shadow-card); border: 1px solid var(--border-color);">
-                <div class="is-visible-flex" style="align-items:center; gap: var(--spacing-lg);">
-                    <button class="btn--icon" id="btn-sidebar-toggle" style="padding: 10px;"><svg width="22" height="22"><use href="#icon-menu"></use></svg></button>
-                    <div class="is-visible-flex" style="align-items:center; gap:12px; margin-right: 20px; border-right: 1px solid var(--border-color); padding-right: 20px;">
+            <header class="topbar" style="margin-bottom: 12px; border-radius: 24px; box-shadow: var(--shadow-card); border: 1px solid var(--border-color); gap: 20px; overflow-x: auto;">
+                <div class="is-visible-flex" style="align-items:center; gap: var(--spacing-lg); white-space: nowrap;">
+                    <button class="btn--icon" id="btn-sidebar-toggle" style="padding: 10px; flex-shrink: 0;"><svg width="22" height="22"><use href="#icon-menu"></use></svg></button>
+                    <div class="is-visible-flex" style="align-items:center; gap:12px; margin-right: 20px; border-right: 1px solid var(--border-color); padding-right: 20px; flex-shrink: 0;">
                         <div id="market-dot" class="market-dot market-dot--closed" style="width: 14px; height: 14px;"></div>
                         <span id="market-text" style="font-size:0.85rem; color:var(--text-muted); font-weight:900; text-transform: uppercase; letter-spacing: 1px;">Mercado Cerrado</span>
                     </div>
-                    <span style="color:var(--text-muted); font-size:0.9rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;">Tasa de Cambio Base: <strong class="data-font texto-primario" style="font-size: 1.15rem; margin-left: 8px;">$<span id="lbl-dolar">...</span></strong></span>
+                    <span style="color:var(--text-muted); font-size:0.9rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; flex-shrink: 0;">Tasa de Cambio Base: <strong class="data-font texto-primario" style="font-size: 1.15rem; margin-left: 8px;">$<span id="lbl-dolar">...</span></strong></span>
                 </div>
-                <div class="is-visible-flex" style="gap:12px; align-items: center;">
+                <div class="is-visible-flex" style="gap:12px; align-items: center; flex-shrink: 0;">
                     <button class="btn btn--outline" id="btn-save-manual" style="padding: 0.6rem 1.2rem; font-size: 0.8rem; font-weight: 900; border-radius: 10px;">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 6px;"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
                     Forzar Guardado
