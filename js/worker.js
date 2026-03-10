@@ -74,7 +74,7 @@ function sortMovimientos(arr) {
         let diff = new Date(a.fecha) - new Date(b.fecha);
         if (diff === 0) {
             const peso = { 
-                'Ingreso Local': 1, 'Alta Préstamo': 2, 'Ajuste Stock Inicial': 2.5, 'Ahorro': 3, 'Transferencia Ahorro': 4,
+                'Ingreso Local': 1, 'Aporte Capital': 1.5, 'Alta Préstamo': 2, 'Ajuste Stock Inicial': 2.5, 'Ahorro': 3, 'Transferencia Ahorro': 4, 'Rescate a Caja': 4.5,
                 'Compra': 5, 'Rendimiento': 6, 'Dividendo': 7, 
                 'Gasto Local': 8, 'Gasto Familiar': 9, 'Pago Proveedor': 10, 'Amortización Deuda a Proveedor': 10.1, 'Reparto Sociedad': 10.5, 'Pago Préstamo': 11, 
                 'Venta': 12, 'Retiro': 13 
@@ -111,6 +111,17 @@ function processSingle(m) {
             st.stats.costoUsdArs = safeFloat(st.stats.costoUsdArs + montoNum); 
         }
     } 
+
+    else if (m.tipo === 'Rescate a Caja') {
+        st.stats.billetera = safeFloat(st.stats.billetera - montoNum);
+        st.stats.cajaLocal = safeFloat(st.stats.cajaLocal + montoNum);
+    }
+
+    else if (m.tipo === 'Aporte Capital') {
+        st.stats.cajaLocal = safeFloat(st.stats.cajaLocal + montoNum);
+        flujoExternoHoy = montoNum;
+    }
+
     else if (m.tipo === 'Retiro') {
         st.stats.billetera = safeFloat(st.stats.billetera - montoNum);
         st.stats.totalRetirado = safeFloat(st.stats.totalRetirado + montoNum);
