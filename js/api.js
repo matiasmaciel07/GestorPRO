@@ -9,10 +9,9 @@ const ENDPOINTS = {
     PROXY: (url) => `https://corsproxy.io/?${encodeURIComponent(url)}`
 };
 
-// --- FASE 5: PATRÓN CIRCUIT BREAKER ---
 class CircuitBreaker {
     constructor(failureThreshold = 3, resetTimeout = 60000) {
-        this.state = 'CLOSED'; // CLOSED, OPEN, HALF_OPEN
+        this.state = 'CLOSED'; 
         this.failures = 0;
         this.failureThreshold = failureThreshold;
         this.resetTimeout = resetTimeout;
@@ -50,9 +49,9 @@ class CircuitBreaker {
                 this.notifyStateChange();
                 return true;
             }
-            return false; // El circuito sigue abierto, abortar petición rápido
+            return false; 
         }
-        return true; // HALF_OPEN permite una petición de prueba
+        return true; 
     }
 
     notifyStateChange() {
@@ -67,15 +66,13 @@ class APIManager {
         this.isProcessingQueue = false;
         this.rateLimitDelay = 350; 
         this.abortControllers = new Map();
+        this.hardTimeoutMs = 15000; // Timeout de 15 segundos para evitar peticiones zombie
         
-        // Instanciamos el Circuit Breaker para proteger las APIs externas
         this.circuitBreaker = new CircuitBreaker();
-        
         APIManager.instance = this;
     }
 
     async fetchWithRetry(url, options = {}, retries = 3, backoff = 500) {
-        // Fast-Fail si el circuito está abierto
         if (!this.circuitBreaker.canRequest()) {
             throw new Error('CIRCUIT_OPEN');
         }
@@ -94,11 +91,11 @@ class APIManager {
             return await response.json();
             
         } catch (error) {
-            if (error.name !== 'AbortError') {
+            if (error.name !== 'AbortError' && error.message !== 'HARD_TIMEOUT') {
                 this.circuitBreaker.recordFailure();
             }
             
-            if (retries > 0 && error.name !== 'AbortError' && this.circuitBreaker.state !== 'OPEN') {
+            if (retries > 0 && error.name !== 'AbortError' && error.message !== 'HARD_TIMEOUT' && this.circuitBreaker.state !== 'OPEN') {
                 await this.sleep(backoff);
                 return this.fetchWithRetry(url, options, retries - 1, backoff * 2);
             }
@@ -110,11 +107,9 @@ class APIManager {
 
     enqueueRequest(url, options = {}, key) {
         return new Promise((resolve, reject) => {
-            // Si el circuito está abierto, rechazamos inmediatamente para usar caché
             if (!this.circuitBreaker.canRequest()) {
                 return reject(new Error('CIRCUIT_OPEN'));
             }
-            
             this.requestQueue.push({ url, options, key, resolve, reject });
             this.processQueue();
         });
@@ -130,14 +125,23 @@ class APIManager {
                 if (req.key && this.abortControllers.has(req.key)) {
                     this.abortControllers.get(req.key).abort();
                 }
+                
                 const controller = new AbortController();
                 if (req.key) this.abortControllers.set(req.key, controller);
                 req.options.signal = controller.signal;
 
+                // Watchdog de seguridad contra conexiones colgadas
+                const timeoutId = setTimeout(() => {
+                    controller.abort();
+                    req.reject(new Error('HARD_TIMEOUT'));
+                }, this.hardTimeoutMs);
+
                 try {
                     const data = await this.fetchWithRetry(req.url, req.options);
+                    clearTimeout(timeoutId);
                     req.resolve(data);
                 } catch (error) {
+                    clearTimeout(timeoutId);
                     req.reject(error);
                 } finally {
                     if (req.key) this.abortControllers.delete(req.key);
@@ -153,7 +157,7 @@ class APIManager {
             const json = await this.enqueueRequest(ENDPOINTS.DOLAR_BLUE, {}, 'dolar_blue');
             return json.venta;
         } catch(e) { 
-            if (e.message !== 'CIRCUIT_OPEN' && e.name !== 'AbortError') {
+            if (e.message !== 'CIRCUIT_OPEN' && e.name !== 'AbortError' && e.message !== 'HARD_TIMEOUT') {
                 ErrorHandler.handle(new AppError("No se pudo actualizar el Dólar Blue", 'NETWORK_API', e));
             }
             return null; 
@@ -168,13 +172,14 @@ class APIManager {
 
     async fetchPrecioUnico(ticker, cachePrecios) {
         let cache = cachePrecios[ticker];
-        
         let forceCache = this.circuitBreaker.state === 'OPEN';
+        
         if(cache && (forceCache || (Date.now() - cache.time < 1800000))) return cache.data; 
 
         ticker = ticker.toUpperCase().trim();
         let price = null;
         let history = [];
+        
         try {
             if (ticker.endsWith('USDT')) {
                 const json = await this.enqueueRequest(ENDPOINTS.BINANCE(ticker), {}, `crypto_${ticker}`);
@@ -185,8 +190,7 @@ class APIManager {
             else if (ticker.startsWith('FCI:')) {
                 return null;
             } 
-           else {
-
+            else {
                 let searchTicker = ticker;
                 let isCedear = false;
 
@@ -206,7 +210,6 @@ class APIManager {
                 let originalPrice = null;
                 if (isCedear) {
                     try {
-
                         const urlOriginal = ENDPOINTS.PROXY(ENDPOINTS.YAHOO_FINANCE(ticker));
                         const jsonOriginal = await this.enqueueRequest(urlOriginal, {}, `precio_orig_${ticker}`);
                         originalPrice = jsonOriginal.chart.result[0].meta.regularMarketPrice;
@@ -218,9 +221,8 @@ class APIManager {
                 return { price, history, sma50: this.calcularSMA(history, 50), sma200: this.calcularSMA(history, 200), originalPrice };
             }
         } catch(e) {
-            // Si el circuito se abre o hay error, devolvemos la caché si existe (Fallback Silencioso)
             if (cache) return cache.data;
-            if (e.message !== 'CIRCUIT_OPEN' && e.name !== 'AbortError') {
+            if (e.message !== 'CIRCUIT_OPEN' && e.name !== 'AbortError' && e.message !== 'HARD_TIMEOUT') {
                 console.warn(`[DATA_API] Fallo cotización de ${ticker}:`, e.message);
             }
             return null;
@@ -228,17 +230,15 @@ class APIManager {
     }
 }
 
-// --- FASE 5: PREPARACIÓN PARA WEBSOCKETS (STREAM WRAPPER) ---
 class PriceStreamManager {
     constructor(apiInstance) {
         this.api = apiInstance;
-        this.subscribers = new Map(); // ticker -> callback
+        this.subscribers = new Map();
         this.activeTickers = new Set();
         this.streamInterval = null;
-        this.isWebSocketMode = false; // Flag preparado para inyección futura
+        this.isWebSocketMode = false;
     }
 
-    // Interfaz agnóstica para el Controlador
     subscribe(ticker, callback) {
         ticker = ticker.toUpperCase().trim();
         this.subscribers.set(ticker, callback);
@@ -253,12 +253,8 @@ class PriceStreamManager {
     }
 
     startStream() {
-        if (this.isWebSocketMode) {
-            // Futura implementación: const ws = new WebSocket(...)
-            return;
-        }
-
-        // Emulación de Stream mediante Polling optimizado (Se cambiará por WS sin tocar el Controlador)
+        if (this.isWebSocketMode) return;
+        
         if (!this.streamInterval && this.activeTickers.size > 0) {
             this.streamInterval = setInterval(() => this.pollPrecios(), 60000);
         }
@@ -272,10 +268,7 @@ class PriceStreamManager {
     }
 
     async pollPrecios() {
-        // En un futuro HFT, esto emitirá eventos cada 100ms.
-        // Aquí pasamos un caché vacío para forzar la actualización si la red lo permite
         let dummyCache = {}; 
-        
         for (const ticker of this.activeTickers) {
             const result = await this.api.fetchPrecioUnico(ticker, dummyCache);
             if (result && this.subscribers.has(ticker)) {

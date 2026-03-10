@@ -15,6 +15,14 @@ let st = {
     firstDateMs: 0
 };
 
+// Mapa de pesos pre-calculado para evitar asignación constante de objetos durante el sort
+const PESOS_TIPO = { 
+    'Ingreso Local': 1, 'Aporte Capital': 1.5, 'Alta Préstamo': 2, 'Ajuste Stock Inicial': 2.5, 'Correccion Stock': 2.6, 'Ahorro': 3, 'Transferencia Ahorro': 4, 'Rescate a Caja': 4.5,
+    'Compra': 5, 'Rendimiento': 6, 'Dividendo': 7, 
+    'Gasto Local': 8, 'Gasto Familiar': 9, 'Pago Proveedor': 10, 'Amortización Deuda a Proveedor': 10.1, 'Reparto Sociedad': 10.5, 'Pago Préstamo': 11, 
+    'Venta': 12, 'Retiro': 13 
+};
+
 function safeFloat(num) {
     return Math.round((parseFloat(num) || 0) * 1000000) / 1000000;
 }
@@ -71,15 +79,9 @@ function getEmptyStats() {
 
 function sortMovimientos(arr) {
     arr.sort((a, b) => {
-        let diff = new Date(a.fecha) - new Date(b.fecha);
+        let diff = new Date(a.fecha).getTime() - new Date(b.fecha).getTime();
         if (diff === 0) {
-            const peso = { 
-                'Ingreso Local': 1, 'Aporte Capital': 1.5, 'Alta Préstamo': 2, 'Ajuste Stock Inicial': 2.5, 'Correccion Stock': 2.6, 'Ahorro': 3, 'Transferencia Ahorro': 4, 'Rescate a Caja': 4.5,
-                'Compra': 5, 'Rendimiento': 6, 'Dividendo': 7, 
-                'Gasto Local': 8, 'Gasto Familiar': 9, 'Pago Proveedor': 10, 'Amortización Deuda a Proveedor': 10.1, 'Reparto Sociedad': 10.5, 'Pago Préstamo': 11, 
-                'Venta': 12, 'Retiro': 13 
-            };
-            return (peso[a.tipo] || 15) - (peso[b.tipo] || 15);
+            return (PESOS_TIPO[a.tipo] || 15) - (PESOS_TIPO[b.tipo] || 15);
         }
         return diff;
     });
@@ -159,9 +161,8 @@ function processSingle(m) {
             p.costo = safeFloat(p.costo - costoDeVenta); 
             st.stats.capInvertido = safeFloat(st.stats.capInvertido - costoDeVenta);
             
-            // --- NUEVO: Limpieza de residuos flotantes (Cero Absoluto) ---
             if (p.cant <= 0.0001) {
-                st.stats.capInvertido = safeFloat(st.stats.capInvertido - p.costo); // Limpia remanente en métrica global
+                st.stats.capInvertido = safeFloat(st.stats.capInvertido - p.costo); 
                 p.cant = 0;
                 p.costo = 0;
             }
@@ -183,7 +184,7 @@ function processSingle(m) {
             while (cantRestante > 0 && lotes && lotes.length > 0) {
                 let lote = lotes[0];
                 let operado = Math.min(cantRestante, lote.cant);
-                let diasMantenido = (fechaVentaMs - lote.fecha) / (1000 * 60 * 60 * 24);
+                let diasMantenido = (fechaVentaMs - lote.fecha) / 86400000;
                 st.stats.diasTenenciaTotal = safeFloat(st.stats.diasTenenciaTotal + (diasMantenido * operado));
                 st.stats.operacionesCerradas = safeFloat(st.stats.operacionesCerradas + operado);
 
@@ -242,13 +243,8 @@ function processSingle(m) {
         if (m.estadoPago === 'Pendiente') {
             let deudaId = m.deudaAsociadaId || ('PROV-' + m.id);
             st.stats.deudaProveedoresDetalle[deudaId] = {
-                id: deudaId,
-                proveedor: prov,
-                fecha: m.fecha,
-                capitalExigibleTotal: montoNum,
-                capitalServido: 0,
-                amortizacionPct: 0,
-                activo: true
+                id: deudaId, proveedor: prov, fecha: m.fecha, capitalExigibleTotal: montoNum,
+                capitalServido: 0, amortizacionPct: 0, activo: true
             };
         } else {
             st.stats.cajaLocal = safeFloat(st.stats.cajaLocal - montoNum);
@@ -336,7 +332,7 @@ function processSingle(m) {
     }
 
     let msElapsedTotal = new Date(m.fecha).getTime() - st.firstDateMs;
-    let monthsElapsedTotal = msElapsedTotal / (1000 * 60 * 60 * 24 * 30.44);
+    let monthsElapsedTotal = msElapsedTotal / 2629920000; // Constante de ms en un mes promedio
     let avgVida = monthsElapsedTotal >= 1 ? (st.stats.gastosFamiliar + st.stats.gastosLocal) / monthsElapsedTotal : (st.stats.gastosFamiliar + st.stats.gastosLocal);
 
     if (m.fecha !== st.lastDate) {
@@ -388,11 +384,11 @@ function finalizeMetrics() {
         
         let firstDate = cashFlowsTIR[0].date;
         let lastDate = cashFlowsTIR[cashFlowsTIR.length - 1].date;
-        let daysDiff = (lastDate - firstDate) / (1000 * 3600 * 24);
+        let daysDiff = (lastDate - firstDate) / 86400000;
         
         if (daysDiff < 365) {
             let totalInvested = cashFlowsTIR.filter(c => c.amount < 0).reduce((a, b) => a + Math.abs(b.amount), 0);
-            if (totalInvested > 0) { // <-- Se mantiene, pero aseguramos no romper si lastVal oscila
+            if (totalInvested > 0) { 
                 let totalRetrieved = cashFlowsTIR.filter(c => c.amount > 0 && c.date !== lastDate).reduce((a, b) => a + b.amount, 0);
                 st.stats.cagr = safeFloat(((lastVal + totalRetrieved - totalInvested) / totalInvested) * 100);
             } else {
@@ -419,18 +415,12 @@ function finalizeMetrics() {
             retornosDiarios.push(base > 0 ? (current - base) / base : 0);
         }
         
-        // Calcular los días reales que conforman esta historia
         let daysDiff = st.firstDateMs ? (new Date(st.lastDate).getTime() - st.firstDateMs) / 86400000 : 365;
         let riskMetrics = FinancialMath.calcularRiesgoTWR(retornosDiarios, 0.05, Math.max(1, daysDiff));
         
-        st.stats.riesgo = { 
-            sharpe: riskMetrics.sharpe.toFixed(2), 
-            sortino: riskMetrics.sortino.toFixed(2), 
-            volatilidad: (riskMetrics.volatilidad * 100).toFixed(2) 
-        };
+        st.stats.riesgo = { sharpe: riskMetrics.sharpe.toFixed(2), sortino: riskMetrics.sortino.toFixed(2), volatilidad: (riskMetrics.volatilidad * 100).toFixed(2) };
     }
 
-    // Cálculos y agregaciones para la tabla de Préstamos
     st.stats.totalPedidoPrestamos = 0;
     st.stats.totalDevolverPrestamos = 0;
     st.stats.totalCuotaMensualPrestamos = 0;
