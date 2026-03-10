@@ -1,6 +1,6 @@
 {
   "name": "gestor-financiero-pro",
-  "version": "5.0.0",
+  "version": "1.0.0",
   "description": "Programa Institucional de Gestión Financiera y Portfolio Tracker",
   "main": "main.js",
   "scripts": {
@@ -29,5 +29,15 @@
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true
     }
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/matiasmaciel07/GestorPRO.git"
+  },
+  "keywords": [],
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/matiasmaciel07/GestorPRO/issues"
+  },
+  "homepage": "https://github.com/matiasmaciel07/GestorPRO#readme"
 }
