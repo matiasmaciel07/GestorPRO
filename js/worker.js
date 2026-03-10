@@ -138,6 +138,13 @@ function processSingle(m) {
             p.costo = safeFloat(p.costo - costoDeVenta); 
             st.stats.capInvertido = safeFloat(st.stats.capInvertido - costoDeVenta);
             
+            // --- NUEVO: Limpieza de residuos flotantes (Cero Absoluto) ---
+            if (p.cant <= 0.0001) {
+                st.stats.capInvertido = safeFloat(st.stats.capInvertido - p.costo); // Limpia remanente en métrica global
+                p.cant = 0;
+                p.costo = 0;
+            }
+            
             let resultado = safeFloat(montoNum - costoDeVenta);
             m.resultadoCalculado = resultado; 
             st.stats.ganRealizada = safeFloat(st.stats.ganRealizada + resultado); 
@@ -359,7 +366,7 @@ function finalizeMetrics() {
         
         if (daysDiff < 365) {
             let totalInvested = cashFlowsTIR.filter(c => c.amount < 0).reduce((a, b) => a + Math.abs(b.amount), 0);
-            if (totalInvested > 0) {
+            if (totalInvested > 0) { // <-- Se mantiene, pero aseguramos no romper si lastVal oscila
                 let totalRetrieved = cashFlowsTIR.filter(c => c.amount > 0 && c.date !== lastDate).reduce((a, b) => a + b.amount, 0);
                 st.stats.cagr = safeFloat(((lastVal + totalRetrieved - totalInvested) / totalInvested) * 100);
             } else {
@@ -382,12 +389,19 @@ function finalizeMetrics() {
             let prev = st.stats.historyPatrimonio[i - 1];
             let current = st.stats.historyPatrimonio[i];
             let flujo = st.stats.historyFlujoPatrimonial[i] || 0;
-            
             let base = prev + flujo;
             retornosDiarios.push(base > 0 ? (current - base) / base : 0);
         }
-        let riskMetrics = FinancialMath.calcularRiesgoTWR(retornosDiarios, 0.05);
-        st.stats.riesgo = { sharpe: riskMetrics.sharpe.toFixed(2), sortino: riskMetrics.sortino.toFixed(2), volatilidad: (riskMetrics.volatilidad * 100).toFixed(2) };
+        
+        // Calcular los días reales que conforman esta historia
+        let daysDiff = st.firstDateMs ? (new Date(st.lastDate).getTime() - st.firstDateMs) / 86400000 : 365;
+        let riskMetrics = FinancialMath.calcularRiesgoTWR(retornosDiarios, 0.05, Math.max(1, daysDiff));
+        
+        st.stats.riesgo = { 
+            sharpe: riskMetrics.sharpe.toFixed(2), 
+            sortino: riskMetrics.sortino.toFixed(2), 
+            volatilidad: (riskMetrics.volatilidad * 100).toFixed(2) 
+        };
     }
 
     // Cálculos y agregaciones para la tabla de Préstamos

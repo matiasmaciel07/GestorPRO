@@ -38,22 +38,24 @@ export const FinancialMath = {
     /**
      * Calcula Métricas de Riesgo usando el Retorno Ponderado en el Tiempo (TWR)
      */
-    calcularRiesgoTWR(retornosDiarios, riskFreeRateAnual = 0.05) {
+    calcularRiesgoTWR(retornosDiarios, riskFreeRateAnual = 0.05, diasTranscurridos = 365) {
         let len = retornosDiarios.length;
-        if (len < 2) return { sharpe: 0, sortino: 0, volatilidad: 0 };
+        if (len < 2 || diasTranscurridos <= 0) return { sharpe: "0.00", sortino: "0.00", volatilidad: 0 };
 
         let mean = retornosDiarios.reduce((a, b) => a + b, 0) / len;
         let variance = retornosDiarios.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / len;
         let stdDev = Math.sqrt(variance);
         
-        let volAnual = stdDev * Math.sqrt(252); 
+        // Ajuste maestro: factor de anualización basado en la densidad de transacciones
+        let factorAnualizacion = (len / diasTranscurridos) * 365;
+        let volAnual = stdDev * Math.sqrt(factorAnualizacion); 
         
-        let riskFreeDiario = riskFreeRateAnual / 252;
-        let sharpe = stdDev > 0 ? ((mean - riskFreeDiario) / stdDev) * Math.sqrt(252) : 0;
+        let riskFreePorPeriodo = riskFreeRateAnual / factorAnualizacion;
+        let sharpe = stdDev > 0 ? ((mean - riskFreePorPeriodo) / stdDev) * Math.sqrt(factorAnualizacion) : 0;
         
         let negReturns = retornosDiarios.filter(r => r < 0);
         let downVar = negReturns.length > 0 ? negReturns.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / negReturns.length : 0;
-        let sortino = downVar > 0 ? ((mean - riskFreeDiario) / Math.sqrt(downVar)) * Math.sqrt(252) : 0;
+        let sortino = downVar > 0 ? ((mean - riskFreePorPeriodo) / Math.sqrt(downVar)) * Math.sqrt(factorAnualizacion) : 0;
 
         return { sharpe, sortino, volatilidad: volAnual };
     },

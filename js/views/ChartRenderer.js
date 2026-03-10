@@ -624,13 +624,16 @@ export const ChartRenderer = {
         const div = isUSD ? dBlue : 1;
         
         const aplicarPromedio = (monto) => {
-            const prom = FinancialMath.calcularPromediosDesglosados(monto * div, temporalidad, []);
-            let val;
-            if (temporalidad.toLowerCase() === 'anual') val = (prom.mes * 12) / div;
-            else if (temporalidad.toLowerCase() === 'mensual') val = prom.mes / div;
-            else if (temporalidad.toLowerCase() === 'semanal') val = prom.semana / div;
-            else if (temporalidad.toLowerCase() === 'diario') val = prom.dia / div;
-            else val = monto;
+            if (!temporalidad || temporalidad.toLowerCase() === 'histórico' || temporalidad.toLowerCase() === 'historico') return monto;
+            
+            let meses = stats.numMesesOperativos || 1;
+            let val = monto;
+            
+            if (temporalidad.toLowerCase() === 'anual') { val = monto / Math.max(1, meses / 12); } 
+            else if (temporalidad.toLowerCase() === 'mensual') { val = monto / meses; } 
+            else if (temporalidad.toLowerCase() === 'semanal') { val = (monto / meses) / 4.3333; } 
+            else if (temporalidad.toLowerCase() === 'diario') { val = (monto / meses) / 30.416; }
+            
             return Math.max(0, val);
         };
 
