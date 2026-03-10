@@ -115,6 +115,16 @@ function processSingle(m) {
     else if (m.tipo === 'Rescate a Caja') {
         st.stats.billetera = safeFloat(st.stats.billetera - montoNum);
         st.stats.cajaLocal = safeFloat(st.stats.cajaLocal + montoNum);
+        
+        st.stats.totalAhorradoFisico = safeFloat(Math.max(0, st.stats.totalAhorradoFisico - montoNum));
+        st.stats.ahorroArsPuro = safeFloat(st.stats.ahorroArsPuro - montoNum);
+        st.stats.ahorroHaciaBursatil = safeFloat(Math.max(0, st.stats.ahorroHaciaBursatil - montoNum));
+        st.stats.flowAhorro = safeFloat(Math.max(0, st.stats.flowAhorro - montoNum));
+
+        if (m.usd > 0) {
+            st.stats.usdComprado = safeFloat(Math.max(0, st.stats.usdComprado - parseFloat(m.usd)));
+            st.stats.costoUsdArs = safeFloat(Math.max(0, st.stats.costoUsdArs - montoNum));
+        }
     }
 
     else if (m.tipo === 'Aporte Capital') {
