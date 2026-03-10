@@ -438,18 +438,17 @@ const controller = {
         if (formData.notas) mov.notas = formData.notas;
 
         if(['Compra','Venta','Dividendo'].includes(formData.tipo)) {
-            if(!formData.activo) return events.emit('app:toast', { msg: "Falta el Ticker", type: "error" });
+            if(!formData.activo) return events.emit('app:toast', { msg: "Debe proveer un identificador de activo (Ticker)", type: "error" });
             mov.activo = formData.activo;
             
-            if(formData.tipo !== 'Dividendo') { 
-                if(formData.cant <= 0) return events.emit('app:toast', { msg: "Cantidad inválida", type: "error" });
-                mov.cantidad = formData.cant;
-            }
-            if(formData.tipo === 'Compra') mov.sector = formData.sector || 'Otro';
+            if(formData.cant > 0) mov.cantidad = formData.cant;
+            else if (formData.tipo !== 'Dividendo') return events.emit('app:toast', { msg: "El volumen de nominales debe ser superior a cero", type: "error" });
+
+            mov.sector = formData.sector || 'No clasificado';
             
             if(formData.tipo === 'Venta' && !this.state.editingId) { 
                 let holding = model.data.portafolio[formData.activo];
-                if(!holding || holding.cant < formData.cant) return events.emit('app:toast', { msg: "Sin nominales suficientes", type: "error" });
+                if(!holding || holding.cant < formData.cant) return events.emit('app:toast', { msg: "Insuficiencia de nominales en la cartera activa", type: "error" });
             }
         } 
         else if(formData.tipo === 'Transferencia Ahorro' || formData.tipo === 'Ahorro' || formData.tipo === 'Rescate a Caja') { 

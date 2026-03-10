@@ -742,27 +742,23 @@ export const view = {
     adaptarFormularioOperar() {
         let t = this.DOM.opTipo.value;
         const descripcionesBursatil = {
-            'Transferencia Ahorro': 'Mueve dinero de la Caja Local hacia la Billetera Bursátil. Aumenta Liquidez en Caja Retenida.',
-            'Rescate a Caja': 'Mueve dinero de la Billetera Bursátil hacia la Caja Local (Uso operativo). Reduce Liquidez Retenida.',
-            'Compra': 'Utiliza fondos de la Billetera Bursátil para adquirir un activo. Reduce Liquidez Retenida, aumenta Capital Invertido.',
-            'Venta': 'Liquida un activo y devuelve el dinero a la Billetera Bursátil. Registra ganancia/pérdida y aumenta Liquidez Retenida.',
-            'Rendimiento': 'Pago de intereses. Suma liquidez directamente a la Billetera Bursátil.',
-            'Dividendo': 'Ganancias distribuidas por acciones. Suma dinero a la Billetera Bursátil sin vender el activo.',
-            'Retiro': 'Retira dinero de la Billetera Bursátil hacia fuera del sistema contable.'
+            'Transferencia Ahorro': 'Inyección de liquidez. Mueve fondos de la Caja Local hacia la Billetera Bursátil. Aumenta Liquidez Retenida.',
+            'Rescate a Caja': 'Rescate de capital. Mueve dinero de la Billetera Bursátil hacia la Caja Local. Reduce Liquidez Retenida.',
+            'Compra': 'Adquisición de instrumentos financieros. Requiere asignación de Ticker, Sector y Volumen nominal.',
+            'Venta': 'Liquidación total o parcial de posiciones en cartera. Requiere asignación de Ticker, Sector y Volumen a liquidar.',
+            'Rendimiento': 'Asiento de rentabilidad líquida o intereses generados por cauciones y fondos money-market.',
+            'Dividendo': 'Distribución de utilidades. Inyección de liquidez pasiva. Requiere asociar el Ticker y Sector emisor.',
+            'Retiro': 'Extracción definitiva de capital bursátil hacia fuera del ecosistema financiero auditado.'
         };
+        
         if(this.DOM.opTipoDesc) this.DOM.opTipoDesc.innerText = descripcionesBursatil[t] || '';
-        if(this.DOM.ecoTipoDesc) this.DOM.ecoTipoDesc.innerText = descripcionesEco[t] || '';
         if(this.DOM.hintCantidad) this.DOM.hintCantidad.classList.add('is-hidden');
         
         if (['Compra','Venta','Dividendo'].includes(t)) {
             this.DOM.bloqueActivo.classList.remove('is-hidden');
-        } else {
-            this.DOM.bloqueActivo.classList.add('is-hidden');
-        }
-        
-        if (t === 'Compra') {
             this.DOM.grupoSector.classList.remove('is-hidden');
         } else {
+            this.DOM.bloqueActivo.classList.add('is-hidden');
             this.DOM.grupoSector.classList.add('is-hidden');
         }
         
@@ -772,7 +768,7 @@ export const view = {
             this.DOM.bloqueDolares.classList.add('is-hidden');
         }
 
-        this.DOM.lblMonto.innerText = t === 'Dividendo' ? 'Dividendo Cobrado (ARS)' : 'Monto Total Operado (ARS)';
+        this.DOM.lblMonto.innerText = t === 'Dividendo' ? 'Distribución Total Cobrada (ARS)' : 'Monto Consolidado de la Operación (ARS)';
     },
 
     adaptarFormularioEconomia() {
@@ -1447,8 +1443,8 @@ export const view = {
             
             let inflacion = this.currentModelData.inflacion;
             let htmlBuffer = [
-                '<div style="background:var(--bg-base); border: 1px solid var(--border-color); border-radius:12px;">',
-                '<table class="dataTable-table" style="width:100%; text-align:left; border-collapse: collapse;">',
+                '<div style="background:var(--bg-base); border: 1px solid var(--border-color); border-radius:12px; overflow-x: auto; width: 100%;">',
+                '<table class="dataTable-table" style="width:100%; min-width: 100%; text-align:left; border-collapse: collapse; margin-top: 0;">',
                 '<thead style="background: var(--bg-panel); backdrop-filter: var(--glass-blur);"><tr><th style="padding:15px; font-weight: 900;">Período</th><th style="padding:15px; font-weight: 900; text-align:right;">Índice</th><th style="padding:15px;"></th></tr></thead>',
                 '<tbody>'
             ];
