@@ -186,8 +186,8 @@ class APIManager {
             else if (ticker.startsWith('FCI:')) {
                 return null;
             } 
-            else {
-                let searchTicker = ticker.endsWith('.BA') || ticker.match(/^[A-Z]{2,5}\d{1,2}[A-Z]?$/) ? ticker : ticker + '.BA';
+           else {
+                let isCedear = searchTicker.endsWith('.BA') && !ticker.endsWith('.BA');
                 
                 const urlFinal = ENDPOINTS.PROXY(ENDPOINTS.YAHOO_FINANCE(searchTicker));
                 const json = await this.enqueueRequest(urlFinal, {}, `precio_${ticker}`);
@@ -196,9 +196,19 @@ class APIManager {
                 let result = json.chart.result[0];
                 price = result.meta.regularMarketPrice;
                 history = result.indicators.quote[0].close.filter(p => p !== null) || [];
-            }
+                
+                let originalPrice = null;
+                if (isCedear) {
+                    try {
+                        const urlOriginal = ENDPOINTS.PROXY(ENDPOINTS.YAHOO_FINANCE(ticker));
+                        const jsonOriginal = await this.enqueueRequest(urlOriginal, {}, `precio_orig_${ticker}`);
+                        originalPrice = jsonOriginal.chart.result[0].meta.regularMarketPrice;
+                    } catch (e) {
+                    }
+                }
 
-            return { price, history, sma50: this.calcularSMA(history, 50), sma200: this.calcularSMA(history, 200) };
+                return { price, history, sma50: this.calcularSMA(history, 50), sma200: this.calcularSMA(history, 200), originalPrice };
+            }
         } catch(e) {
             // Si el circuito se abre o hay error, devolvemos la caché si existe (Fallback Silencioso)
             if (cache) return cache.data;

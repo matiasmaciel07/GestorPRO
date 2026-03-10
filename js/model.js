@@ -89,6 +89,11 @@ export const model = {
             const idx = migratedCats.Local.indexOf('Proveedores');
             if (idx !== -1) migratedCats.Local[idx] = 'Insumos Menores';
 
+            const nuevasCatsPersonal = ["Tarjetas de Crédito", "Alquiler de Inmueble", "Servicios Básicos", "Mantenimiento y Reparaciones"];
+            nuevasCatsPersonal.forEach(c => {
+                if (!migratedCats.Personal.includes(c)) migratedCats.Personal.push(c);
+            });
+
             this._data.categorias = migratedCats;
         } else {
             this._data.categorias = {

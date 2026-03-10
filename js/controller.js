@@ -510,10 +510,18 @@ const controller = {
             events.emit('ui:reset-form-operacion');
             if (['Gasto Local', 'Gasto Familiar', 'Ingreso Local'].includes(formData.tipo)) {
                 events.emit('ui:restaurar-estado-formulario', {
-                    tipo: formData.tipo,
-                    categoria: formData.categoria || ''
-                });
-            }
+                tipo: formData.tipo,
+                categoria: formData.categoria || ''
+            });
+        }
+
+        if (['Compra', 'Dividendo', 'Ahorro'].includes(formData.tipo)) {
+            setTimeout(() => { this.actualizarPreciosPortafolioDirecto(); }, 800);
+        }
+        
+        if (capInput) capInput.value = '';
+        const cuoInput = document.getElementById('eco-prestamo-cuotas');
+        if (cuoInput) cuoInput.value = '1';
         }
         
         if (capInput) capInput.value = '';

@@ -14,6 +14,11 @@ export const view = {
     _mdCache: new Map(), // NUEVA LÍNEA: Caché de Markdown
     // FASE 3: Paleta de Colores Vibrantes para gráficos e inyecciones JS
     sectorColors: ['#00FF95', '#FF4D8A', '#2CE6D6', '#FCA311', '#6045F4', '#FF871A', '#7C13A4', '#1AA7EC', '#F71735'],
+    CEDEAR_RATIOS: {
+        'SPY': 20, 'QQQ': 20, 'DIA': 20, 'IWM': 20, 'AAPL': 10, 'MSFT': 30, 
+        'GOOGL': 58, 'AMZN': 144, 'TSLA': 15, 'NVDA': 24, 'META': 24, 'NFLX': 48,
+        'KO': 5, 'MCD': 24, 'WMT': 18, 'PG': 5, 'V': 18, 'DIS': 12, 'JNJ': 5, 'MELI': 60
+    },
     chartTermometro: null,
     zenMode: false,
 
@@ -783,8 +788,9 @@ export const view = {
             'Ajuste Stock Inicial': 'Suma valor al Inventario Base sin tocar la Caja. Ideal para sumar remanentes.',
             'Correccion Stock': 'Fija el valor EXACTO del Inventario Actual sobrescribiendo arrastres previos. Útil para auditorías.',
             'Reparto Sociedad': 'Resta dinero de la Caja Local como retiro de los accionistas.',
+            'Ahorro': 'Ingreso externo y directo. Inyecta capital limpio en la Billetera Bursátil omitiendo el flujo del negocio.',
             'Alta Préstamo': 'Suma dinero a la Caja Local e inicia el seguimiento de un Pasivo Activo.',
-            'Pago Préstamo': 'Resta dinero de la Caja Local para amortizar Pasivos Activos.'
+            'Pago Préstamo': 'Resta dinero de la Caja Local para amortizar Pasivos Activos.',
         };
         if(this.DOM.ecoTipoDesc) this.DOM.ecoTipoDesc.innerText = descripcionesEco[t] || '';
         let cats = this.currentModelData?.categorias || {};
@@ -810,12 +816,22 @@ export const view = {
             listData.forEach(c => { datalistHtml += `<option value="${DOMPurify.sanitize(c)}">`; });
             datalistHtml += '</datalist>';
             
-            this.DOM.ecoCategoria.outerHTML = `
-                <div style="display:flex; gap:10px; width:100%;">
-                    <input type="text" id="eco-categoria" list="lista-categorias-eco" placeholder="Selecciona o escribe..." style="flex:1;">
-                    <button type="button" class="btn--danger" id="btn-eliminar-categoria" title="Eliminar categoría seleccionada" style="padding: 0 15px; border-radius: 12px; font-weight:900;">X</button>
+            let htmlToInsert = `
+                <div id="eco-categoria-wrapper" style="width: 100%;">
+                    <div style="display:flex; gap:10px; width:100%;">
+                        <input type="text" id="eco-categoria" list="lista-categorias-eco" placeholder="Selecciona o escribe..." style="flex:1;">
+                        <button type="button" class="btn--danger" id="btn-eliminar-categoria" title="Eliminar categoría seleccionada" style="padding: 0 15px; border-radius: 12px; font-weight:900;">X</button>
+                    </div>
+                    ${datalistHtml}
                 </div>
-            ` + datalistHtml;
+            `;
+            
+            let existingWrapper = document.getElementById('eco-categoria-wrapper');
+            if (existingWrapper) {
+                existingWrapper.outerHTML = htmlToInsert;
+            } else {
+                this.DOM.ecoCategoria.outerHTML = htmlToInsert;
+            }
             this.DOM.ecoCategoria = document.getElementById('eco-categoria');
         } 
         else if (t === 'Pago Proveedor') {
@@ -1501,7 +1517,10 @@ export const view = {
                 const row = document.importNode(template, true);
                 let mainColor = this.sectorColors[cIdx];
 
-                row.querySelector('.td-avatar').innerHTML = `<div class="asset-wrapper" style="display:flex; align-items:center; gap:12px;"><span class="asset-badge" style="padding:6px 12px; border-radius:8px; font-weight:900; border-left: 4px solid ${mainColor}; background: ${mainColor}22; color:${mainColor}; box-shadow: -2px 0 10px ${mainColor}40;">${actSafe}</span><div><span style="font-size:11px;color:var(--text-muted); font-weight: 900; text-transform:uppercase;">${secSafe}</span></div></div>`;
+                let ratioText = this.CEDEAR_RATIOS[activo] ? `<br><span style="font-size:10px; color:var(--color-primary); font-weight:900;">RATIO ${this.CEDEAR_RATIOS[activo]}:1</span>` : '';
+                let origPriceText = (apiData && apiData.originalPrice) ? ` | <span style="font-size:10px; color:var(--color-up); font-weight:900;">USD ${apiData.originalPrice.toFixed(2)}</span>` : '';
+                
+                row.querySelector('.td-avatar').innerHTML = `<div class="asset-wrapper" style="display:flex; align-items:center; gap:12px;"><span class="asset-badge" style="padding:6px 12px; border-radius:8px; font-weight:900; border-left: 4px solid ${mainColor}; background: ${mainColor}22; color:${mainColor}; box-shadow: -2px 0 10px ${mainColor}40;">${actSafe}</span><div><span style="font-size:11px;color:var(--text-muted); font-weight: 900; text-transform:uppercase;">${secSafe}</span>${ratioText}${origPriceText}</div></div>`;
                 row.querySelector('.td-cant').innerHTML = `<strong style="font-size: 1.1rem;">${d.cant}</strong>`;
                 row.querySelector('.td-cant').style.textAlign = 'right';
                 
@@ -1608,18 +1627,25 @@ export const view = {
 
         let wlBuffer = [];
         wlData.forEach(w => {
+
             let precioStr = '<div class="skeleton" style="width: 80px; margin-left:auto;"></div>';
             let difStr = '-';
-            
+
             if (w.precioActual !== null && w.precioActual !== undefined) {
                 precioStr = `<strong class="privacy-mask" style="font-size: 1.15rem;">$${this.fmtStr(w.precioActual, this.currentModelData.dolarBlue, this.currentModelData.vistaUSD)}</strong>`;
                 let colorClass = w.distancia >= 0 ? 'texto-verde' : 'texto-rojo';
                 difStr = `<span class="${colorClass}" style="font-size: 1.15rem;">${w.distancia > 0 ? '+' : ''}${w.distancia.toFixed(2)}%</span>`;
             }
 
+            let ratioText = this.CEDEAR_RATIOS[w.activo] ? `<br><span style="font-size:0.8rem; color:var(--color-primary); font-weight:900;">Ratio ${this.CEDEAR_RATIOS[w.activo]}:1</span>` : '';
+
+            let cacheSafeguard = this.currentModelData.cachePrecios || {};
+            let apiDataObj = cacheSafeguard[w.activo];
+            let origPriceText = (apiDataObj && apiDataObj.data && apiDataObj.data.originalPrice) ? `<span style="font-size:0.8rem; color:var(--color-up); margin-left:6px; font-weight:900;">(USD ${apiDataObj.data.originalPrice.toFixed(2)})</span>` : '';
+
             wlBuffer.push(
                 `<tr style="transition: background 0.2s; background: var(--bg-input); border-bottom: 1px solid var(--border-color);">`,
-                `<td style="padding: 15px 20px;"><strong style="color: var(--color-primary); font-size: 1.15rem; text-shadow: var(--shadow-neon-primary);">${DOMPurify.sanitize(w.activo)}</strong></td>`,
+                `<td style="padding: 15px 20px;"><strong style="color: var(--text-main); font-size: 1.15rem; text-shadow: var(--shadow-neon-primary);">${DOMPurify.sanitize(w.activo)}</strong>${origPriceText}${ratioText}</td>`,
                 `<td class="data-font" style="padding: 15px 20px; text-align:right;">${this.zenMode ? '---' : precioStr}</td>`,
                 `<td class="data-font privacy-mask" style="padding: 15px 20px; font-size: 1.15rem; text-align:right;">${this.zenMode ? '---' : '$' + this.fmtStr(w.precioObjetivo, this.currentModelData.dolarBlue, this.currentModelData.vistaUSD)}</td>`,
                 `<td class="data-font" style="padding: 15px 20px; text-align:right;">${this.zenMode ? '---' : difStr}</td>`,

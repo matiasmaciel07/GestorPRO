@@ -370,14 +370,14 @@
                             </div>
                             <div style="display: flex; justify-content: center; width: 100%; margin-top: 60px; flex-wrap: wrap; gap: 25px;">
                                 <div style="flex: 1; min-width: 180px; display:flex; flex-direction:column; align-items:center;">
-                                    <div class="flow-node" id="node-operativo" style="padding: 25px; border-radius: 20px;">
+                                    <div class="flow-node" id="node-operativo" style="padding: 25px; border-radius: 20px; border-color: var(--color-down); box-shadow: var(--shadow-neon-down);">
                                         <div class="flow-title">Estructura Fija Operativa</div>
                                         <div class="flow-value texto-rojo" id="flow-val-operativo" style="font-size: 1.8rem;">$0</div>
                                         <div style="font-size:0.85rem; color:var(--text-muted); margin-top:10px; font-weight: 800; font-family: 'Roboto Mono', monospace;" id="flow-pct-operativo">0%</div>
                                     </div>
                                 </div>
                                 <div style="flex: 1; min-width: 180px; display:flex; flex-direction:column; align-items:center;">
-                                    <div class="flow-node" id="node-proveedores" style="padding: 25px; border-radius: 20px;">
+                                    <div class="flow-node" id="node-proveedores" style="padding: 25px; border-radius: 20px; border-color: var(--color-warning); box-shadow: var(--shadow-neon-warning);">
                                         <div class="flow-title">Proveedores y Logística</div>
                                         <div class="flow-value texto-warning" id="flow-val-proveedores" style="font-size: 1.8rem;">$0</div>
                                         <div style="font-size:0.85rem; color:var(--text-muted); margin-top:10px; font-weight: 800; font-family: 'Roboto Mono', monospace;" id="flow-pct-proveedores">0%</div>
@@ -391,7 +391,7 @@
                                     </div>
                                 </div>
                                 <div style="flex: 1; min-width: 180px; display:flex; flex-direction:column; align-items:center;">
-                                    <div class="flow-node" id="node-vida" style="padding: 25px; border-radius: 20px;">
+                                    <div class="flow-node" id="node-vida" style="padding: 25px; border-radius: 20px; border-color: var(--color-orange); box-shadow: var(--shadow-neon-orange);">
                                         <div class="flow-title">Gastos Personales</div>
                                         <div class="flow-value texto-orange" id="flow-val-vida" style="font-size: 1.8rem;">$0</div>
                                         <div style="font-size:0.85rem; color:var(--text-muted); margin-top:10px; font-weight: 800; font-family: 'Roboto Mono', monospace;" id="flow-pct-vida">0%</div>
@@ -591,6 +591,7 @@
                                 <label class="form__label">Naturaleza del Movimiento</label>
                                 <select id="eco-tipo">
                                     <option value="Ingreso Local">Ingreso Comercial Operativo</option>
+                                    <option value="Ahorro">Ingreso Externo (Fondeo directo a Bursátil)</option>
                                     <option value="Gasto Local">Egreso Comercial Fijo o Variable</option>
                                     <option value="Gasto Familiar">Egreso Personal (Economía Privada)</option>
                                     <option value="Pago Proveedor">Pago a Proveedores (Alta Inventario)</option>
