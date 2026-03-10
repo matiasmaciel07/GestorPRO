@@ -588,15 +588,8 @@ self.onmessage = function(e) {
     else if (type === 'ADD_DELTA') {
         const mov = data.movimiento;
         st.movimientos.push(mov);
-        sortMovimientos(st.movimientos);
-
-        if (st.movimientos.length > 0 && st.movimientos[st.movimientos.length - 1].id === mov.id) {
-            processSingle(mov);
-            finalizeMetrics();
-            self.postMessage({ type: 'ENGINE_RESULT', payload: { stats: st.stats, portafolio: st.portafolio, movimientosOrdenados: st.movimientos } });
-        } else {
-            runFullProcess(st.movimientos, data.inflacionINDEC);
-        }
+        
+        runFullProcess(st.movimientos, data.inflacionINDEC);
     } 
     else if (type === 'PROCESS_WATCHLIST') {
         let result = data.watchlist.map(w => {

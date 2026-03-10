@@ -200,9 +200,18 @@ const controller = {
         });
 
         events.on('ui:exportar-pdf', (filtros) => {
-            events.emit('app:toast', { msg: "Generando Reporte Financiero PDF...", type: "success" });
-            const datosFiltrados = model.getLibroMayorData(filtros);
-            PDFGenerator.exportarLibroMayor(datosFiltrados, filtros);
+            try {
+                events.emit('app:toast', { msg: "Generando Reporte Financiero PDF...", type: "success" });
+                const datosFiltrados = model.getLibroMayorData(filtros);
+                if (typeof PDFGenerator !== 'undefined' && PDFGenerator.exportarLibroMayor) {
+                    PDFGenerator.exportarLibroMayor(datosFiltrados, filtros);
+                } else {
+                    events.emit('app:toast', { msg: "Módulo de Reportes no disponible aún", type: "error" });
+                }
+            } catch (e) {
+                console.error(e);
+                events.emit('app:toast', { msg: "Error interno al compilar PDF", type: "error" });
+            }
         });
 
         // Eventos para Cambio de Temporalidad Modular

@@ -132,6 +132,7 @@ export const FinancialMath = {
             if (Math.abs(f) < tol) return r;
             if (df === 0) return r; 
             let nextR = r - f / df;
+            if (isNaN(nextR) || !isFinite(nextR)) return 0;
             if (Math.abs(nextR - r) < tol) return nextR;
             r = nextR;
             if (r <= -1) r = -0.9999; 
@@ -153,7 +154,8 @@ export const FinancialMath = {
         const mesActual = ahora.getMonth();
 
         return transacciones.filter(t => {
-            const fechaStr = t.fecha || t.date || t.timestamp; 
+            let fechaStr = String(t.fecha || t.date || t.timestamp);
+            if (fechaStr.length === 10) fechaStr += "T12:00:00";
             const fechaTx = new Date(fechaStr);
             
             if (isNaN(fechaTx.getTime())) return false;

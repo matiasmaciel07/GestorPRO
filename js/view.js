@@ -425,7 +425,7 @@ export const view = {
     },
 
     getOperacionFormData() {
-        const isBursatil = document.getElementById('btn-toggle-bursatil')?.classList.contains('active') !== false;
+        const isBursatil = document.getElementById('btn-toggle-bursatil')?.classList.contains('active') === true;
         let formData = {};
         
         if (isBursatil) {
@@ -518,35 +518,36 @@ export const view = {
             this.DOM.btnToggleEconomia.click();
             this.DOM.ecoTipo.value = mov.tipo;
             this.DOM.ecoFecha.value = mov.fecha;
-            setTimeout(() => {
-                if (mov.categoria) this.DOM.ecoCategoria.value = mov.categoria;
-                if (mov.proveedor) this.DOM.ecoProveedor.value = mov.proveedor;
-                if (mov.socio) this.DOM.ecoProveedor.value = mov.socio;
-                if (mov.entidad) this.DOM.ecoPrestamoEntidad.value = mov.entidad;
-                if (mov.montoTotalDevolver) this.DOM.ecoPrestamoTotal.value = this.fmtStr(mov.montoTotalDevolver, 1, false);
-                if (mov.cuotas) {
-                    const cuotasInp = document.getElementById('eco-prestamo-cuotas');
-                    if (cuotasInp) cuotasInp.value = mov.cuotas;
-                }
-                if (mov.prestamoAsociado) this.DOM.ecoPrestamoId.value = mov.prestamoAsociado;
-                
-                if (mov.valorVentaEstimado && this.DOM.ecoValorVenta) {
-                    this.DOM.ecoValorVenta.value = this.fmtStr(mov.valorVentaEstimado, 1, false);
-                }
-                
-                if (mov.estadoPago && this.DOM.ecoEstadoPago) this.DOM.ecoEstadoPago.value = mov.estadoPago;
-                if (mov.deudaAsociadaId && this.DOM.ecoDeudaProveedorId) this.DOM.ecoDeudaProveedorId.value = mov.deudaAsociadaId;
+            
+            this.adaptarFormularioEconomia(); 
+            
+            if (mov.categoria && this.DOM.ecoCategoria) this.DOM.ecoCategoria.value = mov.categoria;
+            if (mov.proveedor && this.DOM.ecoProveedor) this.DOM.ecoProveedor.value = mov.proveedor;
+            if (mov.socio && this.DOM.ecoProveedor) this.DOM.ecoProveedor.value = mov.socio;
+            if (mov.entidad && this.DOM.ecoPrestamoEntidad) this.DOM.ecoPrestamoEntidad.value = mov.entidad;
+            if (mov.montoTotalDevolver && this.DOM.ecoPrestamoTotal) this.DOM.ecoPrestamoTotal.value = this.fmtStr(mov.montoTotalDevolver, 1, false);
+            
+            if (mov.cuotas) {
+                const cuotasInp = document.getElementById('eco-prestamo-cuotas');
+                if (cuotasInp) cuotasInp.value = mov.cuotas;
+            }
+            if (mov.prestamoAsociado && this.DOM.ecoPrestamoId) this.DOM.ecoPrestamoId.value = mov.prestamoAsociado;
+            
+            if (mov.valorVentaEstimado && this.DOM.ecoValorVenta) {
+                this.DOM.ecoValorVenta.value = this.fmtStr(mov.valorVentaEstimado, 1, false);
+            }
+            
+            if (mov.estadoPago && this.DOM.ecoEstadoPago) this.DOM.ecoEstadoPago.value = mov.estadoPago;
+            if (mov.deudaAsociadaId && this.DOM.ecoDeudaProveedorId) this.DOM.ecoDeudaProveedorId.value = mov.deudaAsociadaId;
 
-                if (mov.tipo === 'Alta Préstamo' && mov.capital) {
-                    const capInput = document.getElementById('eco-prestamo-capital');
-                    if (capInput) capInput.value = this.fmtStr(mov.capital, 1, false);
-                } else {
-                    this.DOM.ecoMonto.value = this.fmtStr(mov.monto, 1, false);
-                }
-                
-                if (this.DOM.ecoNotas) this.DOM.ecoNotas.value = mov.notas || '';
-            }, 50);
-            this.adaptarFormularioEconomia();
+            if (mov.tipo === 'Alta Préstamo' && mov.capital) {
+                const capInput = document.getElementById('eco-prestamo-capital');
+                if (capInput) capInput.value = this.fmtStr(mov.capital, 1, false);
+            } else {
+                if (this.DOM.ecoMonto) this.DOM.ecoMonto.value = this.fmtStr(mov.monto, 1, false);
+            }
+            
+            if (this.DOM.ecoNotas) this.DOM.ecoNotas.value = mov.notas || '';
         }
     },
     setupSystemListeners() {
@@ -885,7 +886,7 @@ export const view = {
                     optionsHtml += `<option value="${p.id}">${DOMPurify.sanitize(p.entidad)} (Resta $${this.fmtStr(deudaPendiente, 1, false)})</option>`;
                 }
             }
-            this.DOM.ecoPrestamoId.innerHTML = optionsHtml;
+            if (this.DOM.ecoPrestamoId) this.DOM.ecoPrestamoId.innerHTML = optionsHtml;
         }
     },
 

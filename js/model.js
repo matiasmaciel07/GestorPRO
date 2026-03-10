@@ -216,7 +216,7 @@ export const model = {
         if (!existe) {
             const nuevasCat = [...this._rawData.categorias[ctx], nombreLimpio];
             this._data.categorias = { ...this._rawData.categorias, [ctx]: nuevasCat };
-            await storage.set('gfp_categorias', this._rawData.categorias.categorias);
+            await storage.set('gfp_categorias', this._rawData.categorias);
         }
     },
     
