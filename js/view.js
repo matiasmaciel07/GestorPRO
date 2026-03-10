@@ -1521,9 +1521,9 @@ export const view = {
                 let apiData = apiDataObj ? apiDataObj.data : null;
 
                 let ratioText = this.CEDEAR_RATIOS[activo] ? `<br><span style="font-size:10px; color:var(--color-primary); font-weight:900;">RATIO ${this.CEDEAR_RATIOS[activo]}:1</span>` : '';
-                let origPriceText = (apiData && apiData.originalPrice) ? ` | <span style="font-size:10px; color:var(--color-up); font-weight:900;">USD ${apiData.originalPrice.toFixed(2)}</span>` : '';
                 
-                row.querySelector('.td-avatar').innerHTML = `<div class="asset-wrapper" style="display:flex; align-items:center; gap:12px;"><span class="asset-badge" style="padding:6px 12px; border-radius:8px; font-weight:900; border-left: 4px solid ${mainColor}; background: ${mainColor}22; color:${mainColor}; box-shadow: -2px 0 10px ${mainColor}40;">${actSafe}</span><div><span style="font-size:11px;color:var(--text-muted); font-weight: 900; text-transform:uppercase;">${secSafe}</span>${ratioText}${origPriceText}</div></div>`;
+                // Se removió el precio original del avatar para inyectarlo en la columna de precio
+                row.querySelector('.td-avatar').innerHTML = `<div class="asset-wrapper" style="display:flex; align-items:center; gap:12px;"><span class="asset-badge" style="padding:6px 12px; border-radius:8px; font-weight:900; border-left: 4px solid ${mainColor}; background: ${mainColor}22; color:${mainColor}; box-shadow: -2px 0 10px ${mainColor}40;">${actSafe}</span><div><span style="font-size:11px;color:var(--text-muted); font-weight: 900; text-transform:uppercase;">${secSafe}</span>${ratioText}</div></div>`;
                 row.querySelector('.td-cant').innerHTML = `<strong style="font-size: 1.1rem;">${d.cant}</strong>`;
                 row.querySelector('.td-cant').style.textAlign = 'right';
                 
@@ -1547,7 +1547,19 @@ export const view = {
                     let pct = (ganancia / d.costo) * 100;
                     
                     let pColor = document.documentElement.getAttribute('data-theme') === 'light' ? '#0A0D14' : 'var(--text-main)';
-                    if (tdPrecio) tdPrecio.innerHTML = `<span class="td-sensitive"><strong style="font-size: 1.15rem; color: ${pColor};">${this.zenMode ? '---' : this.fmt(precio, modelData.dolarBlue, modelData.vistaUSD)}</strong></span>`;
+                    
+                    // Renderizado Dual (ARS Local + USD Subyacente)
+                    let originalPriceHtml = (apiData.originalPrice && !this.zenMode) 
+                        ? `<span style="display:block; font-size: 0.85rem; color: var(--color-up); font-weight: 900; letter-spacing: 0.5px; opacity: 0.9;">USD ${apiData.originalPrice.toFixed(2)}</span>` 
+                        : '';
+
+                    if (tdPrecio) {
+                        tdPrecio.innerHTML = `<div class="td-sensitive" style="display:flex; flex-direction:column; align-items:flex-end;">
+                            <strong style="font-size: 1.15rem; color: ${pColor};">${this.zenMode ? '---' : this.fmt(precio, modelData.dolarBlue, modelData.vistaUSD)}</strong>
+                            ${originalPriceHtml}
+                        </div>`;
+                    }
+                    
                     if (tdGnr) tdGnr.innerHTML = `<span class="td-sensitive ${ganancia>=0?'texto-verde':'texto-rojo'}" style="font-size: 1.15rem;">${ganancia>=0?'+':''}${this.zenMode ? pct.toFixed(2)+'%' : this.fmt(ganancia, modelData.dolarBlue, modelData.vistaUSD)} ${this.zenMode ? '' : '<small style="font-size: 0.85rem; opacity: 0.8;">('+pct.toFixed(2)+'%)</small>'}</span>`;
                     
                     if(apiData.history && apiData.history.length > 0) {

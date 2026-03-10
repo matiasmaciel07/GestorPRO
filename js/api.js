@@ -169,7 +169,6 @@ class APIManager {
     async fetchPrecioUnico(ticker, cachePrecios) {
         let cache = cachePrecios[ticker];
         
-        // Si el circuito está abierto, forzamos el uso de la caché sin importar la caducidad
         let forceCache = this.circuitBreaker.state === 'OPEN';
         if(cache && (forceCache || (Date.now() - cache.time < 1800000))) return cache.data; 
 
@@ -187,7 +186,14 @@ class APIManager {
                 return null;
             } 
            else {
-                let isCedear = searchTicker.endsWith('.BA') && !ticker.endsWith('.BA');
+
+                let searchTicker = ticker;
+                let isCedear = false;
+
+                if (!ticker.endsWith('.BA')) {
+                    searchTicker = `${ticker}.BA`;
+                    isCedear = true;
+                }
                 
                 const urlFinal = ENDPOINTS.PROXY(ENDPOINTS.YAHOO_FINANCE(searchTicker));
                 const json = await this.enqueueRequest(urlFinal, {}, `precio_${ticker}`);
@@ -200,10 +206,12 @@ class APIManager {
                 let originalPrice = null;
                 if (isCedear) {
                     try {
+
                         const urlOriginal = ENDPOINTS.PROXY(ENDPOINTS.YAHOO_FINANCE(ticker));
                         const jsonOriginal = await this.enqueueRequest(urlOriginal, {}, `precio_orig_${ticker}`);
                         originalPrice = jsonOriginal.chart.result[0].meta.regularMarketPrice;
                     } catch (e) {
+                        console.warn(`[DATA_API] Fallo al obtener cotización madre (USD) para ${ticker}:`, e.message);
                     }
                 }
 
