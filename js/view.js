@@ -33,6 +33,8 @@ export const view = {
     // FASE 3: Insignias Vibrantes (Mapeo estricto con FASE 1 CSS)
     getBadgeClass(tipo) {
         switch (tipo) {
+            case 'Rescate a Caja': return 'bg-retiro'; 
+            case 'Aporte Capital': return 'bg-ahorro-transf';
             case 'Ingreso Local': return 'bg-ingreso-local';
             case 'Transferencia Ahorro':
             case 'Ahorro': return 'bg-ahorro-transf';
@@ -496,7 +498,7 @@ export const view = {
         }
         if (this.DOM.btnCancelarEdicion) this.DOM.btnCancelarEdicion.classList.remove('is-hidden');
         
-        const tiposBursatiles = ['Transferencia Ahorro', 'Compra', 'Venta', 'Rendimiento', 'Dividendo', 'Retiro'];
+        const tiposBursatiles = ['Transferencia Ahorro', 'Rescate a Caja', 'Compra', 'Venta', 'Rendimiento', 'Dividendo', 'Retiro'];
         const isBursatil = tiposBursatiles.includes(mov.tipo);
         
         if (isBursatil) {
@@ -750,7 +752,7 @@ export const view = {
             this.DOM.grupoSector.classList.add('is-hidden');
         }
         
-        if (t === 'Transferencia Ahorro' || t === 'Ahorro') {
+        if (t === 'Transferencia Ahorro' || t === 'Ahorro' || t === 'Rescate a Caja') {
             this.DOM.bloqueDolares.classList.remove('is-hidden');
         } else {
             this.DOM.bloqueDolares.classList.add('is-hidden');

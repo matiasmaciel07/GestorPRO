@@ -540,12 +540,13 @@
                             <div class="form__group">
                                 <label class="form__label">Clasificación de la Operación</label>
                                 <select id="op-tipo">
-                                    <option value="Transferencia Ahorro">Inyección de Liquidez (Al Portafolio)</option>
+                                    <option value="Transferencia Ahorro">Inyección de Liquidez (Fondeo a Bursátil)</option>
+                                    <option value="Rescate a Caja">Rescate a Caja Operativa (Bursátil -> Local)</option>
                                     <option value="Compra">Toma de Posición (Compra)</option>
                                     <option value="Venta">Liquidación de Posición (Venta)</option>
                                     <option value="Rendimiento">Liquidación de Intereses</option>
                                     <option value="Dividendo">Distribución de Dividendos</option>
-                                    <option value="Retiro">Retiro de Capital al Exterior</option>
+                                    <option value="Retiro">Retiro Definitivo (Fuera del Sistema)</option>
                                 </select>
                             </div>
                             <div class="form__group"><label class="form__label">Fecha de Ejecución</label><input type="date" id="op-fecha"></div>
@@ -588,6 +589,8 @@
                             <div class="form__group">
                                 <label class="form__label">Naturaleza del Movimiento</label>
                                 <select id="eco-tipo">
+                                    <option value="Ingreso Local">Ingreso Comercial Operativo</option>
+                                    <option value="Aporte Capital">Aporte de Capital Externo / Propio</option> <option value="Gasto Local">Egreso Comercial Fijo o Variable</option>
                                     <option value="Ingreso Local">Ingreso Comercial Operativo</option>
                                     <option value="Gasto Local">Egreso Comercial Fijo o Variable</option>
                                     <option value="Gasto Familiar">Egreso Personal (Economía Privada)</option>

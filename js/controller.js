@@ -411,7 +411,7 @@ const controller = {
                 if(!holding || holding.cant < formData.cant) return events.emit('app:toast', { msg: "Sin nominales suficientes", type: "error" });
             }
         } 
-        else if(formData.tipo === 'Transferencia Ahorro' || formData.tipo === 'Ahorro') { 
+        else if(formData.tipo === 'Transferencia Ahorro' || formData.tipo === 'Ahorro' || formData.tipo === 'Rescate a Caja') { 
             if(formData.usd > 0) mov.usd = formData.usd;
         }
         else if (['Gasto Local', 'Gasto Familiar'].includes(formData.tipo)) {
