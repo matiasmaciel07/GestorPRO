@@ -11,8 +11,7 @@ function createWindow () {
         minWidth: 1024,
         minHeight: 768,
         show: false, // Ocultar hasta que cargue para evitar pantallazos blancos
-        backgroundColor: '#050505', // Mismo fondo Super Dark de tu CSS
-        // Nota: Asegúrate de guardar un icono llamado 'icon.png' y 'icon.ico' en tu carpeta assets/
+        backgroundColor: '#050505', // Mismo fondo Super Dark
         icon: path.join(__dirname, 'assets', 'icon.png'), 
         webPreferences: {
             nodeIntegration: false, 
@@ -23,7 +22,7 @@ function createWindow () {
         }
     });
 
-    // Eliminar el menú superior por defecto (Archivo, Editar, Ver...) para que sea 100% App
+    // Eliminar el menú superior por defecto
     mainWindow.setMenuBarVisibility(false);
     mainWindow.autoHideMenuBar = true;
 
@@ -51,7 +50,6 @@ function createWindow () {
     });
 }
 
-// Cuando el motor interno de Electron (Mismo core que Brave) esté inicializado
 app.whenReady().then(() => {
     createWindow();
 
@@ -60,7 +58,6 @@ app.whenReady().then(() => {
     });
 });
 
-// Cerrar el proceso completamente cuando se cierren las ventanas (excepto en macOS)
 app.on('window-all-closed', function () {
     if (process.platform !== 'darwin') app.quit();
 });

@@ -3,12 +3,16 @@ node_modules/
 npm-debug.log
 yarn-error.log
 yarn-debug.log
+package-lock.json
 
 # Carpetas de compilación, empaquetado y distribución (Electron)
 dist/
 build/
 out/
 release/
+*.exe
+*.dmg
+*.AppImage
 
 # Archivos de sistema operativo
 .DS_Store
@@ -21,5 +25,7 @@ desktop.ini
 .env.development
 .env.production
 
-# Archivos de logs de la aplicación
+# Archivos de logs y bases de datos locales
 *.log
+*.sqlite
+*.db

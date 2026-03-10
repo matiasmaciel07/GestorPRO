@@ -24,23 +24,23 @@
         /* Estructura UI: Tooltips Interactivos de Leyendas Cyber-Finance */
         .floating-legend-tooltip {
             position: absolute; 
-            background: #11141A; /* Fondo sólido oscuro */
+            background: #11141A;
             color: #F8F9FA; 
-            padding: 10px 14px; /* Padding reducido */
+            padding: 10px 14px;
             border-radius: 10px;
-            font-size: 11.5px; /* Fuente más pequeña */
+            font-size: 11.5px;
             line-height: 1.4; 
             border: 1px solid var(--color-primary); 
             box-shadow: 0 10px 30px rgba(0,0,0,0.9);
             z-index: 9999; 
             pointer-events: none; 
-            width: 240px; /* Ancho reducido */
+            width: 240px;
             transition: opacity 0.2s ease, transform 0.2s ease; 
             opacity: 0; 
             transform: translateY(10px);
         }
         [data-theme="light"] .floating-legend-tooltip {
-            background: #FFFFFF; /* Fondo sólido claro */
+            background: #FFFFFF;
             color: #0A0D14;
             border: 1px solid var(--color-primary);
             box-shadow: 0 10px 30px rgba(74, 53, 196, 0.2);
@@ -74,7 +74,10 @@
     <link rel="manifest" href="manifest.json">
     
     <script>
-        if ('serviceWorker' in navigator) {
+        // Adaptación de Entorno: Detección de protocolo para evitar errores en Electron
+        const isElectronEnv = window.location.protocol === 'file:';
+
+        if ('serviceWorker' in navigator && !isElectronEnv) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('./sw.js').catch(err => console.error('[PWA] SW Error:', err));
             });
@@ -97,13 +100,21 @@
                 injectSvg(cachedSvg);
             } else {
                 fetch(SVG_URL)
-                    .then(res => res.text())
+                    .then(res => {
+                        // En entornos file:// el status exitoso puede ser 0
+                        if (!res.ok && res.status !== 0 && res.status !== 200) {
+                            throw new Error('Respuesta de red denegada o archivo no encontrado.');
+                        }
+                        return res.text();
+                    })
                     .then(svg => {
                         localStorage.setItem('gfp_svg_cache', svg);
                         localStorage.setItem('gfp_svg_version', SVG_VERSION);
                         injectSvg(svg);
                     })
-                    .catch(err => console.error('[DOM] Error cargando SVG Sprite:', err));
+                    .catch(err => {
+                        console.warn('[DOM] Sistema de caché SVG omitido por restricciones del entorno:', err);
+                    });
             }
         });
     </script>
@@ -116,7 +127,6 @@
     <script type="module" src="js/controller.js" defer></script>
 </head>
 <body>
-
     <datalist id="lista-activos">
         <option value="SPY"><option value="QQQ"><option value="DIA"><option value="IWM"><option value="SPXL">
         <option value="AAPL"><option value="MSFT"><option value="GOOGL"><option value="AMZN"><option value="TSLA"><option value="NVDA"><option value="META"><option value="NFLX">
