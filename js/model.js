@@ -9,6 +9,9 @@ const reactiveProxyHandler = {
     set(target, property, value, receiver) {
         const result = Reflect.set(target, property, value, receiver);
         
+        // Invalidar caché de estado memoizado al detectar una mutación
+        model._memoizedData = null;
+        
         if (model._proxyDebounce) cancelAnimationFrame(model._proxyDebounce);
         model._proxyDebounce = requestAnimationFrame(() => {
             events.emit('model:updated', model.data);
@@ -35,6 +38,7 @@ export const model = {
         }
     },
     _data: null, 
+    _memoizedData: null, // Caché de rendimiento para el getter
     cachePrecios: {},
     inflacionINDEC: {}, 
     cmdManager: new CommandManager(),
@@ -48,11 +52,15 @@ export const model = {
     },
 
     get data() {
-        return Object.freeze({
+        if (this._memoizedData) return this._memoizedData;
+        
+        this._memoizedData = Object.freeze({
             ...this._rawData,
             inflacion: { ...this.inflacionINDEC },
             cachePrecios: { ...this.cachePrecios }
         });
+        
+        return this._memoizedData;
     },
 
     generarBackup() {
@@ -81,11 +89,11 @@ export const model = {
         if(cats) {
             let migratedCats = { Local: [], Personal: [] };
             
-            if (cats['Operativo Local']) migratedCats.Local = cats['Operativo Local'];
-            else if (cats['Local']) migratedCats.Local = cats['Local'];
+            if (cats['Operativo Local']) migratedCats.Local = [...cats['Operativo Local']];
+            else if (cats['Local']) migratedCats.Local = [...cats['Local']];
             
-            if (cats['Economía Personal']) migratedCats.Personal = cats['Economía Personal'];
-            else if (cats['Personal']) migratedCats.Personal = cats['Personal'];
+            if (cats['Economía Personal']) migratedCats.Personal = [...cats['Economía Personal']];
+            else if (cats['Personal']) migratedCats.Personal = [...cats['Personal']];
 
             const idx = migratedCats.Local.indexOf('Proveedores');
             if (idx !== -1) migratedCats.Local[idx] = 'Insumos Menores';
@@ -126,7 +134,12 @@ export const model = {
             await storage.set('gfp_categorias', this._rawData.categorias);
         }
 
-        this._data.movimientos = await MigrationManager.runMigrations();
+        try {
+            this._data.movimientos = await MigrationManager.runMigrations();
+        } catch (error) {
+            console.error("[Arquitectura] Error crítico en migración de datos:", error);
+            this._data.movimientos = [];
+        }
         
         this.initWorker();
         await this.procesarMotor(false);
@@ -135,34 +148,39 @@ export const model = {
     initWorker() {
         if(this.worker) this.worker.terminate();
         
-        this.worker = new Worker('js/worker.js', { type: 'module' });
-        
-        this.worker.onmessage = (e) => {
-            const { type, payload } = e.data;
+        try {
+            this.worker = new Worker('js/worker.js', { type: 'module' });
             
-            if (type === 'ENGINE_RESULT') {
-                // Auditoría Comercial Correctiva antes de inyectar al estado global
-                const auditoria = FinancialMath.calcularAuditoriaComercial(payload.movimientosOrdenados);
-                payload.stats.ingresosNetosAuditoria = auditoria.ingresosBrutosNetos;
-                payload.stats.inventarioBaseCorregido = auditoria.inventarioBaseCosto;
-
-                this._data.stats = payload.stats;
-                this._data.portafolio = payload.portafolio;
-                this._data.movimientos = payload.movimientosOrdenados;
+            this.worker.onmessage = (e) => {
+                const { type, payload } = e.data;
                 
-                if (this._engineResolver) {
-                    this._engineResolver();
-                    this._engineResolver = null;
-                }
-            } else if (type === 'WATCHLIST_RESULT') {
-                events.emit('model:watchlistUpdated', payload);
-            }
-        };
+                if (type === 'ENGINE_RESULT') {
+                    // Auditoría Comercial Correctiva antes de inyectar al estado global
+                    const auditoria = FinancialMath.calcularAuditoriaComercial(payload.movimientosOrdenados);
+                    payload.stats.ingresosNetosAuditoria = auditoria.ingresosBrutosNetos;
+                    payload.stats.inventarioBaseCorregido = auditoria.inventarioBaseCosto;
 
-        this.worker.onerror = (err) => {
-            console.error("Error en Web Worker:", err);
-            if(this._engineResolver) this._engineResolver(err);
-        };
+                    this._data.stats = payload.stats;
+                    this._data.portafolio = payload.portafolio;
+                    this._data.movimientos = payload.movimientosOrdenados;
+                    
+                    if (this._engineResolver) {
+                        this._engineResolver();
+                        this._engineResolver = null;
+                    }
+                } else if (type === 'WATCHLIST_RESULT') {
+                    events.emit('model:watchlistUpdated', payload);
+                }
+            };
+
+            this.worker.onerror = (err) => {
+                console.error("[Arquitectura] Error en Web Worker. Fallo de aislamiento de hilos:", err);
+                if(this._engineResolver) this._engineResolver(err);
+            };
+        } catch (e) {
+            console.warn("[Arquitectura] Entorno restringido detectado (posible file:// en Desktop). Web Workers module bloqueados por CORS. Se requiere empaquetado seguro.", e);
+            // Preparación futura para fallback síncrono en Electron si el Worker falla
+        }
     },
 
     curarDatos(datosCrudos) {
@@ -178,11 +196,14 @@ export const model = {
         if (!Array.isArray(arrayMovimientos)) return [];
         return arrayMovimientos.map(item => {
             let mov = { ...item };
-            if (!mov.id) mov.id = Date.now() + Math.random();
+            
+            // Generación de ID robusta inmune a truncamiento de parseInt()
+            if (!mov.id) mov.id = Date.now() * 1000 + Math.floor(Math.random() * 1000);
+            
             if (!mov.fecha) mov.fecha = new Date().toISOString().split('T')[0];
             if (!mov.tipo) mov.tipo = 'Ahorro';
             if (isNaN(mov.monto)) mov.monto = 0;
-            if (mov.activo) mov.activo = mov.activo.toString().trim().toUpperCase();
+            if (mov.activo) mov.activo = String(mov.activo).trim().toUpperCase();
             if (mov.tipo === 'Compra' && !mov.sector) mov.sector = 'Otro';
             if (mov.tipo === 'Pago Proveedor' && !mov.estadoPago) mov.estadoPago = 'Pagado';
             if (mov.deudaAsociadaId === undefined) mov.deudaAsociadaId = null;
@@ -195,11 +216,13 @@ export const model = {
     },
 
     async guardarProveedor(nombre, categoriaAsociada = 'General') {
+        if(!nombre || typeof nombre !== 'string') return;
         const nombreLimpio = nombre.trim();
         const existe = this._rawData.proveedores.find(p => p.nombre.toLowerCase() === nombreLimpio.toLowerCase());
+        
         if(!existe) {
-            const provsActualizados = [...this._rawData.proveedores, { nombre: nombreLimpio, categoria: categoriaAsociada }];
-            this._data.proveedores = provsActualizados; 
+            // Reasignación inmutable garantizando reactividad
+            this._data.proveedores = [...this._rawData.proveedores, { nombre: nombreLimpio, categoria: categoriaAsociada }]; 
             await storage.set('gfp_proveedores', this._rawData.proveedores);
         }
     },
@@ -213,45 +236,50 @@ export const model = {
         if (contexto === 'Gasto Local') ctx = 'Local';
         if (contexto === 'Gasto Familiar' || contexto === 'Gasto Personal') ctx = 'Personal';
 
-        if (!this._rawData.categorias[ctx]) {
-            this._rawData.categorias[ctx] = [];
-        }
-
-        const existe = this._rawData.categorias[ctx].find(c => c.toLowerCase() === nombreLimpio.toLowerCase());
+        const categoriasActuales = this._rawData.categorias[ctx] || [];
+        const existe = categoriasActuales.find(c => c.toLowerCase() === nombreLimpio.toLowerCase());
         
         if (!existe) {
-            const nuevasCat = [...this._rawData.categorias[ctx], nombreLimpio];
+            // Reasignación inmutable completa del objeto para Proxy Trigger
+            const nuevasCat = [...categoriasActuales, nombreLimpio];
             this._data.categorias = { ...this._rawData.categorias, [ctx]: nuevasCat };
             await storage.set('gfp_categorias', this._rawData.categorias);
         }
     },
     
     async agregarWatchlist(activo, precio) {
-        activo = activo.trim().toUpperCase();
-        let existe = this._rawData.watchlist.find(w => w.activo === activo);
-        let nuevaWatchlist = [...this._rawData.watchlist];
+        if(!activo) return;
+        activo = String(activo).trim().toUpperCase();
         
-        if(!existe) {
+        let nuevaWatchlist = [...this._rawData.watchlist];
+        let idx = nuevaWatchlist.findIndex(w => w.activo === activo);
+        
+        if(idx === -1) {
             nuevaWatchlist.push({ activo, precioObjetivo: precio });
         } else {
-            let idx = nuevaWatchlist.findIndex(w => w.activo === activo);
             nuevaWatchlist[idx] = { ...nuevaWatchlist[idx], precioObjetivo: precio };
         }
         
         this._data.watchlist = nuevaWatchlist;
         await storage.set('gfp_watchlist', this._rawData.watchlist);
-        this.worker.postMessage({ type: 'PROCESS_WATCHLIST', watchlist: this._rawData.watchlist, precios: this.cachePrecios });
+        if (this.worker) {
+            this.worker.postMessage({ type: 'PROCESS_WATCHLIST', watchlist: this._rawData.watchlist, precios: this.cachePrecios });
+        }
     },
     
     async borrarWatchlist(activo) {
         this._data.watchlist = this._rawData.watchlist.filter(w => w.activo !== activo);
         await storage.set('gfp_watchlist', this._rawData.watchlist);
-        this.worker.postMessage({ type: 'PROCESS_WATCHLIST', watchlist: this._rawData.watchlist, precios: this.cachePrecios });
+        if (this.worker) {
+            this.worker.postMessage({ type: 'PROCESS_WATCHLIST', watchlist: this._rawData.watchlist, precios: this.cachePrecios });
+        }
     },
 
     async guardarInflacion(mes, valor) {
-        const nuevaInflacion = { ...this.inflacionINDEC, [mes]: valor };
-        this.inflacionINDEC = nuevaInflacion;
+        if(!mes) return;
+        this.inflacionINDEC = { ...this.inflacionINDEC, [mes]: valor };
+        this._memoizedData = null; // Purga manual del caché estructural
+        
         await storage.set('gfp_inflacion', this.inflacionINDEC);
         events.emit('model:inflacionUpdated', this.inflacionINDEC);
         this.procesarMotor(false);
@@ -261,13 +289,15 @@ export const model = {
         const nuevaInflacion = { ...this.inflacionINDEC };
         delete nuevaInflacion[mes];
         this.inflacionINDEC = nuevaInflacion;
+        this._memoizedData = null;
+        
         await storage.set('gfp_inflacion', this.inflacionINDEC);
         events.emit('model:inflacionUpdated', this.inflacionINDEC);
         this.procesarMotor(false); 
     },
 
     setDolarBlue(precio) {
-        this._data.dolarBlue = precio;
+        if(!isNaN(precio) && precio > 0) this._data.dolarBlue = precio;
     },
 
     toggleMoneda() {
@@ -280,14 +310,24 @@ export const model = {
 
     async actualizarPreciosPortafolio(nuevosPrecios) {
         this.cachePrecios = { ...this.cachePrecios, ...nuevosPrecios };
+        this._memoizedData = null;
+        
         await storage.set('gfp_precios_cache', this.cachePrecios);
         events.emit('model:preciosUpdated', this.cachePrecios);
-        this.worker.postMessage({ type: 'PROCESS_WATCHLIST', watchlist: this._rawData.watchlist, precios: this.cachePrecios });
+        if (this.worker) {
+            this.worker.postMessage({ type: 'PROCESS_WATCHLIST', watchlist: this._rawData.watchlist, precios: this.cachePrecios });
+        }
     },
 
     async procesarMotor(isDelta = false, mov = null) {
         return new Promise((resolve) => {
             this._engineResolver = resolve;
+            
+            if (!this.worker) {
+                // Prevención de cuelgues si el worker falla la inicialización
+                console.warn("[Arquitectura] Worker inactivo. Saltando fase de procesamiento.");
+                return resolve();
+            }
             
             if (isDelta && mov) {
                 this.worker.postMessage({ 
@@ -310,7 +350,7 @@ export const model = {
     },
 
     getLastExpenseState() {
-        return this._lastFormState;
+        return { ...this._lastFormState };
     },
 
     getLibroMayorData(filtros = { temporalidad: 'Histórico', tipo: 'Todos' }) {
@@ -325,14 +365,18 @@ export const model = {
             }
         }
 
-        movimientosBase = FinancialMath.filtrarPorTemporalidad(movimientosBase, filtros.temporalidad);
+        if (FinancialMath && typeof FinancialMath.filtrarPorTemporalidad === 'function') {
+            movimientosBase = FinancialMath.filtrarPorTemporalidad(movimientosBase, filtros.temporalidad);
+        }
+        
         movimientosBase.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
-
         return movimientosBase;
     },
 
     getMovimiento(id) {
-        return this._rawData.movimientos.find(m => m.id === parseInt(id));
+        // Corrección: Búsqueda segura parseando uniformemente a enteros de precisión base 10
+        const searchId = parseInt(id, 10);
+        return this._rawData.movimientos.find(m => parseInt(m.id, 10) === searchId);
     },
 
     async agregarMovimiento(mov) {
@@ -345,10 +389,12 @@ export const model = {
     },
 
     async actualizarMovimiento(id, datosActualizados) {
-        const index = this._rawData.movimientos.findIndex(m => m.id === parseInt(id));
+        const targetId = parseInt(id, 10);
+        const index = this._rawData.movimientos.findIndex(m => parseInt(m.id, 10) === targetId);
+        
         if (index !== -1) {
             let nuevosMovs = [...this._rawData.movimientos];
-            nuevosMovs[index] = { ...nuevosMovs[index], ...datosActualizados, id: parseInt(id) };
+            nuevosMovs[index] = { ...nuevosMovs[index], ...datosActualizados, id: targetId };
             this._data.movimientos = nuevosMovs;
             await this.guardarLocal();
             await this.procesarMotor(false); 
@@ -356,24 +402,24 @@ export const model = {
     },
 
     deshacer() {
-        this.cmdManager.undo();
+        if(this.cmdManager) this.cmdManager.undo();
     },
 
     async _addMovimientoSilencioso(mov) {
-        let nuevosMovs = [...this._rawData.movimientos, mov];
-        this._data.movimientos = nuevosMovs;
+        // Mutación inmutable del array para asegurar triggering reactivo del Proxy
+        this._data.movimientos = [...this._rawData.movimientos, mov];
         await this.guardarLocal();
         await this.procesarMotor(true, mov);
     },
 
     async _removeMovimientoSilencioso(id) {
-        let nuevosMovs = this._rawData.movimientos.filter(m => m.id !== id);
-        this._data.movimientos = nuevosMovs;
+        const targetId = parseInt(id, 10);
+        this._data.movimientos = this._rawData.movimientos.filter(m => parseInt(m.id, 10) !== targetId);
         await this.guardarLocal();
         await this.procesarMotor(false);
     },
 
     borrarMovimiento(id) { 
-        this._removeMovimientoSilencioso(parseInt(id));
+        this._removeMovimientoSilencioso(id);
     }
 };
