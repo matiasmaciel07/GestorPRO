@@ -1514,9 +1514,9 @@ export const view = {
                 let actSafe = DOMPurify.sanitize(activo);
                 let secSafe = DOMPurify.sanitize(d.sector);
                 
-                const row = document.importNode(template, true);
                 let mainColor = this.sectorColors[cIdx];
-
+                const row = document.importNode(template, true);
+                
                 let ratioText = this.CEDEAR_RATIOS[activo] ? `<br><span style="font-size:10px; color:var(--color-primary); font-weight:900;">RATIO ${this.CEDEAR_RATIOS[activo]}:1</span>` : '';
                 let origPriceText = (apiData && apiData.originalPrice) ? ` | <span style="font-size:10px; color:var(--color-up); font-weight:900;">USD ${apiData.originalPrice.toFixed(2)}</span>` : '';
                 
@@ -1530,11 +1530,8 @@ export const view = {
                 row.querySelector('.td-costo').innerHTML = this.zenMode ? '---' : this.fmt(d.costo, modelData.dolarBlue, modelData.vistaUSD);
                 row.querySelector('.td-costo').style.textAlign = 'right';
                 
-                let apiDataObj = cachePrecios[activo];
-                let apiData = apiDataObj ? apiDataObj.data : null;
                 let sparkWrap = row.querySelector('.td-spark div');
                 let tdPrecio = row.querySelector('.td-precio');
-                let tdGnr = row.querySelector('.td-gnr');
                 
                 tdPrecio.style.textAlign = 'right';
                 tdGnr.style.textAlign = 'right';
