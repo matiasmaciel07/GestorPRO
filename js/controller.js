@@ -74,7 +74,7 @@ const controller = {
                 const index = model._rawData.categorias[ctx].findIndex(c => c.toLowerCase() === data.categoria.toLowerCase());
                 if(index > -1) {
                     model._rawData.categorias[ctx].splice(index, 1);
-                    model._data.categorias = { ...model._rawData.categorias.categorias };
+                    model._data.categorias = { ...model._rawData.categorias }; 
                     await storage.set('gfp_categorias', model._rawData.categorias);
                     events.emit('app:toast', { msg: `Categoría "${data.categoria}" eliminada`, type: "success" });
                     view.adaptarFormularioEconomia(); // Recargamos el form
@@ -510,18 +510,14 @@ const controller = {
             events.emit('ui:reset-form-operacion');
             if (['Gasto Local', 'Gasto Familiar', 'Ingreso Local'].includes(formData.tipo)) {
                 events.emit('ui:restaurar-estado-formulario', {
-                tipo: formData.tipo,
-                categoria: formData.categoria || ''
-            });
-        }
+                    tipo: formData.tipo,
+                    categoria: formData.categoria || ''
+                });
+            }
 
-        if (['Compra', 'Dividendo', 'Ahorro'].includes(formData.tipo)) {
-            setTimeout(() => { this.actualizarPreciosPortafolioDirecto(); }, 800);
-        }
-        
-        if (capInput) capInput.value = '';
-        const cuoInput = document.getElementById('eco-prestamo-cuotas');
-        if (cuoInput) cuoInput.value = '1';
+            if (['Compra', 'Dividendo', 'Ahorro'].includes(formData.tipo)) {
+                setTimeout(() => { this.actualizarPreciosPortafolioDirecto(); }, 800);
+            }
         }
         
         if (capInput) capInput.value = '';

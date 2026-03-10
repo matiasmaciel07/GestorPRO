@@ -48,10 +48,11 @@ export const model = {
     },
 
     get data() {
-        const clone = structuredClone(this._rawData);
-        clone.inflacion = structuredClone(this.inflacionINDEC);
-        clone.cachePrecios = structuredClone(this.cachePrecios);
-        return Object.freeze(clone); 
+        return Object.freeze({
+            ...this._rawData,
+            inflacion: { ...this.inflacionINDEC },
+            cachePrecios: { ...this.cachePrecios }
+        });
     },
 
     generarBackup() {

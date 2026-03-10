@@ -2135,11 +2135,12 @@ export const view = {
             const inflacionFija = 3.0; // Promedio histórico de inflación en USD a largo plazo
             const cagrRealPct = cagrNominal - inflacionFija; 
             const swrPct = parseFloat(document.getElementById('fire-swr').value) || 4;
+            const swrSeguro = swrPct > 0 ? swrPct : 0.01; 
             // -------------------------------------------------------------------
 
             const gastoTotal = gastoBase + gastoExtra;
             const gastoAnual = gastoTotal * 12;
-            const targetFIRE = gastoAnual / (swrPct / 100);
+            const targetFIRE = gastoAnual / (swrSeguro / 100);
 
             document.getElementById('fire-res-gasto').innerHTML = this.zenMode ? '---' : `<span class="privacy-mask" style="font-size: 2.5rem; font-weight: 900; color: var(--color-down); text-shadow: var(--shadow-neon-down);">$ ${this.fmtStr(gastoTotal, 1, false)}</span>`;
             document.getElementById('fire-res-objetivo').innerHTML = this.zenMode ? '---' : `<span class="privacy-mask" style="font-size: 2.5rem; font-weight: 900; color: var(--color-accent); text-shadow: var(--shadow-neon-accent);">$ ${this.fmtStr(targetFIRE, 1, false)}</span>`;

@@ -15,9 +15,10 @@ function createWindow () {
         // Nota: Asegúrate de guardar un icono llamado 'icon.png' y 'icon.ico' en tu carpeta assets/
         icon: path.join(__dirname, 'assets', 'icon.png'), 
         webPreferences: {
-            nodeIntegration: false, // Por seguridad
+            nodeIntegration: false, 
             contextIsolation: true,
-            // Fundamental para Trading: Evita que el Worker se duerma si minimizas la app
+            sandbox: true,
+            disableBlinkFeatures: 'Auxclick',
             backgroundThrottling: false 
         }
     });
@@ -25,6 +26,16 @@ function createWindow () {
     // Eliminar el menú superior por defecto (Archivo, Editar, Ver...) para que sea 100% App
     mainWindow.setMenuBarVisibility(false);
     mainWindow.autoHideMenuBar = true;
+
+    // Bloquear el menú contextual y las herramientas de desarrollo por atajos
+    mainWindow.webContents.on('before-input-event', (event, input) => {
+        if (input.control && input.shift && input.key.toLowerCase() === 'i') {
+            event.preventDefault();
+        }
+        if (input.key === 'F12') {
+            event.preventDefault();
+        }
+    });
 
     // Cargar tu estructura MVC principal
     mainWindow.loadFile('index.html');
