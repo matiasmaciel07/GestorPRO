@@ -74,7 +74,7 @@ function sortMovimientos(arr) {
         let diff = new Date(a.fecha) - new Date(b.fecha);
         if (diff === 0) {
             const peso = { 
-                'Ingreso Local': 1, 'Aporte Capital': 1.5, 'Alta Préstamo': 2, 'Ajuste Stock Inicial': 2.5, 'Ahorro': 3, 'Transferencia Ahorro': 4, 'Rescate a Caja': 4.5,
+                'Ingreso Local': 1, 'Aporte Capital': 1.5, 'Alta Préstamo': 2, 'Ajuste Stock Inicial': 2.5, 'Correccion Stock': 2.6, 'Ahorro': 3, 'Transferencia Ahorro': 4, 'Rescate a Caja': 4.5,
                 'Compra': 5, 'Rendimiento': 6, 'Dividendo': 7, 
                 'Gasto Local': 8, 'Gasto Familiar': 9, 'Pago Proveedor': 10, 'Amortización Deuda a Proveedor': 10.1, 'Reparto Sociedad': 10.5, 'Pago Préstamo': 11, 
                 'Venta': 12, 'Retiro': 13 
@@ -282,6 +282,11 @@ function processSingle(m) {
         let valorVentaInput = m.valorVentaEstimado ? safeFloat(m.valorVentaEstimado) : montoNum;
         st.stats.stockCosto = safeFloat(st.stats.stockCosto + montoNum);
         st.stats.stockValorVenta = safeFloat(st.stats.stockValorVenta + valorVentaInput);
+    }
+    else if (m.tipo === 'Correccion Stock') {
+        let valorVentaInput = m.valorVentaEstimado ? safeFloat(m.valorVentaEstimado) : montoNum;
+        st.stats.stockCosto = safeFloat(montoNum);
+        st.stats.stockValorVenta = safeFloat(valorVentaInput);
     }
     else if (m.tipo === 'Reparto Sociedad') {
         st.stats.cajaLocal = safeFloat(st.stats.cajaLocal - montoNum);

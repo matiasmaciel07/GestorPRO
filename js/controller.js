@@ -282,11 +282,13 @@ const controller = {
                 if (wrapMonto) wrapMonto.classList.remove('is-hidden');
                 if (lblMonto) {
                     if (tipo === 'Ajuste Stock Inicial') {
-                        lblMonto.innerText = 'Costo Total de la Mercadería (ARS)';
+                        lblMonto.innerText = 'Costo de la Mercadería a Sumar (ARS)';
+                    } else if (tipo === 'Correccion Stock') {
+                        lblMonto.innerText = 'Costo Contable EXACTO (Auditoría) (ARS)';
                     } else if (tipo === 'Reparto Sociedad') {
                         lblMonto.innerText = 'Monto Retirado por el Socio (ARS)';
                     } else {
-                        lblMonto.innerText = tipo === 'Pago Préstamo' ? 'Valor de la Cuota a Pagar (ARS)' : 'Monto del Movimiento (Costo ARS)';
+                        lblMonto.innerText = tipo === 'Pago Préstamo' ? 'Valor de la Cuota a Pagar (ARS)' : 'Impacto Bruto del Movimiento (ARS)';
                     }
                 }
             }

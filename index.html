@@ -548,6 +548,7 @@
                                     <option value="Dividendo">Distribución de Dividendos</option>
                                     <option value="Retiro">Retiro Definitivo (Fuera del Sistema)</option>
                                 </select>
+                                <div id="op-tipo-desc" style="margin-top: 8px; font-size: 0.8rem; color: var(--color-primary); background: rgba(96, 69, 244, 0.05); padding: 8px 12px; border-radius: 8px; border-left: 3px solid var(--color-primary); font-weight: 600; line-height: 1.4;"></div>
                             </div>
                             <div class="form__group"><label class="form__label">Fecha de Ejecución</label><input type="date" id="op-fecha"></div>
                             
@@ -590,17 +591,18 @@
                                 <label class="form__label">Naturaleza del Movimiento</label>
                                 <select id="eco-tipo">
                                     <option value="Ingreso Local">Ingreso Comercial Operativo</option>
-                                    <option value="Aporte Capital">Aporte de Capital Externo / Propio</option> <option value="Gasto Local">Egreso Comercial Fijo o Variable</option>
-                                    <option value="Ingreso Local">Ingreso Comercial Operativo</option>
                                     <option value="Gasto Local">Egreso Comercial Fijo o Variable</option>
                                     <option value="Gasto Familiar">Egreso Personal (Economía Privada)</option>
                                     <option value="Pago Proveedor">Pago a Proveedores (Alta Inventario)</option>
                                     <option value="Amortización Deuda a Proveedor">Amortización Deuda a Proveedor</option>
-                                    <option value="Ajuste Stock Inicial">Valorización de Stock Preexistente</option>
+                                    <option value="Aporte Capital">Aporte de Capital Externo / Propio</option>
+                                    <option value="Ajuste Stock Inicial">Suma a Stock Preexistente (+)</option>
+                                    <option value="Correccion Stock">Corrección/Fijación de Inventario (=)</option>
                                     <option value="Reparto Sociedad">Retribución a Entidad Societaria</option>
                                     <option value="Alta Préstamo">Adquisición de Pasivo (Préstamo)</option>
                                     <option value="Pago Préstamo">Amortización de Deuda Activa (Préstamo)</option>
                                 </select>
+                                <div id="eco-tipo-desc" style="margin-top: 8px; font-size: 0.8rem; color: var(--color-primary); background: rgba(96, 69, 244, 0.05); padding: 8px 12px; border-radius: 8px; border-left: 3px solid var(--color-primary); font-weight: 600; line-height: 1.4;"></div>
                             </div>
                             <div class="form__group"><label class="form__label">Fecha Contable</label><input type="date" id="eco-fecha"></div>
         

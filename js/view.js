@@ -93,6 +93,8 @@ export const view = {
 
     cacheDOM() {
         this.DOM = {
+            opTipoDesc: document.getElementById('op-tipo-desc'),
+            ecoTipoDesc: document.getElementById('eco-tipo-desc'),
             tituloOperarBursatil: document.getElementById('titulo-operar-bursatil'),
             tituloOperarEco: document.getElementById('titulo-operar-eco'),
             tituloConfirmar: document.getElementById('titulo-confirmar'),
@@ -465,7 +467,7 @@ export const view = {
             if (t === 'Reparto Sociedad') {
                 formData.proveedor = DOMPurify.sanitize(this.DOM.ecoProveedor.value.trim());
             }
-            if (t === 'Ajuste Stock Inicial') {
+            if (t === 'Ajuste Stock Inicial' || t === 'Correccion Stock') {
                 let valVenta = this.parseNumber(this.DOM.ecoValorVenta?.value);
                 if (valVenta > 0) formData.valorVentaEstimado = valVenta;
             }
@@ -738,6 +740,17 @@ export const view = {
 
     adaptarFormularioOperar() {
         let t = this.DOM.opTipo.value;
+        const descripcionesBursatil = {
+            'Transferencia Ahorro': 'Mueve dinero de la Caja Local hacia la Billetera Bursátil. Aumenta Liquidez en Caja Retenida.',
+            'Rescate a Caja': 'Mueve dinero de la Billetera Bursátil hacia la Caja Local (Uso operativo). Reduce Liquidez Retenida.',
+            'Compra': 'Utiliza fondos de la Billetera Bursátil para adquirir un activo. Reduce Liquidez Retenida, aumenta Capital Invertido.',
+            'Venta': 'Liquida un activo y devuelve el dinero a la Billetera Bursátil. Registra ganancia/pérdida y aumenta Liquidez Retenida.',
+            'Rendimiento': 'Pago de intereses. Suma liquidez directamente a la Billetera Bursátil.',
+            'Dividendo': 'Ganancias distribuidas por acciones. Suma dinero a la Billetera Bursátil sin vender el activo.',
+            'Retiro': 'Retira dinero de la Billetera Bursátil hacia fuera del sistema contable.'
+        };
+        if(this.DOM.opTipoDesc) this.DOM.opTipoDesc.innerText = descripcionesBursatil[t] || '';
+        if(this.DOM.ecoTipoDesc) this.DOM.ecoTipoDesc.innerText = descripcionesEco[t] || '';
         if(this.DOM.hintCantidad) this.DOM.hintCantidad.classList.add('is-hidden');
         
         if (['Compra','Venta','Dividendo'].includes(t)) {
@@ -763,6 +776,20 @@ export const view = {
 
     adaptarFormularioEconomia() {
         let t = this.DOM.ecoTipo.value;
+        const descripcionesEco = {
+            'Ingreso Local': 'Suma dinero a la Caja Local. Registra como venta/ingreso comercial y descuenta mercadería.',
+            'Gasto Local': 'Resta dinero de la Caja Local. Gasto vinculado a mantener el negocio operativo.',
+            'Gasto Familiar': 'Resta dinero de la Caja Local para uso personal. Clasificado como Fuga de Capital.',
+            'Pago Proveedor': 'Resta dinero de la Caja Local y AUMENTA el Costo del Inventario (Stock).',
+            'Amortización Deuda a Proveedor': 'Resta dinero de la Caja Local para pagar deuda pendiente. No toca inventario.',
+            'Aporte Capital': 'Suma dinero a la Caja Local sin considerarlo venta (préstamo, ahorro, etc).',
+            'Ajuste Stock Inicial': 'Suma valor al Inventario Base sin tocar la Caja. Ideal para sumar remanentes.',
+            'Correccion Stock': 'Fija el valor EXACTO del Inventario Actual sobrescribiendo arrastres previos. Útil para auditorías.',
+            'Reparto Sociedad': 'Resta dinero de la Caja Local como retiro de los accionistas.',
+            'Alta Préstamo': 'Suma dinero a la Caja Local e inicia el seguimiento de un Pasivo Activo.',
+            'Pago Préstamo': 'Resta dinero de la Caja Local para amortizar Pasivos Activos.'
+        };
+        if(this.DOM.ecoTipoDesc) this.DOM.ecoTipoDesc.innerText = descripcionesEco[t] || '';
         let cats = this.currentModelData?.categorias || {};
         
         this.DOM.bloqueCategoriasEco.classList.add('is-hidden');
@@ -831,12 +858,16 @@ export const view = {
             this.DOM.ecoProveedor.outerHTML = `<input type="text" id="eco-proveedor" placeholder="Ej: Nombre del Socio">`;
             this.DOM.ecoProveedor = document.getElementById('eco-proveedor');
         }
-        else if (t === 'Ajuste Stock Inicial') {
+        else if (t === 'Ajuste Stock Inicial' || t === 'Correccion Stock') {
             if (this.DOM.rowEcoValorVenta) {
                 this.DOM.bloqueCategoriasEco.classList.remove('is-hidden');
                 this.DOM.rowEcoValorVenta.classList.remove('is-hidden');
                 let hint = document.getElementById('hint-valor-venta');
-                if (hint) hint.innerText = "Ingresa cuánto dinero obtendrías si vendieras todo este stock histórico al público.";
+                if (hint) {
+                    hint.innerText = t === 'Correccion Stock' 
+                        ? "Ingresa el valor de venta al público de todo el inventario auditado." 
+                        : "Ingresa cuánto dinero obtendrías si vendieras este stock agregado al público.";
+                }
             }
         }
         else if (t === 'Alta Préstamo') {
