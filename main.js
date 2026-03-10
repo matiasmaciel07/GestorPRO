@@ -4,7 +4,6 @@ const path = require('path');
 let mainWindow;
 
 function createWindow () {
-    // FASE FINAL: Configuración de la Ventana Nativa Institucional
     mainWindow = new BrowserWindow({
         width: 1280,
         height: 800,
@@ -19,22 +18,19 @@ function createWindow () {
             sandbox: true,
             disableBlinkFeatures: 'Auxclick',
             backgroundThrottling: false,
-            spellcheck: false // Optimización de rendimiento de CPU
+            spellcheck: false
         }
     });
 
     mainWindow.setMenuBarVisibility(false);
     mainWindow.autoHideMenuBar = true;
 
-    // Políticas estrictas de seguridad de sesión para aplicación financiera
     const ses = session.defaultSession;
     
-    // 1. Bloquear permisos innecesarios (micrófono, cámara, geolocalización)
     ses.setPermissionRequestHandler((webContents, permission, callback) => {
         callback(false);
     });
 
-    // 2. Prevenir navegación hacia sitios externos en el frame principal
     mainWindow.webContents.on('will-navigate', (event, navigationUrl) => {
         const parsedUrl = new URL(navigationUrl);
         if (parsedUrl.protocol === 'http:' || parsedUrl.protocol === 'https:') {
@@ -43,7 +39,6 @@ function createWindow () {
         }
     });
 
-    // 3. Prevenir creación de ventanas no autorizadas (pop-ups)
     mainWindow.webContents.setWindowOpenHandler(() => {
         return { action: 'deny' };
     });
@@ -60,6 +55,8 @@ function createWindow () {
     mainWindow.loadFile('index.html');
 
     mainWindow.once('ready-to-show', () => {
+        // Implementación de escala idéntica al navegador (80%)
+        mainWindow.webContents.setZoomFactor(0.8);
         mainWindow.show();
         mainWindow.focus();
     });
@@ -69,11 +66,11 @@ function createWindow () {
     });
 }
 
-// Desactivar aceleración por hardware si causa inestabilidad en gráficas integradas antiguas
-// app.disableHardwareAcceleration();
-
 app.whenReady().then(() => {
-    createWindow();
+    // Limpieza estricta de caché para reflejar siempre los últimos cambios de VS Code
+    session.defaultSession.clearCache().then(() => {
+        createWindow();
+    });
 
     app.on('activate', function () {
         if (BrowserWindow.getAllWindows().length === 0) createWindow();

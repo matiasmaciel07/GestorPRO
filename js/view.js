@@ -442,10 +442,10 @@ export const view = {
                 
                 if (action === 'exportar') events.emit('ui:exportar');
                 
-                // Reemplazo de prompt() crítico
+                // Reemplazo de prompt() crítico con sanitización
                 if (action === 'borrar-todo') {
                     let p = await this.customPrompt("Escribe BORRAR para formatear el sistema completo (Irreversible):", "text", 10);
-                    if (p === 'BORRAR') events.emit('ui:borrar-todo');
+                    if (p && p.trim().toUpperCase() === 'BORRAR') events.emit('ui:borrar-todo');
                 }
                 
                 if (action === 'cambiar-mes') this.cambiarMesCalendario(parseInt(actionBtn.dataset.dir));
