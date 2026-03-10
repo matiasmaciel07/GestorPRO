@@ -697,6 +697,7 @@
                         </div>
                     </div>
                 </section>
+
                 <section id="portafolio" class="tab-content" role="tabpanel">
                     <div class="card" style="padding: 35px; border-radius: 28px; margin-bottom: var(--spacing-xl);">
                         <h3 class="stat__title" style="margin-bottom: 25px;">Exposición Sectorial del Capital Bursátil</h3>
@@ -835,58 +836,6 @@
                     <div class="card" style="margin-bottom: var(--spacing-xl); padding: 35px; border-radius: 28px;">
                         <h3 class="stat__title" style="margin-bottom: 30px; font-size:1rem; text-align: center;">Análisis Gráfico de Retrocesos (Drawdown)</h3>
                         <div id="wrap-drawdown" style="height: 380px; width: 100%; position: relative;"></div>
-                    </div>
-                </section>
-
-                <h2 style="margin-bottom: 20px; font-size: 2rem; font-weight: 900; letter-spacing: 0.5px; display: flex; align-items: center; gap: 15px;" class="texto-purple">
-    <span style="background: rgba(124, 19, 164, 0.15); padding: 10px; border-radius: 12px; display: inline-flex;"><svg width="28" height="28"><use href="#icon-fire"></use></svg></span>
-    Proyección de Autosuficiencia Financiera (Modelo FIRE)
-</h2>
-                    <p style="color:var(--text-muted); margin-bottom: 40px; font-size: 1.05rem; max-width:900px; line-height: 1.6;">Algoritmo predictivo nutrido directamente con el costo de vida base estandarizado, omitiendo de forma íntegra cualquier obligación dependiente de la dinámica comercial operativa o societaria.</p>
-                    
-                    <div class="grid-2" style="margin-bottom: var(--spacing-xl);">
-                        <div class="card" style="padding: 40px; border-radius: 28px;">
-                            <h3 class="stat__title" style="margin-bottom: 30px; font-size:1rem; border-bottom:1px solid rgba(139, 149, 165, 0.1); padding-bottom:20px;">Constantes del Modelo</h3>
-                            <div class="form-row">
-                                <div class="form-group"><label class="form__label">Egresos Personales Base (ARS)</label><input type="text" id="fire-gasto-base" class="format-number data-font fire-input" readonly style="background:rgba(139, 149, 165, 0.05); cursor:not-allowed; padding: 1.2rem; font-size: 1.2rem; border-radius: 12px; color: var(--text-muted);"></div>
-                                <div class="form-group"><label class="form__label">Margen Operativo Adicional (ARS)</label><input type="text" id="fire-gasto-extra" class="format-number data-font fire-input" value="0" style="padding: 1.2rem; font-size: 1.2rem; border-radius: 12px;"></div>
-                            </div>
-                            <div class="form-row" style="margin-top:25px;">
-                                <div class="form-group"><label class="form__label">Valorización de la Cartera Actual</label><input type="text" id="fire-capital" class="format-number data-font fire-input" value="0" style="padding: 1.2rem; font-size: 1.2rem; border-radius: 12px;"></div>
-                                <div class="form-group"><label class="form__label">Tasa de Aporte Mensual al Capital</label><input type="text" id="fire-ahorro" class="format-number data-font fire-input" value="250000" style="padding: 1.2rem; font-size: 1.2rem; border-radius: 12px;"></div>
-                            </div>
-                            <div class="form-row" style="margin-top:25px;">
-                                <div class="form-group"><label class="form__label">Proyección CAGR Anual (%)</label><input type="number" id="fire-cagr" step="0.1" class="data-font fire-input" value="8" style="padding: 1.2rem; font-size: 1.2rem; border-radius: 12px;"></div>
-                                <div class="form-group"><label class="form__label">Safe Withdrawal Rate (SWR %)</label><input type="number" id="fire-swr" step="0.1" class="data-font fire-input" value="4" style="padding: 1.2rem; font-size: 1.2rem; border-radius: 12px;"></div>
-                            </div>
-                        </div>
-                        <div class="card is-visible-flex" style="flex-direction:column; padding: 40px; border-radius: 28px;">
-                            <h3 class="stat__title" style="margin-bottom: 30px; font-size:1rem; border-bottom:1px solid rgba(139, 149, 165, 0.1); padding-bottom:20px;">Estimación de Meta de Independencia</h3>
-                            <div class="grid-2" style="gap: 25px; margin-bottom:40px;">
-                                <div style="background:var(--bg-input); padding:30px; border-radius:20px; border: 1px solid var(--border-color);">
-                                    <div class="stat__title">Carga Económica Ponderada (Vida Mensual)</div>
-                                    <div class="stat__value data-font texto-rojo" id="fire-res-gasto" style="font-size:2.5rem; margin-top: 15px;">$0</div>
-                                </div>
-                                <div style="background:rgba(255, 77, 138, 0.05); padding:30px; border-radius:20px; border: 1px solid rgba(255, 77, 138, 0.3); box-shadow: var(--shadow-neon-accent);">
-                                    <div class="stat__title texto-accent" data-tooltip="Capital umbral requerido para que la rentabilidad pasiva de mercado, ajustada a la Tasa Segura de Retiro (SWR), absorba perpetuamente las obligaciones del costo de vida estimado.">Patrimonio Umbral (FIRE Number)</div>
-                                    <div class="stat__value data-font texto-accent" id="fire-res-objetivo" style="font-size:2.5rem; margin-top: 15px;">$0</div>
-                                </div>
-                            </div>
-                            <div style="text-align:center; padding: 30px; background: rgba(0, 255, 149, 0.05); border: 1px solid rgba(0, 255, 149, 0.3); border-radius: 24px; margin-top: auto; box-shadow: inset 0 0 30px rgba(0,255,149,0.1);">
-                            
-                            <h4 class="stat__title texto-verde" style="font-size:1.1rem; margin-bottom:15px;">Horizonte de Tiempo Teórico</h4>
-                            <div class="data-font texto-verde" id="fire-res-anos" style="font-size:4rem; font-weight:900; line-height: 1; text-shadow: var(--shadow-neon-up);">0 Años</div>
-                            
-                            <div style="margin-top: 25px; padding-top: 25px; border-top: 1px dashed rgba(0, 255, 149, 0.3);">
-                                <h4 class="stat__title" style="font-size:0.9rem; margin-bottom:10px; color: var(--color-primary);" data-tooltip="Generado mediante 1,000 iteraciones Montecarlo utilizando la volatilidad histórica del portafolio y SWR variable en caídas.">Probabilidad de Éxito (Montecarlo)</h4>
-                                <div class="data-font" id="fire-res-probabilidad" style="font-size:2.5rem; font-weight:900; color: var(--color-primary); text-shadow: var(--shadow-neon-primary);">0%</div>
-                            </div>
-
-                        </div>
-                    
-                    <div class="card" style="padding: 40px; border-radius: 28px;">
-                        <h3 class="stat__title" style="margin-bottom: 30px; font-size:1rem; text-align: center;">Modelado Gráfico de Convergencia</h3>
-                        <div id="wrap-fire-chart" style="height: 450px; width: 100%; position: relative;"></div>
                     </div>
                 </section>
 
