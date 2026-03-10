@@ -385,15 +385,15 @@ export const ChartRenderer = {
         const getCSS = (varName, fallBack) => getComputedStyle(document.documentElement).getPropertyValue(varName).trim() || fallBack;
 
         const legendItems = [
-            { index: 0, label: 'Patrimonio Comercial Neto', color: getCSS('--color-primary', '#6045F4'), hidden: false, tooltip: 'La suma total de liquidez operativa, capital bursátil y valoración del inventario.' },
-            { index: 1, label: 'Patrimonio Puro (Ahorro Físico)', color: getCSS('--text-main', '#FFFFFF'), hidden: false, tooltip: 'El flujo de capital aportado excluyendo rendimientos generados o ingresos por ventas.' },
-            { index: 2, label: 'Capital Invertido Bursátil', color: getCSS('--color-accent', '#FF4D8A'), hidden: false, tooltip: 'El valor actual de mercado de todos los activos en el portafolio de inversión.' },
-            { index: 3, label: 'Liquidez en Caja', color: getCSS('--color-up', '#00FF95'), hidden: false, tooltip: 'Capital circulante no invertido, disponible para cobertura de pasivos operativos.' },
-            { index: 4, label: 'Costo de Vida Acumulado', color: getCSS('--color-down', '#F71735'), hidden: true, tooltip: 'Sumatoria histórica de todos los egresos personales y comerciales.' },
-            { index: 5, label: 'Media Móvil Costo Vida', color: getCSS('--color-warning', '#FCA311'), hidden: true, tooltip: 'Promedio móvil mensual del índice de egresos generales calculado sobre el histórico.' },
-            { index: 6, label: 'Inflación Proyectada', color: getCSS('--color-orange', '#FF871A'), hidden: true, tooltip: 'Índice base estadístico para el cálculo del rendimiento real del patrimonio neto.' }
+            { index: 0, label: 'Patrimonio Comercial Neto', color: getCSS('--color-primary', '#6045F4'), hidden: false, tooltip: 'Todo el dinero y valor que posee la empresa en total (Caja + Inversiones + Mercadería).' },
+            { index: 1, label: 'Patrimonio Puro (Ahorro Físico)', color: getCSS('--text-main', '#FFFFFF'), hidden: false, tooltip: 'El dinero real que se guardó de las ganancias brutas, sin contar los intereses ganados luego.' },
+            { index: 2, label: 'Capital Invertido Bursátil', color: getCSS('--color-accent', '#FF4D8A'), hidden: false, tooltip: 'El valor total que tienen tus inversiones en la bolsa al día de hoy.' },
+            { index: 3, label: 'Liquidez en Caja', color: getCSS('--color-up', '#00FF95'), hidden: false, tooltip: 'El dinero en efectivo o en el banco listo para usarse ante cualquier emergencia.' },
+            { index: 4, label: 'Costo de Vida Acumulado', color: getCSS('--color-down', '#F71735'), hidden: true, tooltip: 'La suma histórica de todo el dinero gastado para mantener la empresa y tu vida personal.' },
+            { index: 5, label: 'Media Móvil Costo Vida', color: getCSS('--color-warning', '#FCA311'), hidden: true, tooltip: 'El promedio mensual de tus gastos. Ayuda a ver si estás gastando cada vez más o menos.' },
+            { index: 6, label: 'Inflación Proyectada', color: getCSS('--color-orange', '#FF871A'), hidden: true, tooltip: 'La pérdida de valor del dinero en el tiempo. Tu patrimonio debe crecer por encima de esta línea.' }
         ];
-
+        
         let html = '';
         legendItems.forEach(item => {
             html += `
@@ -626,10 +626,10 @@ export const ChartRenderer = {
         const aplicarPromedio = (monto) => {
             const prom = FinancialMath.calcularPromediosDesglosados(monto * div, temporalidad, []);
             let val;
-            if (temporalidad.toLowerCase() === 'anual') val = prom.mes / div;
-            else if (temporalidad.toLowerCase() === 'mensual') val = prom.semana / div;
-            else if (temporalidad.toLowerCase() === 'semanal') val = prom.dia / div;
-            else if (temporalidad.toLowerCase() === 'diario') val = prom.hora / div;
+            if (temporalidad.toLowerCase() === 'anual') val = (prom.mes * 12) / div;
+            else if (temporalidad.toLowerCase() === 'mensual') val = prom.mes / div;
+            else if (temporalidad.toLowerCase() === 'semanal') val = prom.semana / div;
+            else if (temporalidad.toLowerCase() === 'diario') val = prom.dia / div;
             else val = monto;
             return Math.max(0, val);
         };

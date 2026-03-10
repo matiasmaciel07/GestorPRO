@@ -10,7 +10,8 @@ import { FinancialMath } from './utils/financial.js';
 export const view = {
     DOM: {}, calMes: new Date().getMonth(), calAno: new Date().getFullYear(),
     currentModelData: null, activeTab: 'dashboard', activeFilter: 'MAX',
-    historialData: [], historialFiltros: null, vsRowHeight: 65, // Altura aumentada para el diseño Neon-Tech
+    historialData: [], historialFiltros: null, vsRowHeight: 65,
+    _mdCache: new Map(), // NUEVA LÍNEA: Caché de Markdown
     // FASE 3: Paleta de Colores Vibrantes para gráficos e inyecciones JS
     sectorColors: ['#00FF95', '#FF4D8A', '#2CE6D6', '#FCA311', '#6045F4', '#FF871A', '#7C13A4', '#1AA7EC', '#F71735'],
     chartTermometro: null,
@@ -1665,7 +1666,13 @@ export const view = {
                 let desc = DOMPurify.sanitize(descStr);
                 
                 if (m.notas) {
-                    let markdownHtml = DOMPurify.sanitize(marked.parse(m.notas));
+                    let markdownHtml;
+                    if (this._mdCache.has(m.notas)) {
+                        markdownHtml = this._mdCache.get(m.notas);
+                    } else {
+                        markdownHtml = DOMPurify.sanitize(marked.parse(m.notas));
+                        this._mdCache.set(m.notas, markdownHtml);
+                    }
                     desc += `<div style="margin-top: 8px; font-size: 0.8rem; color: var(--text-muted); background: var(--bg-base); padding: 8px 12px; border-radius: 6px; border-left: 3px solid var(--color-primary); line-height:1.5;">${markdownHtml}</div>`;
                 }
 

@@ -9,10 +9,10 @@ const reactiveProxyHandler = {
     set(target, property, value, receiver) {
         const result = Reflect.set(target, property, value, receiver);
         
-        if (model._proxyDebounce) clearTimeout(model._proxyDebounce);
-        model._proxyDebounce = setTimeout(() => {
+        if (model._proxyDebounce) cancelAnimationFrame(model._proxyDebounce);
+        model._proxyDebounce = requestAnimationFrame(() => {
             events.emit('model:updated', model.data);
-        }, 10);
+        });
         
         return result;
     }

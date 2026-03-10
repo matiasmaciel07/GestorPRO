@@ -239,7 +239,7 @@ export const FinancialMath = {
             const tipoStr = (t.tipo || "").toLowerCase().trim();
             const catStr = (t.categoria || "").toLowerCase().trim();
 
-            if (tipoStr === 'ingreso' || tipoStr === 'venta') {
+            if (tipoStr === 'ingreso local' || tipoStr === 'ingreso' || tipoStr === 'venta') {
                 ingresosBrutos += monto;
             } else {
                 // Validación estricta para inyecciones de costo de inventario
