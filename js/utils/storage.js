@@ -166,12 +166,21 @@ export const storage = {
     },
     
     async clearAll() {
-        await this.remove('gestor_pro_v9');
-        await this.remove('gestor_pin');
-        await this.remove('gfp_precios_cache');
-        await this.remove('gfp_inflacion');
-        await this.remove('gfp_proveedores');
-        await this.remove('gfp_categorias');
-        await this.remove('gfp_watchlist');
-    }
-};
+        try {
+            const db = await getDB();
+            return new Promise((resolve, reject) => {
+                // Iniciamos una única transacción maestra
+                const tx = db.transaction(STORE_NAME, 'readwrite');
+                const store = tx.objectStore(STORE_NAME);
+                
+                // Vaciado absoluto y optimizado de toda la base de datos
+                store.clear(); 
+                
+                // CRÍTICO: Esperamos a que la transacción se confirme en el disco duro
+                tx.oncomplete = () => resolve();
+                tx.onerror = () => reject(tx.error);
+            });
+        } catch (e) {
+            console.error("Error crítico al formatear la Base de Datos", e);
+        }
+    }}

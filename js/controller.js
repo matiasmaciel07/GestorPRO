@@ -215,7 +215,13 @@ const controller = {
         });
 
         events.on('ui:exportar', () => backup.exportar(model.data.movimientos));
-        events.on('ui:borrar-todo', () => { storage.clearAll(); location.reload(); });
+        events.on('ui:borrar-todo', async () => { 
+            await storage.clearAll(); 
+            localStorage.clear(); 
+            setTimeout(() => {
+                location.reload(); 
+            }, 300);
+        });
 
         events.on('ui:guardar-manual', async () => {
             await model.guardarLocal();
