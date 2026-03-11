@@ -101,13 +101,12 @@ function processSingle(m) {
     }
 
     if (m.tipo === 'Ahorro') {
-        // "Ahorro" es inyección externa directamente a la Billetera Bursátil
         st.stats.billetera = safeFloat(st.stats.billetera + montoNum);
         st.stats.totalAhorradoFisico = safeFloat(st.stats.totalAhorradoFisico + montoNum);
         st.stats.ahorroArsPuro = safeFloat(st.stats.ahorroArsPuro + montoNum);
         st.stats.ahorroHaciaBursatil = safeFloat(st.stats.ahorroHaciaBursatil + montoNum); 
         st.stats.flowAhorro = safeFloat(st.stats.flowAhorro + montoNum);
-        flujoExternoHoy = montoNum; // Aumenta el patrimonio neto total del sistema
+        flujoExternoHoy = montoNum; 
         
         if (m.usd > 0) { 
             st.stats.usdComprado = safeFloat(st.stats.usdComprado + parseFloat(m.usd));
@@ -115,7 +114,6 @@ function processSingle(m) {
         }
     } 
     else if (m.tipo === 'Transferencia Ahorro') {
-        // Sweep interno: Extracción de la Caja Local hacia la Billetera
         st.stats.cajaLocal = safeFloat(st.stats.cajaLocal - montoNum);
         st.stats.billetera = safeFloat(st.stats.billetera + montoNum);
         
@@ -123,7 +121,6 @@ function processSingle(m) {
         st.stats.ahorroArsPuro = safeFloat(st.stats.ahorroArsPuro + montoNum);
         st.stats.ahorroHaciaBursatil = safeFloat(st.stats.ahorroHaciaBursatil + montoNum); 
         st.stats.flowAhorro = safeFloat(st.stats.flowAhorro + montoNum);
-        // flujoExternoHoy se mantiene en 0: El patrimonio neto no cambia, solo cambia de bolsillo
         
         if (m.usd > 0) { 
             st.stats.usdComprado = safeFloat(st.stats.usdComprado + parseFloat(m.usd));
@@ -131,11 +128,9 @@ function processSingle(m) {
         }
     }
     else if (m.tipo === 'Rescate a Caja') {
-        // Inyección de emergencia: Billetera hacia Caja Local
         st.stats.billetera = safeFloat(st.stats.billetera - montoNum);
         st.stats.cajaLocal = safeFloat(st.stats.cajaLocal + montoNum);
         
-        // Reversión estricta de las métricas de esfuerzo de ahorro protegiendo contra números negativos
         st.stats.totalAhorradoFisico = safeFloat(Math.max(0, st.stats.totalAhorradoFisico - montoNum));
         st.stats.ahorroArsPuro = safeFloat(Math.max(0, st.stats.ahorroArsPuro - montoNum));
         st.stats.ahorroHaciaBursatil = safeFloat(Math.max(0, st.stats.ahorroHaciaBursatil - montoNum));
@@ -146,12 +141,10 @@ function processSingle(m) {
             st.stats.costoUsdArs = safeFloat(Math.max(0, st.stats.costoUsdArs - montoNum));
         }
     }
-
     else if (m.tipo === 'Aporte Capital') {
         st.stats.cajaLocal = safeFloat(st.stats.cajaLocal + montoNum);
         flujoExternoHoy = montoNum;
     }
-
     else if (m.tipo === 'Retiro') {
         st.stats.billetera = safeFloat(st.stats.billetera - montoNum);
         st.stats.totalRetirado = safeFloat(st.stats.totalRetirado + montoNum);
@@ -174,18 +167,14 @@ function processSingle(m) {
         let p = st.portafolio[m.activo];
         
         if (p && p.cant > 0.000001) {
-            let operadoNum = Math.min(cantNum, p.cant); // Nunca vende más de lo que posee
+            let operadoNum = Math.min(cantNum, p.cant); 
             
-            // 1. Cálculo estricto del PPP (Precio Promedio Ponderado)
+            // Capa Contable: Valuación estricta por PPP
             let ppp = safeFloat(p.costo / p.cant);
-            
-            // 2. Costo de Venta Contable basado en PPP para evitar desajustes residuales
             let costoDeVenta = safeFloat(operadoNum * ppp);
-            
-            // 3. Resultado de la Venta (Ganancia Realizada sobre el costo promedio)
             let resultado = safeFloat(montoNum - costoDeVenta);
             
-            // 4. Motor FIFO Aislado: Exclusivo para métricas operativas de tiempo (Sandbox)
+            // Capa Operativa: Motor FIFO aislado para métricas de tiempo
             let cantRestante = operadoNum;
             let lotes = st.lotesCompra[m.activo];
             let fechaVentaMs = new Date(m.fecha).getTime();
@@ -193,34 +182,28 @@ function processSingle(m) {
             while (cantRestante > 0 && lotes && lotes.length > 0) {
                 let lote = lotes[0];
                 let operadoLote = Math.min(cantRestante, lote.cant);
-                let diasMantenido = (fechaVentaMs - lote.fecha) / 86400000; // 86400000 ms = 1 día
+                let diasMantenido = (fechaVentaMs - lote.fecha) / 86400000; 
                 
-                // Acumuladores estadísticos puros (Independientes del balance de caja)
                 st.stats.diasTenenciaTotal = safeFloat(st.stats.diasTenenciaTotal + (diasMantenido * operadoLote));
                 st.stats.operacionesCerradas = safeFloat(st.stats.operacionesCerradas + operadoLote);
 
-                // Descuento estricto de nominales en la cola FIFO sin afectar métricas de precio
                 lote.cant = safeFloat(lote.cant - operadoLote);
                 cantRestante = safeFloat(cantRestante - operadoLote);
                 
                 if (lote.cant <= 0.0001) lotes.shift();
             }
 
-            // Aplicación de repercusiones estructurales sobre el Portafolio
             p.cant = safeFloat(p.cant - operadoNum); 
             p.costo = safeFloat(Math.max(0, p.costo - costoDeVenta)); 
             
-            // Impacto global en capital invertido basado en Valuación PPP
             st.stats.capInvertido = safeFloat(Math.max(0, st.stats.capInvertido - costoDeVenta));
             
-            // Rutina de limpieza por precisión de coma flotante (Garbage cleanup)
             if (p.cant <= 0.0001) {
                 st.stats.capInvertido = safeFloat(Math.max(0, st.stats.capInvertido - p.costo)); 
                 p.cant = 0;
                 p.costo = 0;
             }
             
-            // Repercusiones finales en métricas de ganancia
             m.resultadoCalculado = resultado; 
             st.stats.ganRealizada = safeFloat(st.stats.ganRealizada + resultado); 
             st.stats.vTotal++; 
@@ -241,19 +224,14 @@ function processSingle(m) {
         st.stats.flowIngreso = safeFloat(st.stats.flowIngreso + montoNum); 
         st.stats.flujoMensual[mesStr].ingresos = safeFloat(st.stats.flujoMensual[mesStr].ingresos + montoNum); 
         
-        let costoVendidoEstimado = montoNum; // Fallback por defecto si no hay historial
+        let costoVendidoEstimado = montoNum; 
         
-        // [REFACTORIZACIÓN ARQUITECTURA] Cálculo inmutable del Markup
         if (st.stats.stockValorVentaHistorico > 0 && st.stats.stockCostoHistorico > 0) {
-            // Se calcula el Costo sobre Venta utilizando únicamente los acumuladores históricos que no sufren desgaste
             let ratioCostoHistorico = safeFloat(st.stats.stockCostoHistorico / st.stats.stockValorVentaHistorico);
             costoVendidoEstimado = safeFloat(montoNum * ratioCostoHistorico);
-            
-            // Actualización del Markup Promedio puro para dashboards (Venta / Costo)
             st.stats.markupPromedio = safeFloat(st.stats.stockValorVentaHistorico / st.stats.stockCostoHistorico);
         }
         
-        // Protección Estricta: Evita deducir más costo del inventario físico existente en caja
         costoVendidoEstimado = Math.min(costoVendidoEstimado, st.stats.stockCosto);
         
         st.stats.stockCosto = safeFloat(Math.max(0, st.stats.stockCosto - costoVendidoEstimado));
@@ -283,11 +261,9 @@ function processSingle(m) {
         let prov = m.proveedor || 'Desconocido';
         let valorVentaInput = m.valorVentaEstimado ? safeFloat(m.valorVentaEstimado) : montoNum;
         
-        // Sumamos al stock activo
         st.stats.stockCosto = safeFloat(st.stats.stockCosto + montoNum);
         st.stats.stockValorVenta = safeFloat(st.stats.stockValorVenta + valorVentaInput);
         
-        // Sumamos al historial inmutable (Esencial para la precisión del Markup de Ventas)
         st.stats.stockCostoHistorico = safeFloat((st.stats.stockCostoHistorico || 0) + montoNum);
         st.stats.stockValorVentaHistorico = safeFloat((st.stats.stockValorVentaHistorico || 0) + valorVentaInput);
         
@@ -335,22 +311,18 @@ function processSingle(m) {
         st.stats.stockCosto = safeFloat(st.stats.stockCosto + montoNum);
         st.stats.stockValorVenta = safeFloat(st.stats.stockValorVenta + valorVentaInput);
 
-        // Se incorpora al historial base general de la empresa
         st.stats.stockCostoHistorico = safeFloat((st.stats.stockCostoHistorico || 0) + montoNum);
         st.stats.stockValorVentaHistorico = safeFloat((st.stats.stockValorVentaHistorico || 0) + valorVentaInput);
     }
     else if (m.tipo === 'Correccion Stock') {
         let valorVentaInput = m.valorVentaEstimado ? safeFloat(m.valorVentaEstimado) : montoNum;
         
-        // Cálculo del delta (Diferencia de la corrección)
         let deltaCosto = montoNum - st.stats.stockCosto;
         let deltaVenta = valorVentaInput - st.stats.stockValorVenta;
 
-        // Se setea el valor exacto actual reportado por auditoría
         st.stats.stockCosto = safeFloat(montoNum);
         st.stats.stockValorVenta = safeFloat(valorVentaInput);
 
-        // Impactamos solo el delta en el historial para mantener coherencia del Markup Promedio
         st.stats.stockCostoHistorico = safeFloat(Math.max(0, (st.stats.stockCostoHistorico || 0) + deltaCosto));
         st.stats.stockValorVentaHistorico = safeFloat(Math.max(0, (st.stats.stockValorVentaHistorico || 0) + deltaVenta));
     }
@@ -402,7 +374,7 @@ function processSingle(m) {
     }
 
     let msElapsedTotal = new Date(m.fecha).getTime() - st.firstDateMs;
-    let monthsElapsedTotal = msElapsedTotal / 2629920000; // Constante de ms en un mes promedio
+    let monthsElapsedTotal = msElapsedTotal / 2629920000; 
     let avgVida = monthsElapsedTotal >= 1 ? (st.stats.gastosFamiliar + st.stats.gastosLocal) / monthsElapsedTotal : (st.stats.gastosFamiliar + st.stats.gastosLocal);
 
     if (m.fecha !== st.lastDate) {
