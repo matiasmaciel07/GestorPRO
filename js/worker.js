@@ -41,6 +41,7 @@ function getEmptyStats() {
         pagosProveedores: 0, deudaActiva: 0,
         
         stockCosto: 0, stockValorVenta: 0, markupPromedio: 1,
+        stockCostoHistorico: 0, stockValorVentaHistorico: 0,
         liquidezAcida: 0, liquidezCorriente: 0,
         
         prestamosDetalle: {}, proveedoresMensual: {}, proveedoresDetalle: {},
@@ -239,14 +240,19 @@ function processSingle(m) {
         st.stats.flujoMensual[mesStr].ingresos = safeFloat(st.stats.flujoMensual[mesStr].ingresos + montoNum); 
         
         let costoVendidoEstimado = 0;
-        if (st.stats.stockValorVenta > 0 && st.stats.stockCosto > 0) {
-            let ratioCosto = st.stats.stockCosto / st.stats.stockValorVenta;
-            costoVendidoEstimado = safeFloat(montoNum * ratioCosto);
+        
+        // [MATEMÁTICA PROFESIONAL] Uso de acumuladores históricos para evitar distorsión de ratio por desgaste
+        if (st.stats.stockValorVentaHistorico > 0 && st.stats.stockCostoHistorico > 0) {
+            let ratioCostoHistorico = st.stats.stockCostoHistorico / st.stats.stockValorVentaHistorico;
+            costoVendidoEstimado = safeFloat(montoNum * ratioCostoHistorico);
             
-            // Protección: Evita que el costo deducido supere el inventario físico contable
+            // Actualizamos la métrica de Markup para el dashboard de rentabilidad
+            st.stats.markupPromedio = safeFloat(st.stats.stockValorVentaHistorico / st.stats.stockCostoHistorico);
+            
+            // Protección Estricta: Evita que el costo deducido supere el inventario físico contable actual
             costoVendidoEstimado = Math.min(costoVendidoEstimado, st.stats.stockCosto);
         } else {
-            // Fallback temporal si no hay base de datos de stock
+            // Fallback contable: Si no hay historial registrado, deduce el 100% de la venta para no crear stock fantasma
             costoVendidoEstimado = montoNum; 
         }
         
@@ -277,8 +283,13 @@ function processSingle(m) {
         let prov = m.proveedor || 'Desconocido';
         let valorVentaInput = m.valorVentaEstimado ? safeFloat(m.valorVentaEstimado) : montoNum;
         
+        // Sumamos al stock activo
         st.stats.stockCosto = safeFloat(st.stats.stockCosto + montoNum);
         st.stats.stockValorVenta = safeFloat(st.stats.stockValorVenta + valorVentaInput);
+        
+        // Sumamos al historial inmutable (Esencial para la precisión del Markup de Ventas)
+        st.stats.stockCostoHistorico = safeFloat((st.stats.stockCostoHistorico || 0) + montoNum);
+        st.stats.stockValorVentaHistorico = safeFloat((st.stats.stockValorVentaHistorico || 0) + valorVentaInput);
         
         if (!st.stats.proveedoresDetalle[prov]) st.stats.proveedoresDetalle[prov] = { total: 0, meses: {} };
         st.stats.proveedoresDetalle[prov].total = safeFloat(st.stats.proveedoresDetalle[prov].total + montoNum);
@@ -320,13 +331,28 @@ function processSingle(m) {
     }
     else if (m.tipo === 'Ajuste Stock Inicial') {
         let valorVentaInput = m.valorVentaEstimado ? safeFloat(m.valorVentaEstimado) : montoNum;
+        
         st.stats.stockCosto = safeFloat(st.stats.stockCosto + montoNum);
         st.stats.stockValorVenta = safeFloat(st.stats.stockValorVenta + valorVentaInput);
+
+        // Se incorpora al historial base general de la empresa
+        st.stats.stockCostoHistorico = safeFloat((st.stats.stockCostoHistorico || 0) + montoNum);
+        st.stats.stockValorVentaHistorico = safeFloat((st.stats.stockValorVentaHistorico || 0) + valorVentaInput);
     }
     else if (m.tipo === 'Correccion Stock') {
         let valorVentaInput = m.valorVentaEstimado ? safeFloat(m.valorVentaEstimado) : montoNum;
+        
+        // Cálculo del delta (Diferencia de la corrección)
+        let deltaCosto = montoNum - st.stats.stockCosto;
+        let deltaVenta = valorVentaInput - st.stats.stockValorVenta;
+
+        // Se setea el valor exacto actual reportado por auditoría
         st.stats.stockCosto = safeFloat(montoNum);
         st.stats.stockValorVenta = safeFloat(valorVentaInput);
+
+        // Impactamos solo el delta en el historial para mantener coherencia del Markup Promedio
+        st.stats.stockCostoHistorico = safeFloat(Math.max(0, (st.stats.stockCostoHistorico || 0) + deltaCosto));
+        st.stats.stockValorVentaHistorico = safeFloat(Math.max(0, (st.stats.stockValorVentaHistorico || 0) + deltaVenta));
     }
     else if (m.tipo === 'Reparto Sociedad') {
         st.stats.cajaLocal = safeFloat(st.stats.cajaLocal - montoNum);
