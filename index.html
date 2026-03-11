@@ -548,8 +548,11 @@
                             
                             <div class="form__group">
                                 <label class="form__label">Clasificación de la Operación</label>
+                                <div class="form__group">
+                                <label class="form__label">Clasificación de la Operación</label>
                                 <select id="op-tipo">
                                     <option value="Transferencia Ahorro">Inyección de Liquidez (Fondeo a Bursátil)</option>
+                                    <option value="Ahorro">Ingreso Externo (Fondeo directo a Bursátil)</option>
                                     <option value="Rescate a Caja">Rescate a Caja Operativa (Bursátil -> Local)</option>
                                     <option value="Compra">Toma de Posición (Compra)</option>
                                     <option value="Venta">Liquidación de Posición (Venta)</option>
@@ -598,9 +601,10 @@
                             
                             <div class="form__group">
                                 <label class="form__label">Naturaleza del Movimiento</label>
+                                <div class="form__group">
+                                <label class="form__label">Naturaleza del Movimiento</label>
                                 <select id="eco-tipo">
                                     <option value="Ingreso Local">Ingreso Comercial Operativo</option>
-                                    <option value="Ahorro">Ingreso Externo (Fondeo directo a Bursátil)</option>
                                     <option value="Gasto Local">Egreso Comercial Fijo o Variable</option>
                                     <option value="Gasto Familiar">Egreso Personal (Economía Privada)</option>
                                     <option value="Pago Proveedor">Pago a Proveedores (Alta Inventario)</option>

@@ -374,9 +374,8 @@ export const model = {
     },
 
     getMovimiento(id) {
-        // Corrección: Búsqueda segura parseando uniformemente a enteros de precisión base 10
-        const searchId = parseInt(id, 10);
-        return this._rawData.movimientos.find(m => parseInt(m.id, 10) === searchId);
+        // Solución: Comparación estricta de cadenas para evitar desbordamiento de enteros (Safe Integer)
+        return this._rawData.movimientos.find(m => String(m.id) === String(id));
     },
 
     async agregarMovimiento(mov) {
@@ -389,12 +388,12 @@ export const model = {
     },
 
     async actualizarMovimiento(id, datosActualizados) {
-        const targetId = parseInt(id, 10);
-        const index = this._rawData.movimientos.findIndex(m => parseInt(m.id, 10) === targetId);
+        const index = this._rawData.movimientos.findIndex(m => String(m.id) === String(id));
         
         if (index !== -1) {
             let nuevosMovs = [...this._rawData.movimientos];
-            nuevosMovs[index] = { ...nuevosMovs[index], ...datosActualizados, id: targetId };
+            // Preservamos el ID original inmutablemente
+            nuevosMovs[index] = { ...nuevosMovs[index], ...datosActualizados, id: nuevosMovs[index].id };
             this._data.movimientos = nuevosMovs;
             await this.guardarLocal();
             await this.procesarMotor(false); 
@@ -413,8 +412,7 @@ export const model = {
     },
 
     async _removeMovimientoSilencioso(id) {
-        const targetId = parseInt(id, 10);
-        this._data.movimientos = this._rawData.movimientos.filter(m => parseInt(m.id, 10) !== targetId);
+        this._data.movimientos = this._rawData.movimientos.filter(m => String(m.id) !== String(id));
         await this.guardarLocal();
         await this.procesarMotor(false);
     },

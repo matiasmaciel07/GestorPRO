@@ -588,7 +588,7 @@ export const view = {
         }
         if (this.DOM.btnCancelarEdicion) this.DOM.btnCancelarEdicion.classList.remove('is-hidden');
         
-        const tiposBursatiles = ['Transferencia Ahorro', 'Rescate a Caja', 'Compra', 'Venta', 'Rendimiento', 'Dividendo', 'Retiro'];
+        const tiposBursatiles = ['Transferencia Ahorro', 'Ahorro', 'Rescate a Caja', 'Compra', 'Venta', 'Rendimiento', 'Dividendo', 'Retiro'];
         const isBursatil = tiposBursatiles.includes(mov.tipo);
         
         if (isBursatil) {
@@ -830,14 +830,15 @@ export const view = {
     adaptarFormularioOperar() {
         let t = this.DOM.opTipo.value;
         const descripcionesBursatil = {
-            'Transferencia Ahorro': 'Inyección de liquidez. Mueve fondos de la Caja Local hacia la Billetera Bursátil. Aumenta Liquidez Retenida.',
-            'Rescate a Caja': 'Rescate de capital. Mueve dinero de la Billetera Bursátil hacia la Caja Local. Reduce Liquidez Retenida.',
-            'Compra': 'Adquisición de instrumentos financieros. Requiere asignación de Ticker, Sector y Volumen nominal.',
-            'Venta': 'Liquidación total o parcial de posiciones en cartera. Requiere asignación de Ticker, Sector y Volumen a liquidar.',
-            'Rendimiento': 'Asiento de rentabilidad líquida o intereses generados por cauciones y fondos money-market.',
-            'Dividendo': 'Distribución de utilidades. Inyección de liquidez pasiva. Requiere asociar el Ticker y Sector emisor.',
-            'Retiro': 'Extracción definitiva de capital bursátil hacia fuera del ecosistema financiero auditado.'
-        };
+        'Transferencia Ahorro': 'Inyección de liquidez. Mueve fondos de la Caja Local hacia la Billetera Bursátil. Aumenta Liquidez Retenida.',
+        'Ahorro': 'Ingreso externo y directo. Inyecta capital limpio en la Billetera Bursátil omitiendo el flujo del negocio.',
+        'Rescate a Caja': 'Rescate de capital. Mueve dinero de la Billetera Bursátil hacia la Caja Local. Reduce Liquidez Retenida.',
+        'Compra': 'Adquisición de instrumentos financieros. Requiere asignación de Ticker, Sector y Volumen nominal.',
+        'Venta': 'Liquidación total o parcial de posiciones en cartera. Requiere asignación de Ticker, Sector y Volumen a liquidar.',
+        'Rendimiento': 'Asiento de rentabilidad líquida o intereses generados por cauciones y fondos money-market.',
+        'Dividendo': 'Distribución de utilidades. Inyección de liquidez pasiva. Requiere asociar el Ticker y Sector emisor.',
+        'Retiro': 'Extracción definitiva de capital bursátil hacia fuera del ecosistema financiero auditado.'
+    };
         
         if(this.DOM.opTipoDesc) this.DOM.opTipoDesc.innerText = descripcionesBursatil[t] || '';
         if(this.DOM.hintCantidad) this.DOM.hintCantidad.classList.add('is-hidden');
@@ -1942,17 +1943,18 @@ export const view = {
                 
                 let dotsContainer = wrapper.querySelector('.cal-dots');
                 movs.forEach(m => {
-                    // Extraer solo el background color principal de la insignia
-                    let tempDiv = document.createElement('div');
-                    tempDiv.className = `badge ${this.getBadgeClass(m.tipo)}`;
-                    document.body.appendChild(tempDiv);
-                    let computedColor = getComputedStyle(tempDiv).color;
-                    document.body.removeChild(tempDiv);
+                    let c = this.getBadgeClass(m.tipo);
+                    
+                    // Optimización de rendimiento y prevención de fallos de CSS
+                    let dotColor = 'var(--color-primary)';
+                    if (c.includes('bg-retiro')) dotColor = 'var(--color-down)';
+                    else if (c.includes('bg-ahorro-transf') || c.includes('bg-ingreso-local') || c.includes('bg-rendimiento') || c.includes('bg-sociedad')) dotColor = 'var(--color-up)';
+                    else if (c.includes('bg-compra')) dotColor = 'var(--color-accent)';
+                    else if (c.includes('bg-venta') || c.includes('bg-gasto-local') || c.includes('bg-gasto-vida') || c.includes('bg-proveedor') || c.includes('bg-prestamo-pago')) dotColor = 'var(--color-warning)';
                     
                     let dot = document.createElement('div');
                     dot.className = `cal-dot`;
-                    dot.style.backgroundColor = computedColor;
-                    dot.style.color = computedColor;
+                    dot.style.backgroundColor = dotColor;
                     dotsContainer.appendChild(dot);
                 });
                 
@@ -1967,6 +1969,9 @@ export const view = {
                     movs.forEach(m => {
                         let c = this.getBadgeClass(m.tipo);
                         let descStr = m.activo ? `${m.cantidad||''}x ${m.activo}` : (m.categoria ? m.categoria : (m.proveedor ? m.proveedor : (m.socio ? m.socio : (m.entidad ? m.entidad : (m.tipo === 'Ajuste Stock Inicial' ? 'Inventario Base' : (m.tipo === 'Rescate a Caja' ? 'Inyección Liquidez a Caja' : (m.tipo === 'Transferencia Ahorro' ? 'Fuga hacia Billetera Bursátil' : (m.usd?`u$s ${m.usd}`:'-'))))))));
+                        
+                        // Corrección Crítica: Se define la variable desc que generaba el fallo
+                        let desc = DOMPurify.sanitize(descStr); 
                         
                         detailBuffer.push(
                             `<div style="padding:15px 20px; background:var(--bg-input); border-radius:12px; margin-bottom:12px; display:flex; justify-content:space-between; align-items:center; border: 1px solid var(--border-color); box-shadow: var(--shadow-card); transition: transform 0.2s;">`,
