@@ -123,6 +123,18 @@ export const view = {
     },
     
     initUI() {
+        // CORRECCIÓN ESTRUCTURAL: Inyección en caliente para destrabar el apilamiento de capas (z-index)
+        // y anular el recorte violento de content-visibility en el grid virtual, salvando las Tooltips.
+        const styleFix = document.createElement('style');
+        styleFix.innerHTML = `
+            #vs-tbody tr { content-visibility: visible !important; contain-intrinsic-size: auto !important; will-change: auto !important; }
+            .card { overflow: visible !important; }
+            [data-tooltip]::after { white-space: pre-wrap !important; word-wrap: break-word !important; max-width: 320px !important; z-index: 999999 !important; }
+            .dataTable-table > tbody > tr { position: relative; z-index: 1; }
+            .dataTable-table > tbody > tr:hover { z-index: 9999 !important; }
+        `;
+        document.head.appendChild(styleFix);
+
         this.cacheDOM();
         this.bindUIEvents();
         this.bindBusinessEvents();
@@ -140,9 +152,8 @@ export const view = {
             iconSvg.innerHTML = document.body.classList.contains('privacy-active') ? `<use href="#icon-privacy-off"></use>` : `<use href="#icon-privacy"></use>`;
         }
 
-        // FASE 3: Alineación Tabular y limpieza de inputs
         document.querySelectorAll('.format-number').forEach(input => {
-            input.style.textAlign = 'right'; // Forzar alineación a la derecha
+            input.style.textAlign = 'right';
             input.addEventListener('input', function() {
                 let clean = this.value.replace(/[^0-9,]/g, '');
                 let parts = clean.split(',');
@@ -152,7 +163,6 @@ export const view = {
             });
         });
         
-        // Forzar alineación derecha en inputs puramente numéricos de uso financiero
         document.querySelectorAll('input[type="number"].data-font').forEach(input => {
             input.style.textAlign = 'right';
         });
@@ -1041,7 +1051,6 @@ export const view = {
                 this.DOM.dashHealthLabel.innerText = scLabel;
                 this.DOM.dashHealthLabel.style.color = scColor;
                 
-                // Efecto de brillo de contenedor dinámico basado en la paleta FASE 1
                 let rgbaColor = scColor.includes('up') ? 'rgba(0, 255, 149, 0.2)' : (scColor.includes('warning') ? 'rgba(252, 163, 17, 0.2)' : 'rgba(247, 23, 53, 0.2)');
                 this.DOM.dashHealthScore.closest('.card').style.borderColor = scColor;
                 this.DOM.dashHealthScore.closest('.card').style.boxShadow = `0 0 20px ${rgbaColor}`;
@@ -1051,8 +1060,15 @@ export const view = {
             UIMetrics.actualizarFavicon(s.ganRealizada);
 
             let totalComercial = s.billetera + s.capInvertido + (s.stockCosto || 0) + (s.cajaLocal || 0);
-
             let liquidezTotal = s.billetera + (s.cajaLocal || 0);
+
+            // CORRECCIÓN ESTRUCTURAL: Mostrar la subdivisión explícita en la UI para evitar confusión en el balance patrimonial
+            if (this.DOM.dashLiquidezSub) {
+                let txtBilletera = this.fmtStr(s.billetera, modelData.dolarBlue, modelData.vistaUSD);
+                let txtCaja = this.fmtStr((s.cajaLocal || 0), modelData.dolarBlue, modelData.vistaUSD);
+                this.DOM.dashLiquidezSub.innerHTML = `<div style="font-size: 0.85rem; color: var(--text-muted); font-weight: 700; margin-top: 8px; text-transform: uppercase; letter-spacing: 0.5px;">Bursátil: <strong class="texto-primario privacy-mask">${modelData.vistaUSD?'USD':'$'} ${txtBilletera}</strong> &nbsp;|&nbsp; Local: <strong class="texto-verde privacy-mask">${modelData.vistaUSD?'USD':'$'} ${txtCaja}</strong></div>`;
+                this.DOM.dashLiquidezSub.style.display = 'block';
+            }
 
             if (this.zenMode) {
                 this.DOM.dashTotal.innerText = "100.0%";
@@ -1069,10 +1085,9 @@ export const view = {
             let arrLiquidez = (s.historyLiquidez || []).slice(-histLength);
             let arrInvertido = (s.historyInvertido || []).slice(-histLength);
             
-            // FASE 3: Gráficos de Tendencia con colores FASE 1 (Primario, Menta Neón, Rosa Plasma)
-            ChartRenderer.drawDashboardSparkline('spark-dash-total', arrPatrimonio, '#6045F4'); // Primario
-            ChartRenderer.drawDashboardSparkline('spark-dash-liquidez', arrLiquidez, '#00FF95'); // Menta Neón
-            ChartRenderer.drawDashboardSparkline('spark-dash-invertido', arrInvertido, '#FF4D8A'); // Accent
+            ChartRenderer.drawDashboardSparkline('spark-dash-total', arrPatrimonio, '#6045F4'); 
+            ChartRenderer.drawDashboardSparkline('spark-dash-liquidez', arrLiquidez, '#00FF95'); 
+            ChartRenderer.drawDashboardSparkline('spark-dash-invertido', arrInvertido, '#FF4D8A'); 
 
             if (this.DOM.lblPatSub1) {
                 let cagrStr = `<span class="${s.cagr >= 0 ? 'texto-verde' : 'texto-rojo'} privacy-mask" style="font-weight:900;">${(s.cagr || 0).toFixed(2)}%</span>`;

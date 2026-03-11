@@ -231,10 +231,6 @@ export const FinancialMath = {
         };
     },
 
-    /**
-     * Realiza la auditoría comercial corrigiendo el Inventario Base.
-     * Deduce pagos a Proveedores, Amortizaciones y Logística de los Ingresos Brutos Declarados.
-     */
     calcularAuditoriaComercial(transacciones) {
         let ingresosBrutos = 0;
         let costosProveedoresLogistica = 0;
@@ -246,8 +242,9 @@ export const FinancialMath = {
             const tipoStr = (t.tipo || "").toLowerCase().trim();
             const catStr = (t.categoria || "").toLowerCase().trim();
 
-            // Validación extendida para incluir el Rescate a Caja
-            if (tipoStr === 'ingreso local' || tipoStr === 'ingreso' || tipoStr === 'venta' || tipoStr === 'rescate a caja') {
+            // CORRECCIÓN ESTRUCTURAL: Fondeos externos (ahorro/aporte capital) se inyectan al flujo de ingresos brutos 
+            // a nivel de UI, y se remueve 'rescate a caja' por ser una transferencia patrimonial interna.
+            if (tipoStr === 'ingreso local' || tipoStr === 'ingreso' || tipoStr === 'venta' || tipoStr === 'ahorro' || tipoStr === 'aporte capital') {
                 ingresosBrutos += monto;
             } else {
                 const esGastoLogistica = tipoStr === 'gasto' && (catStr.includes('proveedor') || catStr.includes('logística') || catStr.includes('logistica') || catStr.includes('insumos'));

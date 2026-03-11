@@ -112,6 +112,17 @@ function processSingle(m) {
             st.stats.usdComprado = safeFloat(st.stats.usdComprado + parseFloat(m.usd));
             st.stats.costoUsdArs = safeFloat(st.stats.costoUsdArs + montoNum); 
         }
+
+        // CORRECCIÓN ESTRUCTURAL: Integración del Fondeo en el Flujo Operativo Consolidado
+        st.stats.ingresosLocal = safeFloat(st.stats.ingresosLocal + montoNum);
+        st.stats.flowIngreso = safeFloat(st.stats.flowIngreso + montoNum); 
+        st.stats.flujoMensual[mesStr].ingresos = safeFloat(st.stats.flujoMensual[mesStr].ingresos + montoNum); 
+        
+        let [y, mo, da] = m.fecha.split('-');
+        let d = new Date(parseInt(y, 10), parseInt(mo, 10) - 1, parseInt(da, 10));
+        let dayOfWeek = d.getDay();
+        st.stats.ventasPorDiaSemana[dayOfWeek] = safeFloat((st.stats.ventasPorDiaSemana[dayOfWeek] || 0) + montoNum);
+        st.diasOperadosPorDiaSemana[dayOfWeek].add(m.fecha);
     } 
     else if (m.tipo === 'Transferencia Ahorro') {
         st.stats.cajaLocal = safeFloat(st.stats.cajaLocal - montoNum);
@@ -144,6 +155,17 @@ function processSingle(m) {
     else if (m.tipo === 'Aporte Capital') {
         st.stats.cajaLocal = safeFloat(st.stats.cajaLocal + montoNum);
         flujoExternoHoy = montoNum;
+
+        // CORRECCIÓN ESTRUCTURAL: Integración del Aporte en el Flujo Operativo Consolidado
+        st.stats.ingresosLocal = safeFloat(st.stats.ingresosLocal + montoNum);
+        st.stats.flowIngreso = safeFloat(st.stats.flowIngreso + montoNum); 
+        st.stats.flujoMensual[mesStr].ingresos = safeFloat(st.stats.flujoMensual[mesStr].ingresos + montoNum); 
+        
+        let [y, mo, da] = m.fecha.split('-');
+        let d = new Date(parseInt(y, 10), parseInt(mo, 10) - 1, parseInt(da, 10));
+        let dayOfWeek = d.getDay();
+        st.stats.ventasPorDiaSemana[dayOfWeek] = safeFloat((st.stats.ventasPorDiaSemana[dayOfWeek] || 0) + montoNum);
+        st.diasOperadosPorDiaSemana[dayOfWeek].add(m.fecha);
     }
     else if (m.tipo === 'Retiro') {
         st.stats.billetera = safeFloat(st.stats.billetera - montoNum);
@@ -169,12 +191,10 @@ function processSingle(m) {
         if (p && p.cant > 0.000001) {
             let operadoNum = Math.min(cantNum, p.cant); 
             
-            // Capa Contable: Valuación estricta por PPP
             let ppp = safeFloat(p.costo / p.cant);
             let costoDeVenta = safeFloat(operadoNum * ppp);
             let resultado = safeFloat(montoNum - costoDeVenta);
             
-            // Capa Operativa: Motor FIFO aislado para métricas de tiempo
             let cantRestante = operadoNum;
             let lotes = st.lotesCompra[m.activo];
             let fechaVentaMs = new Date(m.fecha).getTime();
@@ -240,7 +260,7 @@ function processSingle(m) {
         let [y, mo, da] = m.fecha.split('-');
         let d = new Date(parseInt(y, 10), parseInt(mo, 10) - 1, parseInt(da, 10));
         let dayOfWeek = d.getDay();
-        st.stats.ventasPorDiaSemana[dayOfWeek] = safeFloat(st.stats.ventasPorDiaSemana[dayOfWeek] + montoNum);
+        st.stats.ventasPorDiaSemana[dayOfWeek] = safeFloat((st.stats.ventasPorDiaSemana[dayOfWeek] || 0) + montoNum);
         st.diasOperadosPorDiaSemana[dayOfWeek].add(m.fecha);
     }
     else if (m.tipo === 'Gasto Local') {
