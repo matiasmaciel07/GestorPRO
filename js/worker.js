@@ -39,6 +39,7 @@ function getEmptyStats() {
         
         ingresosLocal: 0, gastosLocal: 0, gastosFamiliar: 0, 
         pagosProveedores: 0, deudaActiva: 0,
+        ingresosCapital: 0,
         
         stockCosto: 0, stockValorVenta: 0, markupPromedio: 1,
         stockCostoHistorico: 0, stockValorVentaHistorico: 0,
@@ -113,10 +114,8 @@ function processSingle(m) {
             st.stats.costoUsdArs = safeFloat(st.stats.costoUsdArs + montoNum); 
         }
 
-        // CORRECCIÓN ESTRUCTURAL: Integración del Fondeo en el Flujo Operativo Consolidado
-        st.stats.ingresosLocal = safeFloat(st.stats.ingresosLocal + montoNum);
-        st.stats.flowIngreso = safeFloat(st.stats.flowIngreso + montoNum); 
-        st.stats.flujoMensual[mesStr].ingresos = safeFloat(st.stats.flujoMensual[mesStr].ingresos + montoNum); 
+        // CORRECCIÓN ESTRUCTURAL: Fondeo aislado del Flujo Operativo Consolidado
+        st.stats.ingresosCapital = safeFloat((st.stats.ingresosCapital || 0) + montoNum);
         
         let [y, mo, da] = m.fecha.split('-');
         let d = new Date(parseInt(y, 10), parseInt(mo, 10) - 1, parseInt(da, 10));
@@ -142,24 +141,23 @@ function processSingle(m) {
         st.stats.billetera = safeFloat(st.stats.billetera - montoNum);
         st.stats.cajaLocal = safeFloat(st.stats.cajaLocal + montoNum);
         
-        st.stats.totalAhorradoFisico = safeFloat(Math.max(0, st.stats.totalAhorradoFisico - montoNum));
-        st.stats.ahorroArsPuro = safeFloat(Math.max(0, st.stats.ahorroArsPuro - montoNum));
-        st.stats.ahorroHaciaBursatil = safeFloat(Math.max(0, st.stats.ahorroHaciaBursatil - montoNum));
-        st.stats.flowAhorro = safeFloat(Math.max(0, st.stats.flowAhorro - montoNum));
+        // CORRECCIÓN: Eliminación de limitadores para tolerancia a desfasaje cronológico
+        st.stats.totalAhorradoFisico = safeFloat(st.stats.totalAhorradoFisico - montoNum);
+        st.stats.ahorroArsPuro = safeFloat(st.stats.ahorroArsPuro - montoNum);
+        st.stats.ahorroHaciaBursatil = safeFloat(st.stats.ahorroHaciaBursatil - montoNum);
+        st.stats.flowAhorro = safeFloat(st.stats.flowAhorro - montoNum);
 
         if (m.usd > 0) {
-            st.stats.usdComprado = safeFloat(Math.max(0, st.stats.usdComprado - parseFloat(m.usd)));
-            st.stats.costoUsdArs = safeFloat(Math.max(0, st.stats.costoUsdArs - montoNum));
+            st.stats.usdComprado = safeFloat(st.stats.usdComprado - parseFloat(m.usd));
+            st.stats.costoUsdArs = safeFloat(st.stats.costoUsdArs - montoNum);
         }
     }
     else if (m.tipo === 'Aporte Capital') {
         st.stats.cajaLocal = safeFloat(st.stats.cajaLocal + montoNum);
         flujoExternoHoy = montoNum;
 
-        // CORRECCIÓN ESTRUCTURAL: Integración del Aporte en el Flujo Operativo Consolidado
-        st.stats.ingresosLocal = safeFloat(st.stats.ingresosLocal + montoNum);
-        st.stats.flowIngreso = safeFloat(st.stats.flowIngreso + montoNum); 
-        st.stats.flujoMensual[mesStr].ingresos = safeFloat(st.stats.flujoMensual[mesStr].ingresos + montoNum); 
+        // CORRECCIÓN ESTRUCTURAL: Fondeo aislado del Flujo Operativo Consolidado
+        st.stats.ingresosCapital = safeFloat((st.stats.ingresosCapital || 0) + montoNum);
         
         let [y, mo, da] = m.fecha.split('-');
         let d = new Date(parseInt(y, 10), parseInt(mo, 10) - 1, parseInt(da, 10));
@@ -214,12 +212,12 @@ function processSingle(m) {
             }
 
             p.cant = safeFloat(p.cant - operadoNum); 
-            p.costo = safeFloat(Math.max(0, p.costo - costoDeVenta)); 
+            p.costo = safeFloat(p.costo - costoDeVenta); 
             
-            st.stats.capInvertido = safeFloat(Math.max(0, st.stats.capInvertido - costoDeVenta));
+            st.stats.capInvertido = safeFloat(st.stats.capInvertido - costoDeVenta);
             
             if (p.cant <= 0.0001) {
-                st.stats.capInvertido = safeFloat(Math.max(0, st.stats.capInvertido - p.costo)); 
+                st.stats.capInvertido = safeFloat(st.stats.capInvertido - p.costo); 
                 p.cant = 0;
                 p.costo = 0;
             }
@@ -400,7 +398,8 @@ function processSingle(m) {
     if (m.fecha !== st.lastDate) {
         st.stats.historyPatrimonio.push(currentPatrimonioTotal);
         st.stats.historyPatrimonioConStock.push(currentPatrimonioTotal); 
-        st.stats.historyLiquidez.push(st.stats.billetera);
+        // CORRECCIÓN: Alineación del Sparkline unificando la Liquidez Física Total
+        st.stats.historyLiquidez.push(safeFloat(st.stats.billetera + st.stats.cajaLocal));
         st.stats.historyInvertido.push(st.stats.capInvertido);
         st.stats.historyCajaLocal.push(st.stats.cajaLocal);
         st.stats.historyIngresosLocal.push(st.stats.ingresosLocal); 
@@ -416,7 +415,8 @@ function processSingle(m) {
         let idx = st.stats.historyPatrimonio.length - 1;
         st.stats.historyPatrimonio[idx] = currentPatrimonioTotal;
         st.stats.historyPatrimonioConStock[idx] = currentPatrimonioTotal;
-        st.stats.historyLiquidez[idx] = st.stats.billetera;
+        // CORRECCIÓN: Actualización in-place con la Liquidez unificada
+        st.stats.historyLiquidez[idx] = safeFloat(st.stats.billetera + st.stats.cajaLocal);
         st.stats.historyInvertido[idx] = st.stats.capInvertido;
         st.stats.historyCajaLocal[idx] = st.stats.cajaLocal;
         st.stats.historyIngresosLocal[idx] = st.stats.ingresosLocal;
