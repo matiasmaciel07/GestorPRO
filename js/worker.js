@@ -99,31 +99,44 @@ function processSingle(m) {
         st.stats.flujoMensual[mesStr] = { ingresos: 0, cuotas: 0, costoVida: 0 };
     }
 
-    if (m.tipo === 'Ahorro' || m.tipo === 'Transferencia Ahorro') {
-        if (m.tipo === 'Transferencia Ahorro') {
-            st.stats.cajaLocal = safeFloat(st.stats.cajaLocal - montoNum);
-        }
-        // "Ahorro" es externo, no descuenta de la caja local
+    if (m.tipo === 'Ahorro') {
+        // "Ahorro" es inyección externa directamente a la Billetera Bursátil
         st.stats.billetera = safeFloat(st.stats.billetera + montoNum);
         st.stats.totalAhorradoFisico = safeFloat(st.stats.totalAhorradoFisico + montoNum);
         st.stats.ahorroArsPuro = safeFloat(st.stats.ahorroArsPuro + montoNum);
         st.stats.ahorroHaciaBursatil = safeFloat(st.stats.ahorroHaciaBursatil + montoNum); 
         st.stats.flowAhorro = safeFloat(st.stats.flowAhorro + montoNum);
-        flujoExternoHoy = montoNum;
+        flujoExternoHoy = montoNum; // Aumenta el patrimonio neto total del sistema
         
         if (m.usd > 0) { 
             st.stats.usdComprado = safeFloat(st.stats.usdComprado + parseFloat(m.usd));
             st.stats.costoUsdArs = safeFloat(st.stats.costoUsdArs + montoNum); 
         }
     } 
-
+    else if (m.tipo === 'Transferencia Ahorro') {
+        // Sweep interno: Extracción de la Caja Local hacia la Billetera
+        st.stats.cajaLocal = safeFloat(st.stats.cajaLocal - montoNum);
+        st.stats.billetera = safeFloat(st.stats.billetera + montoNum);
+        
+        st.stats.totalAhorradoFisico = safeFloat(st.stats.totalAhorradoFisico + montoNum);
+        st.stats.ahorroArsPuro = safeFloat(st.stats.ahorroArsPuro + montoNum);
+        st.stats.ahorroHaciaBursatil = safeFloat(st.stats.ahorroHaciaBursatil + montoNum); 
+        st.stats.flowAhorro = safeFloat(st.stats.flowAhorro + montoNum);
+        // flujoExternoHoy se mantiene en 0: El patrimonio neto no cambia, solo cambia de bolsillo
+        
+        if (m.usd > 0) { 
+            st.stats.usdComprado = safeFloat(st.stats.usdComprado + parseFloat(m.usd));
+            st.stats.costoUsdArs = safeFloat(st.stats.costoUsdArs + montoNum); 
+        }
+    }
     else if (m.tipo === 'Rescate a Caja') {
+        // Inyección de emergencia: Billetera hacia Caja Local
         st.stats.billetera = safeFloat(st.stats.billetera - montoNum);
         st.stats.cajaLocal = safeFloat(st.stats.cajaLocal + montoNum);
         
-        // Reversión de las métricas de ahorro físico (Sin distorsionar los ingresos comerciales)
+        // Reversión estricta de las métricas de esfuerzo de ahorro protegiendo contra números negativos
         st.stats.totalAhorradoFisico = safeFloat(Math.max(0, st.stats.totalAhorradoFisico - montoNum));
-        st.stats.ahorroArsPuro = safeFloat(st.stats.ahorroArsPuro - montoNum);
+        st.stats.ahorroArsPuro = safeFloat(Math.max(0, st.stats.ahorroArsPuro - montoNum));
         st.stats.ahorroHaciaBursatil = safeFloat(Math.max(0, st.stats.ahorroHaciaBursatil - montoNum));
         st.stats.flowAhorro = safeFloat(Math.max(0, st.stats.flowAhorro - montoNum));
 
@@ -160,23 +173,51 @@ function processSingle(m) {
         let p = st.portafolio[m.activo];
         
         if (p && p.cant > 0.000001) {
-            // --- INICIO MEJORA: Protección contra shorting / descuadre de nominales ---
             let operadoNum = Math.min(cantNum, p.cant); // Nunca vende más de lo que posee
-            let ppp = p.costo / p.cant; // Precio Promedio Ponderado histórico
-            let costoDeVenta = safeFloat(operadoNum * ppp);
+            
+            // [MODIFICACIÓN ESTRUCTURAL]: Motor FIFO unificado para Días de Tenencia y Costo Contable Real
+            let cantRestante = operadoNum;
+            let lotes = st.lotesCompra[m.activo];
+            let fechaVentaMs = new Date(m.fecha).getTime();
+            let costoDeVentaFIFO = 0;
+            
+            while (cantRestante > 0 && lotes && lotes.length > 0) {
+                let lote = lotes[0];
+                let operadoLote = Math.min(cantRestante, lote.cant);
+                let diasMantenido = (fechaVentaMs - lote.fecha) / 86400000;
+                
+                // Extraer el costo proporcional matemático exacto de este lote específico
+                let proporcionCosto = safeFloat(operadoLote * (lote.costo / lote.cant));
+                costoDeVentaFIFO = safeFloat(costoDeVentaFIFO + proporcionCosto);
+                
+                st.stats.diasTenenciaTotal = safeFloat(st.stats.diasTenenciaTotal + (diasMantenido * operadoLote));
+                st.stats.operacionesCerradas = safeFloat(st.stats.operacionesCerradas + operadoLote);
+
+                lote.cant = safeFloat(lote.cant - operadoLote);
+                lote.costo = safeFloat(lote.costo - proporcionCosto); // Reducir costo del lote
+                cantRestante = safeFloat(cantRestante - operadoLote);
+                
+                if (lote.cant <= 0.0001) lotes.shift();
+            }
+
+            // Fallback de seguridad en caso de inconsistencia matemática extrema en portfolio
+            if (costoDeVentaFIFO === 0 && operadoNum > 0) {
+                let ppp = p.costo / p.cant;
+                costoDeVentaFIFO = safeFloat(operadoNum * ppp);
+            }
             
             p.cant = safeFloat(p.cant - operadoNum); 
-            p.costo = safeFloat(p.costo - costoDeVenta); 
-            st.stats.capInvertido = safeFloat(st.stats.capInvertido - costoDeVenta);
+            p.costo = safeFloat(Math.max(0, p.costo - costoDeVentaFIFO)); 
+            st.stats.capInvertido = safeFloat(Math.max(0, st.stats.capInvertido - costoDeVentaFIFO));
             
-            // Limpieza de basuras por precisión de coma flotante (Floating-point precision)
+            // Limpieza de basuras por precisión de coma flotante
             if (p.cant <= 0.0001) {
-                st.stats.capInvertido = safeFloat(st.stats.capInvertido - p.costo); 
+                st.stats.capInvertido = safeFloat(Math.max(0, st.stats.capInvertido - p.costo)); 
                 p.cant = 0;
                 p.costo = 0;
             }
             
-            let resultado = safeFloat(montoNum - costoDeVenta);
+            let resultado = safeFloat(montoNum - costoDeVentaFIFO);
             m.resultadoCalculado = resultado; 
             st.stats.ganRealizada = safeFloat(st.stats.ganRealizada + resultado); 
             st.stats.vTotal++; 
@@ -185,24 +226,6 @@ function processSingle(m) {
             st.stats.rendimientoPorActivo[m.activo] = safeFloat((st.stats.rendimientoPorActivo[m.activo] || 0) + resultado);
             let sector = p.sector || 'Otro';
             st.stats.atribucionSector[sector] = safeFloat((st.stats.atribucionSector[sector] || 0) + resultado);
-            
-            // --- Motor FIFO Corregido ---
-            let cantRestante = operadoNum; // Usa el operado real, no el cantNum en crudo
-            let lotes = st.lotesCompra[m.activo];
-            let fechaVentaMs = new Date(m.fecha).getTime();
-            
-            while (cantRestante > 0 && lotes && lotes.length > 0) {
-                let lote = lotes[0];
-                let operadoLote = Math.min(cantRestante, lote.cant);
-                let diasMantenido = (fechaVentaMs - lote.fecha) / 86400000;
-                
-                st.stats.diasTenenciaTotal = safeFloat(st.stats.diasTenenciaTotal + (diasMantenido * operadoLote));
-                st.stats.operacionesCerradas = safeFloat(st.stats.operacionesCerradas + operadoLote);
-
-                lote.cant = safeFloat(lote.cant - operadoLote);
-                cantRestante = safeFloat(cantRestante - operadoLote);
-                if (lote.cant <= 0.0001) lotes.shift();
-            }
         }
     } 
     else if (m.tipo === 'Rendimiento' || m.tipo === 'Dividendo') {
@@ -215,31 +238,27 @@ function processSingle(m) {
         st.stats.flowIngreso = safeFloat(st.stats.flowIngreso + montoNum); 
         st.stats.flujoMensual[mesStr].ingresos = safeFloat(st.stats.flujoMensual[mesStr].ingresos + montoNum); 
         
-        // --- INICIO MEJORA: Lógica Contable Profesional (COGS - Cost of Goods Sold) ---
         let costoVendidoEstimado = 0;
         if (st.stats.stockValorVenta > 0 && st.stats.stockCosto > 0) {
-            // Calculamos el ratio de costo sobre el precio de venta (Inverso del Markup)
             let ratioCosto = st.stats.stockCosto / st.stats.stockValorVenta;
             costoVendidoEstimado = safeFloat(montoNum * ratioCosto);
             
-            // Protección: Evita que el costo deducido supere el inventario físico real
+            // Protección: Evita que el costo deducido supere el inventario físico contable
             costoVendidoEstimado = Math.min(costoVendidoEstimado, st.stats.stockCosto);
         } else {
-            // Fallback: Si no hay base de datos de stock previo, asumimos un margen de 0 
-            // temporalmente para no arrastrar errores matemáticos a futuro.
+            // Fallback temporal si no hay base de datos de stock
             costoVendidoEstimado = montoNum; 
         }
         
         st.stats.stockCosto = safeFloat(Math.max(0, st.stats.stockCosto - costoVendidoEstimado));
         st.stats.stockValorVenta = safeFloat(Math.max(0, st.stats.stockValorVenta - montoNum));
-        // --- FIN MEJORA ---
         
         let [y, mo, da] = m.fecha.split('-');
         let d = new Date(parseInt(y, 10), parseInt(mo, 10) - 1, parseInt(da, 10));
         let dayOfWeek = d.getDay();
         st.stats.ventasPorDiaSemana[dayOfWeek] = safeFloat(st.stats.ventasPorDiaSemana[dayOfWeek] + montoNum);
         st.diasOperadosPorDiaSemana[dayOfWeek].add(m.fecha);
-    } 
+    }
     else if (m.tipo === 'Gasto Local') {
         st.stats.cajaLocal = safeFloat(st.stats.cajaLocal - montoNum);
         st.stats.gastosLocal = safeFloat(st.stats.gastosLocal + montoNum);
