@@ -185,7 +185,7 @@ function processSingle(m) {
             // 3. Resultado de la Venta (Ganancia Realizada sobre el costo promedio)
             let resultado = safeFloat(montoNum - costoDeVenta);
             
-            // 4. Motor FIFO Aislado: Exclusivo para métricas operativas (Días de Tenencia)
+            // 4. Motor FIFO Aislado: Exclusivo para métricas operativas de tiempo (Sandbox)
             let cantRestante = operadoNum;
             let lotes = st.lotesCompra[m.activo];
             let fechaVentaMs = new Date(m.fecha).getTime();
@@ -195,17 +195,12 @@ function processSingle(m) {
                 let operadoLote = Math.min(cantRestante, lote.cant);
                 let diasMantenido = (fechaVentaMs - lote.fecha) / 86400000; // 86400000 ms = 1 día
                 
-                // Acumuladores estadísticos puros
+                // Acumuladores estadísticos puros (Independientes del balance de caja)
                 st.stats.diasTenenciaTotal = safeFloat(st.stats.diasTenenciaTotal + (diasMantenido * operadoLote));
                 st.stats.operacionesCerradas = safeFloat(st.stats.operacionesCerradas + operadoLote);
 
-                // Descuento de nominales en la cola FIFO
+                // Descuento estricto de nominales en la cola FIFO sin afectar métricas de precio
                 lote.cant = safeFloat(lote.cant - operadoLote);
-                
-                // Mantenimiento interno del costo del lote (solo para coherencia del array FIFO)
-                let proporcionCostoLote = safeFloat(operadoLote * (lote.costo / (lote.cant + operadoLote)));
-                lote.costo = safeFloat(lote.costo - proporcionCostoLote); 
-                
                 cantRestante = safeFloat(cantRestante - operadoLote);
                 
                 if (lote.cant <= 0.0001) lotes.shift();
@@ -246,22 +241,20 @@ function processSingle(m) {
         st.stats.flowIngreso = safeFloat(st.stats.flowIngreso + montoNum); 
         st.stats.flujoMensual[mesStr].ingresos = safeFloat(st.stats.flujoMensual[mesStr].ingresos + montoNum); 
         
-        let costoVendidoEstimado = 0;
+        let costoVendidoEstimado = montoNum; // Fallback por defecto si no hay historial
         
-        // [MATEMÁTICA PROFESIONAL] Uso de acumuladores históricos para evitar distorsión de ratio por desgaste
+        // [REFACTORIZACIÓN ARQUITECTURA] Cálculo inmutable del Markup
         if (st.stats.stockValorVentaHistorico > 0 && st.stats.stockCostoHistorico > 0) {
-            let ratioCostoHistorico = st.stats.stockCostoHistorico / st.stats.stockValorVentaHistorico;
+            // Se calcula el Costo sobre Venta utilizando únicamente los acumuladores históricos que no sufren desgaste
+            let ratioCostoHistorico = safeFloat(st.stats.stockCostoHistorico / st.stats.stockValorVentaHistorico);
             costoVendidoEstimado = safeFloat(montoNum * ratioCostoHistorico);
             
-            // Actualizamos la métrica de Markup para el dashboard de rentabilidad
+            // Actualización del Markup Promedio puro para dashboards (Venta / Costo)
             st.stats.markupPromedio = safeFloat(st.stats.stockValorVentaHistorico / st.stats.stockCostoHistorico);
-            
-            // Protección Estricta: Evita que el costo deducido supere el inventario físico contable actual
-            costoVendidoEstimado = Math.min(costoVendidoEstimado, st.stats.stockCosto);
-        } else {
-            // Fallback contable: Si no hay historial registrado, deduce el 100% de la venta para no crear stock fantasma
-            costoVendidoEstimado = montoNum; 
         }
+        
+        // Protección Estricta: Evita deducir más costo del inventario físico existente en caja
+        costoVendidoEstimado = Math.min(costoVendidoEstimado, st.stats.stockCosto);
         
         st.stats.stockCosto = safeFloat(Math.max(0, st.stats.stockCosto - costoVendidoEstimado));
         st.stats.stockValorVenta = safeFloat(Math.max(0, st.stats.stockValorVenta - montoNum));
