@@ -1820,7 +1820,7 @@ export const view = {
                 tr.dataset.diffId = m.id;
                 
                 let badgeClass = this.getBadgeClass(m.tipo);
-                let descStr = m.activo ? `${m.cantidad||''}x ${m.activo}` : (m.categoria ? m.categoria : (m.proveedor ? m.proveedor : (m.socio ? m.socio : (m.entidad ? m.entidad : (m.tipo === 'Ajuste Stock Inicial' ? 'Inventario Base' : (m.usd?`u$s ${m.usd}`:'-'))))));
+                let descStr = m.activo ? `${m.cantidad||''}x ${m.activo}` : (m.categoria ? m.categoria : (m.proveedor ? m.proveedor : (m.socio ? m.socio : (m.entidad ? m.entidad : (m.tipo === 'Ajuste Stock Inicial' ? 'Inventario Base' : (m.tipo === 'Rescate a Caja' ? 'Inyección Liquidez a Caja' : (m.tipo === 'Transferencia Ahorro' ? 'Fuga hacia Billetera Bursátil' : (m.usd?`u$s ${m.usd}`:'-'))))))));
                 let desc = DOMPurify.sanitize(descStr);
                 
                 if (m.notas) {
@@ -1871,8 +1871,7 @@ export const view = {
                     tr.dataset.zen = this.zenMode;
 
                     let badgeClass = this.getBadgeClass(m.tipo);
-                    let descStr = m.activo ? `${m.cantidad||''}x ${m.activo}` : (m.categoria ? m.categoria : (m.proveedor ? m.proveedor : (m.socio ? m.socio : (m.entidad ? m.entidad : (m.tipo === 'Ajuste Stock Inicial' ? 'Inventario Base' : (m.usd?`u$s ${m.usd}`:'-'))))));
-                    let desc = DOMPurify.sanitize(descStr);
+                    let descStr = m.activo ? `${m.cantidad||''}x ${m.activo}` : (m.categoria ? m.categoria : (m.proveedor ? m.proveedor : (m.socio ? m.socio : (m.entidad ? m.entidad : (m.tipo === 'Ajuste Stock Inicial' ? 'Inventario Base' : (m.tipo === 'Rescate a Caja' ? 'Inyección Liquidez a Caja' : (m.tipo === 'Transferencia Ahorro' ? 'Fuga hacia Billetera Bursátil' : (m.usd?`u$s ${m.usd}`:'-'))))))));
                     
                     if (m.notas) {
                         let markdownHtml = DOMPurify.sanitize(marked.parse(m.notas));
@@ -1967,8 +1966,7 @@ export const view = {
                     let detailBuffer = [`<h3 style="margin-bottom: 20px; font-size:1.2rem; font-weight: 900; letter-spacing: 0.5px; color: var(--color-primary); text-shadow: var(--shadow-neon-primary); border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">Movimientos del ${fStr}</h3>`];
                     movs.forEach(m => {
                         let c = this.getBadgeClass(m.tipo);
-                        let descStr = m.activo ? `${m.cantidad||''}x ${m.activo}` : (m.categoria ? m.categoria : (m.proveedor ? m.proveedor : (m.socio ? m.socio : (m.entidad ? m.entidad : (m.tipo === 'Ajuste Stock Inicial' ? 'Inventario Base' : (m.usd?`u$s ${m.usd}`:'-'))))));
-                        let desc = DOMPurify.sanitize(descStr);
+                        let descStr = m.activo ? `${m.cantidad||''}x ${m.activo}` : (m.categoria ? m.categoria : (m.proveedor ? m.proveedor : (m.socio ? m.socio : (m.entidad ? m.entidad : (m.tipo === 'Ajuste Stock Inicial' ? 'Inventario Base' : (m.tipo === 'Rescate a Caja' ? 'Inyección Liquidez a Caja' : (m.tipo === 'Transferencia Ahorro' ? 'Fuga hacia Billetera Bursátil' : (m.usd?`u$s ${m.usd}`:'-'))))))));
                         
                         detailBuffer.push(
                             `<div style="padding:15px 20px; background:var(--bg-input); border-radius:12px; margin-bottom:12px; display:flex; justify-content:space-between; align-items:center; border: 1px solid var(--border-color); box-shadow: var(--shadow-card); transition: transform 0.2s;">`,

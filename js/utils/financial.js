@@ -246,10 +246,10 @@ export const FinancialMath = {
             const tipoStr = (t.tipo || "").toLowerCase().trim();
             const catStr = (t.categoria || "").toLowerCase().trim();
 
-            if (tipoStr === 'ingreso local' || tipoStr === 'ingreso' || tipoStr === 'venta') {
+            // Validación extendida para incluir el Rescate a Caja
+            if (tipoStr === 'ingreso local' || tipoStr === 'ingreso' || tipoStr === 'venta' || tipoStr === 'rescate a caja') {
                 ingresosBrutos += monto;
             } else {
-                // Validación estricta para inyecciones de costo de inventario
                 const esGastoLogistica = tipoStr === 'gasto' && (catStr.includes('proveedor') || catStr.includes('logística') || catStr.includes('logistica') || catStr.includes('insumos'));
                 
                 const esPagoDirecto = tipoStr === 'pago proveedor' || 

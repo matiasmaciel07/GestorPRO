@@ -38,7 +38,12 @@
     "type": "git",
     "url": "git+https://github.com/matiasmaciel07/GestorPRO.git"
   },
-  "keywords": ["finance", "manager", "electron", "tracker"],
+  "keywords": [
+    "finance",
+    "manager",
+    "electron",
+    "tracker"
+  ],
   "type": "commonjs",
   "bugs": {
     "url": "https://github.com/matiasmaciel07/GestorPRO/issues"
