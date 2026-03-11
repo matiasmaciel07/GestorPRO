@@ -176,49 +176,56 @@ function processSingle(m) {
         if (p && p.cant > 0.000001) {
             let operadoNum = Math.min(cantNum, p.cant); // Nunca vende más de lo que posee
             
-            // [MODIFICACIÓN ESTRUCTURAL]: Motor FIFO unificado para Días de Tenencia y Costo Contable Real
+            // 1. Cálculo estricto del PPP (Precio Promedio Ponderado)
+            let ppp = safeFloat(p.costo / p.cant);
+            
+            // 2. Costo de Venta Contable basado en PPP para evitar desajustes residuales
+            let costoDeVenta = safeFloat(operadoNum * ppp);
+            
+            // 3. Resultado de la Venta (Ganancia Realizada sobre el costo promedio)
+            let resultado = safeFloat(montoNum - costoDeVenta);
+            
+            // 4. Motor FIFO Aislado: Exclusivo para métricas operativas (Días de Tenencia)
             let cantRestante = operadoNum;
             let lotes = st.lotesCompra[m.activo];
             let fechaVentaMs = new Date(m.fecha).getTime();
-            let costoDeVentaFIFO = 0;
             
             while (cantRestante > 0 && lotes && lotes.length > 0) {
                 let lote = lotes[0];
                 let operadoLote = Math.min(cantRestante, lote.cant);
-                let diasMantenido = (fechaVentaMs - lote.fecha) / 86400000;
+                let diasMantenido = (fechaVentaMs - lote.fecha) / 86400000; // 86400000 ms = 1 día
                 
-                // Extraer el costo proporcional matemático exacto de este lote específico
-                let proporcionCosto = safeFloat(operadoLote * (lote.costo / lote.cant));
-                costoDeVentaFIFO = safeFloat(costoDeVentaFIFO + proporcionCosto);
-                
+                // Acumuladores estadísticos puros
                 st.stats.diasTenenciaTotal = safeFloat(st.stats.diasTenenciaTotal + (diasMantenido * operadoLote));
                 st.stats.operacionesCerradas = safeFloat(st.stats.operacionesCerradas + operadoLote);
 
+                // Descuento de nominales en la cola FIFO
                 lote.cant = safeFloat(lote.cant - operadoLote);
-                lote.costo = safeFloat(lote.costo - proporcionCosto); // Reducir costo del lote
+                
+                // Mantenimiento interno del costo del lote (solo para coherencia del array FIFO)
+                let proporcionCostoLote = safeFloat(operadoLote * (lote.costo / (lote.cant + operadoLote)));
+                lote.costo = safeFloat(lote.costo - proporcionCostoLote); 
+                
                 cantRestante = safeFloat(cantRestante - operadoLote);
                 
                 if (lote.cant <= 0.0001) lotes.shift();
             }
 
-            // Fallback de seguridad en caso de inconsistencia matemática extrema en portfolio
-            if (costoDeVentaFIFO === 0 && operadoNum > 0) {
-                let ppp = p.costo / p.cant;
-                costoDeVentaFIFO = safeFloat(operadoNum * ppp);
-            }
-            
+            // Aplicación de repercusiones estructurales sobre el Portafolio
             p.cant = safeFloat(p.cant - operadoNum); 
-            p.costo = safeFloat(Math.max(0, p.costo - costoDeVentaFIFO)); 
-            st.stats.capInvertido = safeFloat(Math.max(0, st.stats.capInvertido - costoDeVentaFIFO));
+            p.costo = safeFloat(Math.max(0, p.costo - costoDeVenta)); 
             
-            // Limpieza de basuras por precisión de coma flotante
+            // Impacto global en capital invertido basado en Valuación PPP
+            st.stats.capInvertido = safeFloat(Math.max(0, st.stats.capInvertido - costoDeVenta));
+            
+            // Rutina de limpieza por precisión de coma flotante (Garbage cleanup)
             if (p.cant <= 0.0001) {
                 st.stats.capInvertido = safeFloat(Math.max(0, st.stats.capInvertido - p.costo)); 
                 p.cant = 0;
                 p.costo = 0;
             }
             
-            let resultado = safeFloat(montoNum - costoDeVentaFIFO);
+            // Repercusiones finales en métricas de ganancia
             m.resultadoCalculado = resultado; 
             st.stats.ganRealizada = safeFloat(st.stats.ganRealizada + resultado); 
             st.stats.vTotal++; 
