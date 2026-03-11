@@ -143,6 +143,10 @@ export const UIMetrics = {
         // Auditoría Comercial Constante
         this.actualizarAuditoriaComercial(s, div, isUSD);
 
+        // Aislamiento de Inyecciones de Capital (Fase 1)
+        const inyecciones = s.ingresosCapital !== undefined ? s.ingresosCapital : (s.entradasCajaNoOperativas || 0);
+        safeEl('val-pat-inyecciones', this.fmt(inyecciones, div, isUSD));
+
         // Dólar Promedio Histórico
         const lblInvSub1 = document.getElementById('lbl-inv-sub1');
         if(lblInvSub1) lblInvSub1.innerText = 'Dólar Promedio Histórico';
