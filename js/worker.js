@@ -100,7 +100,10 @@ function processSingle(m) {
     }
 
     if (m.tipo === 'Ahorro' || m.tipo === 'Transferencia Ahorro') {
-        st.stats.cajaLocal = safeFloat(st.stats.cajaLocal - montoNum);
+        if (m.tipo === 'Transferencia Ahorro') {
+            st.stats.cajaLocal = safeFloat(st.stats.cajaLocal - montoNum);
+        }
+        // "Ahorro" es externo, no descuenta de la caja local
         st.stats.billetera = safeFloat(st.stats.billetera + montoNum);
         st.stats.totalAhorradoFisico = safeFloat(st.stats.totalAhorradoFisico + montoNum);
         st.stats.ahorroArsPuro = safeFloat(st.stats.ahorroArsPuro + montoNum);
@@ -118,19 +121,7 @@ function processSingle(m) {
         st.stats.billetera = safeFloat(st.stats.billetera - montoNum);
         st.stats.cajaLocal = safeFloat(st.stats.cajaLocal + montoNum);
         
-        // 1. Integración al Ecosistema Comercial (Sankey, Ingresos y Evolución)
-        st.stats.ingresosLocal = safeFloat(st.stats.ingresosLocal + montoNum);
-        st.stats.flowIngreso = safeFloat(st.stats.flowIngreso + montoNum);
-        st.stats.flujoMensual[mesStr].ingresos = safeFloat((st.stats.flujoMensual[mesStr].ingresos || 0) + montoNum);
-        
-        // 2. Impacto en el Termómetro de Días (Gráficos Comerciales)
-        let [y, mo, da] = m.fecha.split('-');
-        let d = new Date(parseInt(y, 10), parseInt(mo, 10) - 1, parseInt(da, 10));
-        let dayOfWeek = d.getDay();
-        st.stats.ventasPorDiaSemana[dayOfWeek] = safeFloat((st.stats.ventasPorDiaSemana[dayOfWeek] || 0) + montoNum);
-        st.diasOperadosPorDiaSemana[dayOfWeek].add(m.fecha);
-
-        // 3. Reversión de las métricas de ahorro físico
+        // Reversión de las métricas de ahorro físico (Sin distorsionar los ingresos comerciales)
         st.stats.totalAhorradoFisico = safeFloat(Math.max(0, st.stats.totalAhorradoFisico - montoNum));
         st.stats.ahorroArsPuro = safeFloat(st.stats.ahorroArsPuro - montoNum);
         st.stats.ahorroHaciaBursatil = safeFloat(Math.max(0, st.stats.ahorroHaciaBursatil - montoNum));

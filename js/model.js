@@ -392,8 +392,8 @@ export const model = {
         
         if (index !== -1) {
             let nuevosMovs = [...this._rawData.movimientos];
-            // Preservamos el ID original inmutablemente
-            nuevosMovs[index] = { ...nuevosMovs[index], ...datosActualizados, id: nuevosMovs[index].id };
+            // Reemplazo íntegro del objeto para evitar contaminación de estado con campos antiguos
+            nuevosMovs[index] = { ...datosActualizados, id: nuevosMovs[index].id };
             this._data.movimientos = nuevosMovs;
             await this.guardarLocal();
             await this.procesarMotor(false); 

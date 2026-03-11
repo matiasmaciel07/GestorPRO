@@ -1052,13 +1052,15 @@ export const view = {
 
             let totalComercial = s.billetera + s.capInvertido + (s.stockCosto || 0) + (s.cajaLocal || 0);
 
+            let liquidezTotal = s.billetera + (s.cajaLocal || 0);
+
             if (this.zenMode) {
                 this.DOM.dashTotal.innerText = "100.0%";
-                this.DOM.dashLiquidez.innerText = totalComercial > 0 ? ((s.billetera / totalComercial) * 100).toFixed(1) + "%" : "0%";
+                this.DOM.dashLiquidez.innerText = totalComercial > 0 ? ((liquidezTotal / totalComercial) * 100).toFixed(1) + "%" : "0%";
                 this.DOM.dashInvertido.innerText = totalComercial > 0 ? ((s.capInvertido / totalComercial) * 100).toFixed(1) + "%" : "0%";
             } else {
                 UIMetrics.animateValue(this.DOM.dashTotal, totalComercial, (val) => this.fmt(val, modelData.dolarBlue, modelData.vistaUSD));
-                UIMetrics.animateValue(this.DOM.dashLiquidez, s.billetera, (val) => this.fmt(val, modelData.dolarBlue, modelData.vistaUSD));
+                UIMetrics.animateValue(this.DOM.dashLiquidez, liquidezTotal, (val) => this.fmt(val, modelData.dolarBlue, modelData.vistaUSD));
                 UIMetrics.animateValue(this.DOM.dashInvertido, s.capInvertido, (val) => this.fmt(val, modelData.dolarBlue, modelData.vistaUSD));
             }
 
@@ -1767,6 +1769,7 @@ export const view = {
             UIMetrics.animateValue(this.DOM.histNeto, modelData.stats.ahorroArsPuro, (val) => this.zenMode ? "---" : this.fmt(val, modelData.dolarBlue, modelData.vistaUSD));
 
             this.historialData = modelData.movimientos.slice().reverse();
+            this.DOM.vsTbody.innerHTML = ''; // Fuerza repintado total al editar
             this.renderVirtualScroll();
         });
     },
@@ -1945,12 +1948,16 @@ export const view = {
                 movs.forEach(m => {
                     let c = this.getBadgeClass(m.tipo);
                     
-                    // Optimización de rendimiento y prevención de fallos de CSS
                     let dotColor = 'var(--color-primary)';
-                    if (c.includes('bg-retiro')) dotColor = 'var(--color-down)';
-                    else if (c.includes('bg-ahorro-transf') || c.includes('bg-ingreso-local') || c.includes('bg-rendimiento') || c.includes('bg-sociedad')) dotColor = 'var(--color-up)';
+                    if (c.includes('bg-retiro') || c.includes('bg-gasto-local')) dotColor = 'var(--color-down)';
+                    else if (c.includes('bg-ingreso-local') || c.includes('bg-prestamo-pago')) dotColor = 'var(--color-up)';
+                    else if (c.includes('bg-gasto-vida')) dotColor = 'var(--color-orange)';
+                    else if (c.includes('bg-proveedor')) dotColor = 'var(--color-warning)';
+                    else if (c.includes('bg-sociedad')) dotColor = 'var(--color-purple)';
+                    else if (c.includes('bg-ahorro-transf') || c.includes('bg-prestamo-alta')) dotColor = 'var(--color-primary)';
                     else if (c.includes('bg-compra')) dotColor = 'var(--color-accent)';
-                    else if (c.includes('bg-venta') || c.includes('bg-gasto-local') || c.includes('bg-gasto-vida') || c.includes('bg-proveedor') || c.includes('bg-prestamo-pago')) dotColor = 'var(--color-warning)';
+                    else if (c.includes('bg-venta')) dotColor = 'var(--color-chart)';
+                    else if (c.includes('bg-rendimiento')) dotColor = '#1AA7EC';
                     
                     let dot = document.createElement('div');
                     dot.className = `cal-dot`;
