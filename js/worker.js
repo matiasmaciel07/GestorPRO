@@ -158,13 +158,18 @@ function processSingle(m) {
     else if (m.tipo === 'Venta') {
         st.stats.billetera = safeFloat(st.stats.billetera + montoNum); 
         let p = st.portafolio[m.activo];
+        
         if (p && p.cant > 0.000001) {
-            let ppp = p.costo / p.cant;
-            let costoDeVenta = safeFloat(cantNum * ppp);
-            p.cant = safeFloat(p.cant - cantNum); 
+            // --- INICIO MEJORA: Protección contra shorting / descuadre de nominales ---
+            let operadoNum = Math.min(cantNum, p.cant); // Nunca vende más de lo que posee
+            let ppp = p.costo / p.cant; // Precio Promedio Ponderado histórico
+            let costoDeVenta = safeFloat(operadoNum * ppp);
+            
+            p.cant = safeFloat(p.cant - operadoNum); 
             p.costo = safeFloat(p.costo - costoDeVenta); 
             st.stats.capInvertido = safeFloat(st.stats.capInvertido - costoDeVenta);
             
+            // Limpieza de basuras por precisión de coma flotante (Floating-point precision)
             if (p.cant <= 0.0001) {
                 st.stats.capInvertido = safeFloat(st.stats.capInvertido - p.costo); 
                 p.cant = 0;
@@ -181,19 +186,21 @@ function processSingle(m) {
             let sector = p.sector || 'Otro';
             st.stats.atribucionSector[sector] = safeFloat((st.stats.atribucionSector[sector] || 0) + resultado);
             
-            let cantRestante = cantNum;
+            // --- Motor FIFO Corregido ---
+            let cantRestante = operadoNum; // Usa el operado real, no el cantNum en crudo
             let lotes = st.lotesCompra[m.activo];
             let fechaVentaMs = new Date(m.fecha).getTime();
             
             while (cantRestante > 0 && lotes && lotes.length > 0) {
                 let lote = lotes[0];
-                let operado = Math.min(cantRestante, lote.cant);
+                let operadoLote = Math.min(cantRestante, lote.cant);
                 let diasMantenido = (fechaVentaMs - lote.fecha) / 86400000;
-                st.stats.diasTenenciaTotal = safeFloat(st.stats.diasTenenciaTotal + (diasMantenido * operado));
-                st.stats.operacionesCerradas = safeFloat(st.stats.operacionesCerradas + operado);
+                
+                st.stats.diasTenenciaTotal = safeFloat(st.stats.diasTenenciaTotal + (diasMantenido * operadoLote));
+                st.stats.operacionesCerradas = safeFloat(st.stats.operacionesCerradas + operadoLote);
 
-                lote.cant = safeFloat(lote.cant - operado);
-                cantRestante = safeFloat(cantRestante - operado);
+                lote.cant = safeFloat(lote.cant - operadoLote);
+                cantRestante = safeFloat(cantRestante - operadoLote);
                 if (lote.cant <= 0.0001) lotes.shift();
             }
         }
@@ -208,10 +215,24 @@ function processSingle(m) {
         st.stats.flowIngreso = safeFloat(st.stats.flowIngreso + montoNum); 
         st.stats.flujoMensual[mesStr].ingresos = safeFloat(st.stats.flujoMensual[mesStr].ingresos + montoNum); 
         
-        let markupActual = st.stats.stockCosto > 0 ? (st.stats.stockValorVenta / st.stats.stockCosto) : 1;
-        let costoVendidoEstimado = safeFloat(montoNum / markupActual);
+        // --- INICIO MEJORA: Lógica Contable Profesional (COGS - Cost of Goods Sold) ---
+        let costoVendidoEstimado = 0;
+        if (st.stats.stockValorVenta > 0 && st.stats.stockCosto > 0) {
+            // Calculamos el ratio de costo sobre el precio de venta (Inverso del Markup)
+            let ratioCosto = st.stats.stockCosto / st.stats.stockValorVenta;
+            costoVendidoEstimado = safeFloat(montoNum * ratioCosto);
+            
+            // Protección: Evita que el costo deducido supere el inventario físico real
+            costoVendidoEstimado = Math.min(costoVendidoEstimado, st.stats.stockCosto);
+        } else {
+            // Fallback: Si no hay base de datos de stock previo, asumimos un margen de 0 
+            // temporalmente para no arrastrar errores matemáticos a futuro.
+            costoVendidoEstimado = montoNum; 
+        }
+        
         st.stats.stockCosto = safeFloat(Math.max(0, st.stats.stockCosto - costoVendidoEstimado));
         st.stats.stockValorVenta = safeFloat(Math.max(0, st.stats.stockValorVenta - montoNum));
+        // --- FIN MEJORA ---
         
         let [y, mo, da] = m.fecha.split('-');
         let d = new Date(parseInt(y, 10), parseInt(mo, 10) - 1, parseInt(da, 10));
