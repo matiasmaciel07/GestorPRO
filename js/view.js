@@ -145,14 +145,44 @@ export const view = {
         });
         document.body.appendChild(tooltipContainer);
 
+        // --- SOLUCIÓN ARQUITECTÓNICA: ESCUDO MUTACIONAL (PREVENCIÓN DE TOOLTIPS NATIVOS) ---
+        // Extrae y destruye los atributos 'title' milisegundos antes de que el navegador los procese.
+        const stripNativeTitles = (nodeList) => {
+            nodeList.forEach(node => {
+                if (node.nodeType === 1) { // ELEMENT_NODE
+                    if (node.hasAttribute('title')) {
+                        node.setAttribute('data-original-title', node.getAttribute('title'));
+                        node.removeAttribute('title');
+                    }
+                    // Búsqueda profunda en sub-nodos inyectados vía innerHTML
+                    const children = node.querySelectorAll('[title]');
+                    for (let i = 0; i < children.length; i++) {
+                        children[i].setAttribute('data-original-title', children[i].getAttribute('title'));
+                        children[i].removeAttribute('title');
+                    }
+                }
+            });
+        };
+
+        // Escaneo de purga inicial
+        stripNativeTitles([document.body]);
+
+        // Interceptor en tiempo real para inyecciones del Virtual Scroll y Reactividad
+        const domObserver = new MutationObserver((mutations) => {
+            for (let mutation of mutations) {
+                if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
+                    stripNativeTitles(mutation.addedNodes);
+                }
+            }
+        });
+        domObserver.observe(document.body, { childList: true, subtree: true });
+
+        // --- MANEJADORES DE EVENTOS BLINDADOS ---
         document.body.addEventListener('mouseover', (e) => {
-            const target = e.target.closest('[title], [data-tooltip]');
+            const target = e.target.closest('[data-tooltip], [data-original-title]');
             if (target) {
-                const titleText = target.getAttribute('title') || target.getAttribute('data-tooltip');
+                const titleText = target.getAttribute('data-tooltip') || target.getAttribute('data-original-title');
                 if (!titleText) return;
-                
-                target.setAttribute('data-original-title', titleText);
-                target.removeAttribute('title'); 
                 
                 tooltipContainer.innerHTML = titleText;
                 tooltipContainer.style.display = 'block';
@@ -166,11 +196,16 @@ export const view = {
         });
 
         document.body.addEventListener('mouseout', (e) => {
-            const target = e.target.closest('[data-original-title]');
+            const target = e.target.closest('[data-tooltip], [data-original-title]');
             if (target) {
-                target.setAttribute('title', target.getAttribute('data-original-title'));
+                // CORRECCIÓN DE BUBBLING: Evita que el Tooltip parpadee (flicker) o se duplique 
+                // visualmente cuando el mouse transita entre elementos hijos dentro del mismo contenedor.
+                if (e.relatedTarget && target.contains(e.relatedTarget)) return;
+
                 tooltipContainer.style.opacity = '0';
-                setTimeout(() => { if (tooltipContainer.style.opacity === '0') tooltipContainer.style.display = 'none'; }, 150);
+                setTimeout(() => { 
+                    if (tooltipContainer.style.opacity === '0') tooltipContainer.style.display = 'none'; 
+                }, 150);
             }
         });
 
@@ -581,9 +616,9 @@ export const view = {
                 fecha: DOMPurify.sanitize(this.DOM.opFecha.value),
                 activo: DOMPurify.sanitize(this.DOM.opActivo.value.trim().toUpperCase()),
                 sector: DOMPurify.sanitize(this.DOM.opSector.value.trim()),
-                cant: parseFloat(this.DOM.opCantidad.value) || 0,
+                cant: this.parseNumber(this.DOM.opCantidad.value) || 0,
                 monto: this.parseNumber(this.DOM.opMonto.value),
-                usd: parseFloat(this.DOM.opUsd.value) || 0
+                usd: this.parseNumber(this.DOM.opUsd.value) || 0
             };
         } else {
             let t = this.DOM.ecoTipo.value;
@@ -2394,14 +2429,6 @@ export const view = {
             // 2. Tasa Real Ajustada por Inflación (Ecuación de Fisher)
             const rAnualReal = ((1 + tAnualNeto) / (1 + inflacion)) - 1;
 
-            // 3. Frecuencia de Capitalización Dinámica (Derivación de Tasa Efectiva)
-            let rMensual = 0;
-            if (frecCapitalizacion === 'anual') rMensual = Math.pow(1 + rAnualReal, 1/12) - 1;
-            else if (frecCapitalizacion === 'trimestral') rMensual = Math.pow(1 + rAnualReal/4, 4/12) - 1; 
-            else if (frecCapitalizacion === 'mensual') rMensual = rAnualReal / 12; 
-            else if (frecCapitalizacion === 'diaria') rMensual = Math.pow(1 + rAnualReal/365, 365/12) - 1; 
-            else if (frecCapitalizacion === 'continua') rMensual = rAnualReal / 12; // Base diferencial para la integral
-
             let lbl = [];
             let dAp = [];
             let dInt = [];
@@ -2413,18 +2440,23 @@ export const view = {
             for(let anio = 1; anio <= ans; anio++) {
                 for (let mes = 1; mes <= 12; mes++) {
                     aportesAcumulados += cuotaMensualEnCurso;
-                    
+                    capitalActual += cuotaMensualEnCurso;
+
+                    // Lógica de Capitalización Algorítmica Pura
                     if (frecCapitalizacion === 'continua') {
-                        // Integral Exponencial Directa sobre el flujo
-                        // FV = PV * e^(rt) + PMT * (e^(rt) - 1) / r
-                        if (rMensual === 0) {
-                            capitalActual += cuotaMensualEnCurso;
-                        } else {
-                            capitalActual = capitalActual * Math.exp(rMensual) + cuotaMensualEnCurso * ((Math.exp(rMensual) - 1) / rMensual);
-                        }
-                    } else {
-                        capitalActual += cuotaMensualEnCurso;
-                        capitalActual *= (1 + rMensual); // Capitalización iterativa discreta
+                        let rMensualCont = Math.log(1 + rAnualReal) / 12;
+                        capitalActual = capitalActual * Math.exp(rMensualCont);
+                    } else if (frecCapitalizacion === 'diaria') {
+                        let rDiaria = Math.pow(1 + rAnualReal, 1/365) - 1;
+                        capitalActual = capitalActual * Math.pow(1 + rDiaria, 30.416);
+                    } else if (frecCapitalizacion === 'mensual') {
+                        let rMensual = rAnualReal / 12;
+                        capitalActual *= (1 + rMensual);
+                    } else if (frecCapitalizacion === 'trimestral' && mes % 3 === 0) {
+                        let rTrimestral = rAnualReal / 4;
+                        capitalActual *= (1 + rTrimestral);
+                    } else if (frecCapitalizacion === 'anual' && mes === 12) {
+                        capitalActual *= (1 + rAnualReal);
                     }
                 }
                 
@@ -2497,7 +2529,8 @@ export const view = {
             document.getElementById('fire-res-gasto').innerHTML = this.zenMode ? '---' : `<span class="privacy-mask" style="font-size: 2.5rem; font-weight: 900; color: var(--color-down); text-shadow: var(--shadow-neon-down);">$ ${this.fmtStr(gastoTotal, 1, false)}</span>`;
             document.getElementById('fire-res-objetivo').innerHTML = this.zenMode ? '---' : `<span class="privacy-mask" style="font-size: 2.5rem; font-weight: 900; color: var(--color-purple); text-shadow: var(--shadow-neon-purple);">$ ${this.fmtStr(targetFIRE, 1, false)}</span>`;
 
-            let r = cagrRealPct / 100;
+            // Refactorización a Tasa Efectiva Mensual para soportar DCA (Dollar Cost Averaging) Real
+            let rMensual = Math.pow(1 + (cagrRealPct / 100), 1/12) - 1;
             let capitalAcumulado = capIni;
             let anos = 0;
             const maxAnos = 60;
@@ -2509,7 +2542,9 @@ export const view = {
             if(capIni < targetFIRE) {
                 while(capitalAcumulado < targetFIRE && anos < maxAnos) {
                     anos++;
-                    capitalAcumulado = (capitalAcumulado * (1 + r)) + (ahorroMes * 12);
+                    for (let m = 0; m < 12; m++) {
+                        capitalAcumulado = (capitalAcumulado + ahorroMes) * (1 + rMensual);
+                    }
                     lbl.push(`Año ${anos}`);
                     dataCapital.push(capitalAcumulado);
                     dataObjetivo.push(targetFIRE);
@@ -2546,6 +2581,7 @@ export const view = {
                 let exitos = 0;
                 let iteraciones = 1000;
                 let horizonteSimulacion = 40; 
+                let rAnual = cagrRealPct / 100;
 
                 for(let i = 0; i < iteraciones; i++) {
                     let capMC = capIni;
@@ -2557,10 +2593,10 @@ export const view = {
                         let u1 = Math.random(), u2 = Math.random();
                         if(u1 === 0) u1 = 0.00001;
                         let z0 = Math.sqrt(-2.0 * Math.log(u1)) * Math.cos(2.0 * Math.PI * u2);
-                        let rSim = r + z0 * volReal;
+                        let rSim = rAnual + z0 * volReal;
 
                         if (!esRetiro) {
-                            capMC = (capMC * (1 + rSim)) + (ahorroMes * 12);
+                            capMC = (capMC + (ahorroMes * 12)) * (1 + rSim);
                             if (capMC >= targetFIRE) esRetiro = true;
                         } else {
                             let currentSwr = swrSeguro / 100;
@@ -2569,7 +2605,7 @@ export const view = {
                                 currentSwr = currentSwr * 0.8;
                             }
                             let retiro = capMC * currentSwr;
-                            capMC = (capMC * (1 + rSim)) - retiro;
+                            capMC = (capMC - retiro) * (1 + rSim);
                         }
 
                         if (capMC <= 0) {

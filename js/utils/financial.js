@@ -57,8 +57,9 @@ export const FinancialMath = {
         
         let sharpe = stdDev > 0 ? ((mean - riskFreePorPeriodo) / stdDev) * Math.sqrt(factorAnualizacion) : 0;
         
-        let negReturns = retornosDiarios.filter(r => r < 0);
-        let downVar = negReturns.length > 0 ? negReturns.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / negReturns.length : 0;
+        // REFACTOR ALGORÍTMICO: Cálculo real de Desviación a la Baja (Sortino) utilizando el total de períodos (len) y el RiskFree pivot
+        let negReturns = retornosDiarios.filter(r => r < riskFreePorPeriodo);
+        let downVar = len > 0 ? negReturns.reduce((a, b) => a + Math.pow(b - riskFreePorPeriodo, 2), 0) / len : 0;
         let sortino = downVar > 0 ? ((mean - riskFreePorPeriodo) / Math.sqrt(downVar)) * Math.sqrt(factorAnualizacion) : 0;
 
         // RETORNO ESTRICTO NUMÉRICO: Evita TypeError al delegar el formateo a worker.js o UI.
