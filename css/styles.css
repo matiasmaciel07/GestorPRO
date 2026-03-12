@@ -300,8 +300,7 @@ input:focus, select:focus, textarea:focus { border-color: var(--color-primary); 
 .flow-container { display: flex; flex-direction: column; align-items: center; padding: 30px 0; font-family: 'Inter', sans-serif; position: relative; }
 .flow-node { background: var(--bg-panel); backdrop-filter: var(--glass-blur); border: 1px solid var(--border-color); border-radius: 16px; padding: 20px 15px; text-align: center; min-width: 150px; position: relative; z-index: 2; box-shadow: var(--shadow-card); transition: transform 0.3s, box-shadow 0.3s; }
 .flow-node:hover { transform: scale(1.05); z-index: 10; border-color: var(--color-primary); box-shadow: var(--shadow-neon-primary); }
-.flow-node.source { background: rgba(0, 255, 149, 0.05); border-color: rgba(0, 255, 149, 0.3); box-shadow: var(--shadow-neon-up); margin: 0 auto; max-width: 300px; }
-.flow-title { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 8px; font-weight: 900; letter-spacing: 0.5px; }
+.flow-node.source { background: rgba(0, 255, 149, 0.05); border-color: rgba(0, 255, 149, 0.3); box-shadow: var(--shadow-neon-up); margin: 0 auto; min-width: 250px; max-width: 450px; padding: 25px 20px; }.flow-title { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 8px; font-weight: 900; letter-spacing: 0.5px; }
 .flow-value { font-size: 1.5rem; font-weight: 900; font-family: 'Roboto Mono', monospace; }
 .flow-node::before { content: ''; position: absolute; top: -50px; left: 50%; width: 1px; height: 50px; background: rgba(139, 149, 165, 0.3); z-index: 1; }
 .flow-node.source::before { display: none; }

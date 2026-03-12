@@ -509,6 +509,7 @@ const controller = {
         }
         
         let mov = { 
+            id: this.state.editingId || crypto.randomUUID(),
             fecha: formData.fecha, 
             fechaMs: new Date(formData.fecha + "T00:00:00").getTime(),
             tipo: formData.tipo, 
@@ -563,6 +564,7 @@ const controller = {
         }
         else if (formData.tipo === 'Reparto Sociedad') {
             mov.socio = formData.proveedor;
+            model.guardarProveedor(mov.socio, 'Socio');
         }
         else if (formData.tipo === 'Alta Préstamo') {
             mov.entidad = formData.entidad;
@@ -571,6 +573,8 @@ const controller = {
             mov.cuotas = formData.cuotas || 1;
 
             if(!mov.entidad) return events.emit('app:toast', { msg: "Entidad emisora no definida", type: "error" });
+            
+            model.guardarProveedor(mov.entidad, 'Entidad Bancaria');
         } 
         else if (formData.tipo === 'Pago Préstamo') {
             mov.prestamoAsociado = formData.prestamoAsociado;

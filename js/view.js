@@ -1038,7 +1038,7 @@ export const view = {
                 if (hint) hint.innerText = "Si se deja en blanco, se suma al costo sin proyectar ganancia.";
             }
             
-            let provs = this.currentModelData?.proveedores || [];
+            let provs = (this.currentModelData?.proveedores || []).filter(p => p.categoria !== 'Socio' && p.categoria !== 'Entidad Bancaria');
             let datalistHtml = '<datalist id="lista-proveedores">';
             provs.forEach(p => { datalistHtml += `<option value="${p.nombre}">`; });
             datalistHtml += '</datalist>';
@@ -1063,8 +1063,13 @@ export const view = {
         else if (t === 'Reparto Sociedad') {
             this.DOM.bloqueCategoriasEco.classList.remove('is-hidden');
             this.DOM.grupoEcoProveedor.classList.remove('is-hidden');
-            this.DOM.ecoProveedor.placeholder = "Ej: Nombre del Socio";
-            this.DOM.ecoProveedor.outerHTML = `<input type="text" id="eco-proveedor" placeholder="Ej: Nombre del Socio">`;
+            
+            let socios = (this.currentModelData?.proveedores || []).filter(p => p.categoria === 'Socio');
+            let datalistHtml = '<datalist id="lista-socios">';
+            socios.forEach(s => { datalistHtml += `<option value="${s.nombre}">`; });
+            datalistHtml += '</datalist>';
+            
+            this.DOM.ecoProveedor.outerHTML = `<input type="text" id="eco-proveedor" list="lista-socios" placeholder="Ej: Nombre del Socio">` + datalistHtml;
             this.DOM.ecoProveedor = document.getElementById('eco-proveedor');
         }
         else if (t === 'Ajuste Stock Inicial' || t === 'Correccion Stock') {
@@ -1081,6 +1086,17 @@ export const view = {
         }
         else if (t === 'Alta Préstamo') {
             this.DOM.bloquePrestamosAlta.classList.remove('is-hidden');
+            
+            let entidades = (this.currentModelData?.proveedores || []).filter(p => p.categoria === 'Entidad Bancaria');
+            let datalistHtml = '<datalist id="lista-entidades">';
+            entidades.forEach(e => { datalistHtml += `<option value="${e.nombre}">`; });
+            datalistHtml += '</datalist>';
+            
+            let currentEnt = document.getElementById('eco-prestamo-entidad');
+            if (currentEnt) {
+                currentEnt.outerHTML = `<input type="text" id="eco-prestamo-entidad" list="lista-entidades" placeholder="Ej: Banco Galicia">` + datalistHtml;
+                this.DOM.ecoPrestamoEntidad = document.getElementById('eco-prestamo-entidad');
+            }
         }
         else if (t === 'Pago Préstamo') {
             this.DOM.bloquePrestamosPago.classList.remove('is-hidden');
