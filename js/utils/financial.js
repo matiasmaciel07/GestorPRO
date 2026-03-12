@@ -236,7 +236,7 @@ export const FinancialMath = {
             return true;
         });
     },
-    
+
     calcularPromediosDesglosados(montoTotal, temporalidad, transacciones = []) {
         if (montoTotal === 0) return { mes: 0, semana: 0, dia: 0, hora: 0 };
         
@@ -292,13 +292,13 @@ export const FinancialMath = {
 
     calcularAuditoriaComercial(transacciones) {
         let ingresosBrutos = 0;
-        let costosProveedoresLogistica = 0;
-        let costosOperativosEstructurales = 0;
+        let costosProveedoresLogistica = 0; // COGS: Costo de Mercadería Vendida (Afecta Inventario)
+        let costosOperativosEstructurales = 0; // OPEX: Gastos de mantener el local
+        let amortizacionesFinancieras = 0; // Fuga de capital por deuda
 
-        // Matrices Regex precompiladas para evaluación matricial O(1) por iteración
+        // Matrices Regex precompiladas
         const rxIngreso = /ingreso|venta|cobro/i;
-        const rxLogistica = /proveedor|logística|logistica|insumo|mercadería|mercaderia|stock|compra merca/i;
-        const rxAmortizacion = /amortización|amortizacion|deuda|préstamo/i;
+        const rxLogistica = /logística|logistica|insumo|mercadería|mercaderia|stock|compra merca/i;
 
         transacciones.forEach(t => {
             const monto = Math.abs(parseFloat(t.monto || t.amount || 0));
@@ -306,24 +306,28 @@ export const FinancialMath = {
 
             const tipoStr = String(t.tipo || "").trim();
             const catStr = String(t.categoria || "").trim();
-            const estadoPagoStr = String(t.estadoPago || "").trim();
 
             if (rxIngreso.test(tipoStr)) {
                 ingresosBrutos += monto;
             } else {
-                const esPagoContado = tipoStr.toLowerCase().includes('pago') && estadoPagoStr.toLowerCase() !== 'pendiente';
+                // CORRECCIÓN MATEMÁTICA: Aislar operaciones que tocan inventario real.
+                const esPagoProveedorDirecto = tipoStr === 'Pago Proveedor';
                 const esGastoLogistica = tipoStr.toLowerCase().includes('gasto') && rxLogistica.test(catStr);
-                const esAmortizacionDirecta = rxAmortizacion.test(tipoStr) || rxAmortizacion.test(catStr);
+                
+                // Las deudas y préstamos son obligaciones, no mercadería.
+                const esAmortizacionDeuda = tipoStr === 'Amortización Deuda a Proveedor' || tipoStr === 'Pago Préstamo';
 
-                // Clasificación estricta (COGS vs OPEX)
-                if (esGastoLogistica || esPagoContado || esAmortizacionDirecta) {
+                if (esPagoProveedorDirecto || esGastoLogistica) {
                     costosProveedoresLogistica += monto;
+                } else if (esAmortizacionDeuda) {
+                    amortizacionesFinancieras += monto;
                 } else if (tipoStr.toLowerCase().includes('gasto local') || tipoStr.toLowerCase().includes('operativo')) {
                     costosOperativosEstructurales += monto;
                 }
             }
         });
 
+        // El inventario solo debe reflejar los costos directos de inyección de mercadería
         const inventarioBaseCosto = costosProveedoresLogistica;
         const ingresosBrutosNetos = Math.max(0, ingresosBrutos - costosProveedoresLogistica);
 
@@ -332,7 +336,8 @@ export const FinancialMath = {
             ingresosBrutosNetos: ingresosBrutosNetos,
             inventarioBaseCosto: inventarioBaseCosto,
             costoOperativoDeducido: costosProveedoresLogistica,
-            costoOperativoEstructural: costosOperativosEstructurales // Nueva métrica para analíticas de Fase 6
+            costoOperativoEstructural: costosOperativosEstructurales,
+            amortizacionesFinancieras: amortizacionesFinancieras // Métrica saneada
         };
     },
 

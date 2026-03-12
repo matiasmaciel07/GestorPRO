@@ -133,7 +133,6 @@ const controller = {
             }
         });
 
-        // Mutación inmutable segura compatible con la Fase 1 del Modelo
         events.on('ui:borrar-categoria', async (data) => {
             let ctx = data.tipo === 'Gasto Local' ? 'Local' : 'Personal';
             const categoriasActuales = model.data.categorias[ctx] || [];
@@ -142,7 +141,6 @@ const controller = {
             if(index > -1) {
                 const nuevasCategorias = categoriasActuales.filter((_, i) => i !== index);
                 
-                // Forzamos actualización reactiva inmutable a través del Proxy
                 model._data.categorias = { ...model.data.categorias, [ctx]: nuevasCategorias }; 
                 await storage.set('gfp_categorias', model.data.categorias);
                 
@@ -222,7 +220,12 @@ const controller = {
         events.on('ui:cancelar-edicion', () => this.limpiarModoEdicion());
 
         events.on('ui:deshacer-operacion', () => { model.deshacer(); events.emit('app:toast', { msg: "Operación deshecha", type: "success" }); });
-        events.on('ui:borrar-operacion', (id) => { model.borrarMovimiento(parseInt(id, 10)); events.emit('app:toast', { msg: "Registro eliminado", type: "success" }); });
+        
+        // CORRECCIÓN: Prevención de NaN al borrar registros. Se inyecta el ID puro (string o int)
+        events.on('ui:borrar-operacion', (id) => { 
+            model.borrarMovimiento(id); 
+            events.emit('app:toast', { msg: "Registro eliminado", type: "success" }); 
+        });
 
         events.on('ui:add-watchlist', (data) => {
             if(!data.activo || isNaN(data.precio) || data.precio<=0) return events.emit('app:toast', { msg:"Datos inválidos", type:"error" });

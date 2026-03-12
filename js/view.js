@@ -657,7 +657,6 @@ export const view = {
                 formData.entidad = DOMPurify.sanitize(this.DOM.ecoPrestamoEntidad.value.trim());
                 formData.montoTotalDevolver = this.parseNumber(this.DOM.ecoPrestamoTotal.value);
                 
-                // CORRECCIÓN: Migración de variables físicas desde Controller hacia la Vista
                 const capInput = document.getElementById('eco-prestamo-capital');
                 formData.capital = capInput && capInput.value ? this.parseNumber(capInput.value) : 0;
                 
@@ -665,7 +664,8 @@ export const view = {
                 formData.cuotas = cuotasInput && cuotasInput.value ? parseInt(cuotasInput.value, 10) : 1;
             }
             if (t === 'Pago Préstamo') {
-                formData.prestamoAsociado = parseInt(this.DOM.ecoPrestamoId.value) || 0;
+                // CORRECCIÓN: Respetar la integridad del UUID criptográfico. Eliminado parseInt().
+                formData.prestamoAsociado = DOMPurify.sanitize(this.DOM.ecoPrestamoId.value);
             }
         }
         
