@@ -1,6 +1,6 @@
 {
   "name": "gestor-financiero-pro",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Programa Institucional de Gestión Financiera y Portfolio Tracker",
   "main": "main.js",
   "scripts": {
