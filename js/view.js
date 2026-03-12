@@ -1033,7 +1033,6 @@ export const view = {
         }
     },
 
-    // FASE 3: Aplicación de Mapeo de Profundidad y Sombras Neón en Dashboard
     renderDashboardBase(modelData) {
         ErrorHandler.catchBoundary('Dashboard Principal', 'dashboard', () => {
             let s = modelData.stats;
@@ -1062,7 +1061,6 @@ export const view = {
             let totalComercial = s.billetera + s.capInvertido + (s.stockCosto || 0) + (s.cajaLocal || 0);
             let liquidezTotal = s.billetera + (s.cajaLocal || 0);
 
-            // CORRECCIÓN ESTRUCTURAL: Mostrar la subdivisión explícita en la UI para evitar confusión en el balance patrimonial
             if (this.DOM.dashLiquidezSub) {
                 let txtBilletera = this.fmtStr(s.billetera, modelData.dolarBlue, modelData.vistaUSD);
                 let txtCaja = this.fmtStr((s.cajaLocal || 0), modelData.dolarBlue, modelData.vistaUSD);
@@ -1071,13 +1069,13 @@ export const view = {
             }
 
             if (this.zenMode) {
-                this.DOM.dashTotal.innerText = "100.0%";
-                this.DOM.dashLiquidez.innerText = totalComercial > 0 ? ((liquidezTotal / totalComercial) * 100).toFixed(1) + "%" : "0%";
-                this.DOM.dashInvertido.innerText = totalComercial > 0 ? ((s.capInvertido / totalComercial) * 100).toFixed(1) + "%" : "0%";
+                if(this.DOM.dashTotal) this.DOM.dashTotal.innerText = "100.0%";
+                if(this.DOM.dashLiquidez) this.DOM.dashLiquidez.innerText = totalComercial > 0 ? ((liquidezTotal / totalComercial) * 100).toFixed(1) + "%" : "0%";
+                if(this.DOM.dashInvertido) this.DOM.dashInvertido.innerText = totalComercial > 0 ? ((s.capInvertido / totalComercial) * 100).toFixed(1) + "%" : "0%";
             } else {
-                UIMetrics.animateValue(this.DOM.dashTotal, totalComercial, (val) => this.fmt(val, modelData.dolarBlue, modelData.vistaUSD));
-                UIMetrics.animateValue(this.DOM.dashLiquidez, liquidezTotal, (val) => this.fmt(val, modelData.dolarBlue, modelData.vistaUSD));
-                UIMetrics.animateValue(this.DOM.dashInvertido, s.capInvertido, (val) => this.fmt(val, modelData.dolarBlue, modelData.vistaUSD));
+                if(this.DOM.dashTotal) UIMetrics.animateValue(this.DOM.dashTotal, totalComercial, (val) => this.fmt(val, modelData.dolarBlue, modelData.vistaUSD));
+                if(this.DOM.dashLiquidez) UIMetrics.animateValue(this.DOM.dashLiquidez, liquidezTotal, (val) => this.fmt(val, modelData.dolarBlue, modelData.vistaUSD));
+                if(this.DOM.dashInvertido) UIMetrics.animateValue(this.DOM.dashInvertido, s.capInvertido, (val) => this.fmt(val, modelData.dolarBlue, modelData.vistaUSD));
             }
 
             let histLength = 30;
@@ -1089,30 +1087,29 @@ export const view = {
             ChartRenderer.drawDashboardSparkline('spark-dash-liquidez', arrLiquidez, '#00FF95'); 
             ChartRenderer.drawDashboardSparkline('spark-dash-invertido', arrInvertido, '#FF4D8A'); 
 
-            if (this.DOM.lblPatSub1) {
-                let cagrStr = `<span class="${s.cagr >= 0 ? 'texto-verde' : 'texto-rojo'} privacy-mask" style="font-weight:900;">${(s.cagr || 0).toFixed(2)}%</span>`;
-                this.DOM.lblPatSub1.innerText = "TIR Proyectada (XIRR)";
-                this.DOM.valPatSub1.innerHTML = cagrStr;
-                
-                let tagHtml = modelData.vistaUSD ? 'USD' : '$';
-                this.DOM.lblPatSub2.innerText = "Ahorro de Bolsillo Total";
-                this.DOM.valPatSub2.innerHTML = this.zenMode ? `<strong>-</strong>` : `<strong>${tagHtml} <span class="privacy-mask">${this.fmtStr(s.ahorroArsPuro, modelData.dolarBlue, modelData.vistaUSD)}</span></strong>`;
-                
-                let supStr = `<strong style="color: var(--color-primary); text-shadow: var(--shadow-neon-primary);">${(s.fondoSupervivenciaMeses || 0).toFixed(1)} Meses</strong>`;
-                let tasaAhStr = `<span class="texto-verde privacy-mask">${(s.tasaAhorroReal || 0).toFixed(1)}%</span>`;
-                
-                this.DOM.lblLiqSub1.innerText = "Fondo de Reserva Operativo";
-                this.DOM.valLiqSub1.innerHTML = supStr;
-                
-                this.DOM.lblLiqSub2.innerText = "Tasa de Retención Real";
-                this.DOM.valLiqSub2.innerHTML = tasaAhStr;
-                
-                this.DOM.lblInvSub1.innerText = "Dólar Promedio Histórico";
-                this.DOM.valInvSub1.innerHTML = `<strong>$ <span class="privacy-mask">${this.fmtStr(s.precioPromedioDolar || 0, 1, false)}</span></strong>`;
-                
-                this.DOM.lblInvSub2.innerText = "Trades Realizados";
-                this.DOM.valInvSub2.innerHTML = `<strong style="color: var(--color-accent); text-shadow: var(--shadow-neon-accent);">${s.vTotal || 0}</strong>`;
-            }
+            // FASE 5: BLINDAJE DE NODOS DOM (Solución al fallo de módulo protegido)
+            let cagrStr = `<span class="${s.cagr >= 0 ? 'texto-verde' : 'texto-rojo'} privacy-mask" style="font-weight:900;">${(s.cagr || 0).toFixed(2)}%</span>`;
+            if (this.DOM.lblPatSub1) this.DOM.lblPatSub1.innerText = "TIR Proyectada (XIRR)";
+            if (this.DOM.valPatSub1) this.DOM.valPatSub1.innerHTML = cagrStr;
+            
+            let tagHtml = modelData.vistaUSD ? 'USD' : '$';
+            if (this.DOM.lblPatSub2) this.DOM.lblPatSub2.innerText = "Ahorro de Bolsillo Total";
+            if (this.DOM.valPatSub2) this.DOM.valPatSub2.innerHTML = this.zenMode ? `<strong>-</strong>` : `<strong>${tagHtml} <span class="privacy-mask">${this.fmtStr(s.ahorroArsPuro, modelData.dolarBlue, modelData.vistaUSD)}</span></strong>`;
+            
+            let supStr = `<strong style="color: var(--color-primary); text-shadow: var(--shadow-neon-primary);">${(s.fondoSupervivenciaMeses || 0).toFixed(1)} Meses</strong>`;
+            let tasaAhStr = `<span class="texto-verde privacy-mask">${(s.tasaAhorroReal || 0).toFixed(1)}%</span>`;
+            
+            if (this.DOM.lblLiqSub1) this.DOM.lblLiqSub1.innerText = "Fondo de Reserva Operativo";
+            if (this.DOM.valLiqSub1) this.DOM.valLiqSub1.innerHTML = supStr;
+            
+            if (this.DOM.lblLiqSub2) this.DOM.lblLiqSub2.innerText = "Tasa de Retención Real";
+            if (this.DOM.valLiqSub2) this.DOM.valLiqSub2.innerHTML = tasaAhStr;
+            
+            if (this.DOM.lblInvSub1) this.DOM.lblInvSub1.innerText = "Dólar Promedio Histórico";
+            if (this.DOM.valInvSub1) this.DOM.valInvSub1.innerHTML = `<strong>$ <span class="privacy-mask">${this.fmtStr(s.precioPromedioDolar || 0, 1, false)}</span></strong>`;
+            
+            if (this.DOM.lblInvSub2) this.DOM.lblInvSub2.innerText = "Trades Realizados";
+            if (this.DOM.valInvSub2) this.DOM.valInvSub2.innerHTML = `<strong style="color: var(--color-accent); text-shadow: var(--shadow-neon-accent);">${s.vTotal || 0}</strong>`;
 
             let ganColor = s.ganRealizada >= 0 ? 'texto-verde' : 'texto-rojo';
             let ganSign = s.ganRealizada > 0 ? '+' : (s.ganRealizada < 0 ? '-' : '');
@@ -1126,7 +1123,7 @@ export const view = {
                 `${(s.capInvertido > 0 ? (s.rendExtra / s.capInvertido * 100).toFixed(1) : 0)}%` : 
                 this.fmtStr(s.rendExtra, modelData.dolarBlue, modelData.vistaUSD);
             
-            this.DOM.dashGanancia.innerHTML = `
+            if (this.DOM.dashGanancia) this.DOM.dashGanancia.innerHTML = `
                 <div style="display:flex; align-items:center; gap:10px; width:100%; overflow:hidden;">
                     <span class="${ganColor}" style="font-size:1.6rem; font-weight:900;">${ganSign}</span>
                     ${this.zenMode ? '' : tagHtm}
@@ -1134,7 +1131,7 @@ export const view = {
                 </div>
             `;
             
-            this.DOM.dashPasivos.innerHTML = `
+            if (this.DOM.dashPasivos) this.DOM.dashPasivos.innerHTML = `
                 <div style="display:flex; align-items:center; gap:10px; width:100%; overflow:hidden;">
                     <span class="texto-primario" style="font-size:1.6rem; font-weight:900;">+</span>
                     ${this.zenMode ? '' : tagHtm}
@@ -1143,7 +1140,7 @@ export const view = {
             `;
 
             let wr = s.vTotal > 0 ? (s.vGanadas/s.vTotal*100).toFixed(1) : 0;
-            this.DOM.dashWinrate.innerHTML = `
+            if (this.DOM.dashWinrate) this.DOM.dashWinrate.innerHTML = `
                 <div style="display:flex; align-items:baseline; gap:10px; width:100%; overflow:hidden;">
                     <span class="data-font" style="font-size:1.8rem; font-weight:900; color: var(--color-warning); text-shadow: var(--shadow-neon-warning);">${wr}%</span>
                     <span style="font-size:1rem; color:var(--text-muted); font-weight:700; white-space:nowrap;">(${s.vGanadas}/${s.vTotal})</span>
@@ -1155,7 +1152,7 @@ export const view = {
                 if(s.rendimientoPorActivo[k] > maxR) { maxR = s.rendimientoPorActivo[k]; topAct = k; }
             }
             
-            this.DOM.dashTop.innerHTML = `
+            if (this.DOM.dashTop) this.DOM.dashTop.innerHTML = `
                 <div style="display:flex; align-items:center; width:100%; overflow:hidden;">
                     <span class="data-font" style="font-size:1.8rem; font-weight:900; color:var(--color-purple); text-shadow: var(--shadow-neon-purple); white-space:nowrap; text-overflow:ellipsis; overflow:hidden;">${DOMPurify.sanitize(topAct !== '-' ? topAct : '-')}</span>
                 </div>
