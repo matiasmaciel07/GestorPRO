@@ -481,7 +481,10 @@ const controller = {
             }
         } 
         else if(formData.tipo === 'Transferencia Ahorro' || formData.tipo === 'Ahorro' || formData.tipo === 'Rescate a Caja') { 
+            // FASE 4: Validaciones Silenciosas para Flujos de Capital
+            // Se garantiza que estas transferencias inter-cajas no arrastren ruido al P&L.
             if(formData.usd > 0) mov.usd = formData.usd;
+            mov.contexto = 'Capital'; // Marca explícita para segregarlo de los bucles comerciales
         }
         else if (['Gasto Local', 'Gasto Familiar'].includes(formData.tipo)) {
             mov.categoria = formData.categoria;

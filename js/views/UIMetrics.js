@@ -122,7 +122,9 @@ export const UIMetrics = {
     actualizarAuditoriaComercial(stats, divisor, isUSD) {
         const safeEl = (id, val) => { const e = document.getElementById(id); if (e) e.innerHTML = val; };
         
-        let ingresosDeclarados = stats.ingresosLocal || 0;
+        // FASE 4: Mapeo exacto de los Ingresos Brutos Declarados (Facturación Pura) al nodo principal del flujo
+        let ingresosDeclarados = stats.ingresosBrutosDeclaradosPuros !== undefined ? stats.ingresosBrutosDeclaradosPuros : (stats.ingresosLocal || 0);
+        safeEl('flow-val-ingreso', this.fmt(ingresosDeclarados, divisor, isUSD));
         safeEl('val-ingresos-brutos-declarados', this.fmt(ingresosDeclarados, divisor, isUSD));
 
         let ingresosNetos = stats.ingresosNetosAuditoria !== undefined ? stats.ingresosNetosAuditoria : ingresosDeclarados;
@@ -143,9 +145,8 @@ export const UIMetrics = {
         // Auditoría Comercial Constante
         this.actualizarAuditoriaComercial(s, div, isUSD);
 
-        // Aislamiento de Inyecciones de Capital (Fase 1)
-        const inyecciones = s.ingresosCapital !== undefined ? s.ingresosCapital : (s.entradasCajaNoOperativas || 0);
-        safeEl('val-pat-inyecciones', this.fmt(inyecciones, div, isUSD));
+        // FASE 4: Ingreso Total Consolidado (Facturación Orgánica + Fondeos/Inyecciones)
+        safeEl('met-ingreso-local', this.fmt(s.ingresosConsolidadosGlobal !== undefined ? s.ingresosConsolidadosGlobal : (s.ingresosLocal || 0), div, isUSD));
 
         // Dólar Promedio Histórico
         const lblInvSub1 = document.getElementById('lbl-inv-sub1');

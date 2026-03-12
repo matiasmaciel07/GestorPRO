@@ -157,6 +157,9 @@ export const model = {
                 if (type === 'ENGINE_RESULT') {
                     // Auditoría Comercial Correctiva antes de inyectar al estado global
                     const auditoria = FinancialMath.calcularAuditoriaComercial(payload.movimientosOrdenados);
+                    
+                    // FASE 4: Inyección de la Métrica Pura de Facturación para el Sankey y P&L
+                    payload.stats.ingresosBrutosDeclaradosPuros = auditoria.ingresosBrutosDeclarados;
                     payload.stats.ingresosNetosAuditoria = auditoria.ingresosBrutosNetos;
                     payload.stats.inventarioBaseCorregido = auditoria.inventarioBaseCosto;
 
