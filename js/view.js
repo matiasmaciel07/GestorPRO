@@ -573,6 +573,13 @@ export const view = {
             if (t === 'Alta Préstamo') {
                 formData.entidad = DOMPurify.sanitize(this.DOM.ecoPrestamoEntidad.value.trim());
                 formData.montoTotalDevolver = this.parseNumber(this.DOM.ecoPrestamoTotal.value);
+                
+                // CORRECCIÓN: Migración de variables físicas desde Controller hacia la Vista
+                const capInput = document.getElementById('eco-prestamo-capital');
+                formData.capital = capInput && capInput.value ? this.parseNumber(capInput.value) : 0;
+                
+                const cuotasInput = document.getElementById('eco-prestamo-cuotas');
+                formData.cuotas = cuotasInput && cuotasInput.value ? parseInt(cuotasInput.value, 10) : 1;
             }
             if (t === 'Pago Préstamo') {
                 formData.prestamoAsociado = parseInt(this.DOM.ecoPrestamoId.value) || 0;
@@ -1325,7 +1332,7 @@ export const view = {
                 for(let i=0; i<=6; i++) { dataArr.push(s.termometroDias[i] || 0); }
                 
                 const getCSS = (varName, fallBack) => getComputedStyle(document.documentElement).getPropertyValue(varName).trim() || fallBack;
-                const colorUp = getCSS('--color-up', '#00FF95'); // Actualizado a FASE 1
+                const colorUp = getCSS('--color-up', '#00FF95'); 
 
                 if (this.chartTermometro) {
                     this.chartTermometro.data.datasets[0].data = dataArr;
@@ -1358,7 +1365,9 @@ export const view = {
 
             if (this.DOM.metStockCosto) this.DOM.metStockCosto.innerHTML = this.zenMode ? "- %" : this.fmt(s.stockCosto, modelData.dolarBlue, modelData.vistaUSD);
             if (this.DOM.metStockRetail) this.DOM.metStockRetail.innerHTML = this.zenMode ? "- %" : this.fmt(s.stockValorVenta, modelData.dolarBlue, modelData.vistaUSD);
-            if (this.DOM.metRatioLiquidez) this.DOM.metRatioLiquidez.innerText = `${s.liquidezAcida.toFixed(2)}x / ${s.liquidezCorriente.toFixed(2)}x`;
+            
+            // CORRECCIÓN APLICADA: Blindaje matemático ante valores vacíos de liquidez
+            if (this.DOM.metRatioLiquidez) this.DOM.metRatioLiquidez.innerText = `${(s.liquidezAcida || 0).toFixed(2)}x / ${(s.liquidezCorriente || 0).toFixed(2)}x`;
             
             if (this.DOM.metHedgeStock) {
                 let inflacionTotal = 0;
@@ -1425,10 +1434,6 @@ export const view = {
                     this.DOM.metCargaPct.style.color = "var(--color-down)";
                 }
             }
-
-            // ---------------------------------------------------------
-            // RECONSTRUCCIÓN NEO-POP / CYBER-FINANCE DE LAS TABLAS
-            // ---------------------------------------------------------
 
             if (this.DOM.tbodyProveedores) {
                 let statsProvs = s.proveedoresDetalle || {};
@@ -1592,6 +1597,7 @@ export const view = {
             }
         });
     },
+
     renderAjustesInflacion() {
         ErrorHandler.catchBoundary('Ajustes de Inflación', 'lista-inflacion', () => {
             if(!this.currentModelData || !this.currentModelData.inflacion) return;
@@ -1629,6 +1635,11 @@ export const view = {
 
     renderPortafolioVivo(modelData) {
         ErrorHandler.catchBoundary('Portafolio Bursátil', 'portafolio', () => {
+            // CORRECCIÓN: Prevención estricta de Memory Leak al destruir instancias previas de Sparklines de Chart.js
+            if (typeof ChartRenderer !== 'undefined' && ChartRenderer.destroySparklines) {
+                ChartRenderer.destroySparklines();
+            }
+
             this.DOM.tbodyPortafolio.innerHTML = '';
             if(Object.keys(modelData.portafolio).length === 0) {
                 this.DOM.tbodyPortafolio.innerHTML = `<tr><td colspan="7" style="text-align:center; padding: 60px; color:var(--text-muted); font-size: 1.1rem; font-weight: 800;"><svg width="64" height="64" style="margin-bottom:15px; opacity:0.5;"><use href="#icon-empty"></use></svg><br>Portafolio sin posiciones activas. Registre nuevas operaciones bursátiles para iniciar el seguimiento de mercado.</td></tr>`;
@@ -1663,7 +1674,6 @@ export const view = {
 
                 let ratioText = this.CEDEAR_RATIOS[activo] ? `<br><span style="font-size:10px; color:var(--color-primary); font-weight:900;">RATIO ${this.CEDEAR_RATIOS[activo]}:1</span>` : '';
                 
-                // Se removió el precio original del avatar para inyectarlo en la columna de precio
                 row.querySelector('.td-avatar').innerHTML = `<div class="asset-wrapper" style="display:flex; align-items:center; gap:12px;"><span class="asset-badge" style="padding:6px 12px; border-radius:8px; font-weight:900; border-left: 4px solid ${mainColor}; background: ${mainColor}22; color:${mainColor}; box-shadow: -2px 0 10px ${mainColor}40;">${actSafe}</span><div><span style="font-size:11px;color:var(--text-muted); font-weight: 900; text-transform:uppercase;">${secSafe}</span>${ratioText}</div></div>`;
                 row.querySelector('.td-cant').innerHTML = `<strong style="font-size: 1.1rem;">${d.cant}</strong>`;
                 row.querySelector('.td-cant').style.textAlign = 'right';
@@ -1689,7 +1699,6 @@ export const view = {
                     
                     let pColor = document.documentElement.getAttribute('data-theme') === 'light' ? '#0A0D14' : 'var(--text-main)';
                     
-                    // Renderizado Dual (ARS Local + USD Subyacente)
                     let originalPriceHtml = (apiData.originalPrice && !this.zenMode) 
                         ? `<span style="display:block; font-size: 0.85rem; color: var(--color-up); font-weight: 900; letter-spacing: 0.5px; opacity: 0.9;">USD ${apiData.originalPrice.toFixed(2)}</span>` 
                         : '';
@@ -1980,6 +1989,39 @@ export const view = {
             let grid = this.DOM.calDias;
             grid.innerHTML = '';
             
+            // CORRECCIÓN: Event Delegation único. Evita Memory Leak por Closures huérfanos.
+            grid.onclick = (e) => {
+                const dayNode = e.target.closest('.cal-day');
+                if (!dayNode || !dayNode.dataset.date) return;
+                
+                const fStr = dayNode.dataset.date;
+                let movs = modelData.stats.movimientosPorFecha && modelData.stats.movimientosPorFecha[fStr] 
+                            ? modelData.stats.movimientosPorFecha[fStr] 
+                            : [];
+                            
+                const p = this.DOM.calDetalle;
+                if(movs.length === 0) {
+                    p.innerHTML = `<div style="text-align:center; color:var(--text-muted); padding: 40px; border: 2px dashed var(--border-color); border-radius: 12px;"><h3 style="margin-bottom: 10px; font-size:1.2rem; font-weight: 900; letter-spacing: 1px;">${fStr}</h3><p style="font-size: 1rem;">Día sin movimientos registrados.</p></div>`;
+                    return;
+                }
+                
+                let detailBuffer = [`<h3 style="margin-bottom: 20px; font-size:1.2rem; font-weight: 900; letter-spacing: 0.5px; color: var(--color-primary); text-shadow: var(--shadow-neon-primary); border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">Movimientos del ${fStr}</h3>`];
+                movs.forEach(m => {
+                    let c = this.getBadgeClass(m.tipo);
+                    let descStr = m.activo ? `${m.cantidad||''}x ${m.activo}` : (m.categoria ? m.categoria : (m.proveedor ? m.proveedor : (m.socio ? m.socio : (m.entidad ? m.entidad : (m.tipo === 'Ajuste Stock Inicial' ? 'Inventario Base' : (m.tipo === 'Rescate a Caja' ? 'Inyección Liquidez a Caja' : (m.tipo === 'Transferencia Ahorro' ? 'Fuga hacia Billetera Bursátil' : (m.usd?`u$s ${m.usd}`:'-'))))))));
+                    
+                    let desc = DOMPurify.sanitize(descStr); 
+                    
+                    detailBuffer.push(
+                        `<div style="padding:15px 20px; background:var(--bg-input); border-radius:12px; margin-bottom:12px; display:flex; justify-content:space-between; align-items:center; border: 1px solid var(--border-color); box-shadow: var(--shadow-card); transition: transform 0.2s;">`,
+                        `<div><span class="badge ${c}" style="margin-bottom:8px;">${m.tipo}</span><br><span style="font-size:1rem; font-weight: 700;">${desc}</span></div>`,
+                        `<strong class="data-font ${m.tipo==='Venta'?'texto-primario':''}" style="font-size: 1.2rem; font-weight: 900; text-align:right;">${this.zenMode ? '---' : this.fmt(m.monto, modelData.dolarBlue, modelData.vistaUSD)}</strong>`,
+                        `</div>`
+                    );
+                });
+                p.innerHTML = detailBuffer.join('');
+            };
+
             let primerDia = new Date(this.calAno, this.calMes, 1).getDay();
             if(primerDia === 0) primerDia = 7;
             
@@ -1997,7 +2039,6 @@ export const view = {
             for(let d=1; d<=diasMes; d++) {
                 let fStr = `${this.calAno}-${String(this.calMes+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
                 
-                // Extracción directa de la caché (Eliminación de búsqueda lineal)
                 let movs = modelData.stats.movimientosPorFecha && modelData.stats.movimientosPorFecha[fStr] 
                             ? modelData.stats.movimientosPorFecha[fStr] 
                             : [];
@@ -2008,6 +2049,7 @@ export const view = {
                 const cellNode = document.importNode(tpl, true);
                 const wrapper = cellNode.querySelector('.cal-day');
                 wrapper.className = `cal-day ${cssClass}`;
+                wrapper.dataset.date = fStr; // Asignación de Data para Event Delegation
                 wrapper.querySelector('.cal-date').textContent = d;
                 
                 let dotsContainer = wrapper.querySelector('.cal-dots');
@@ -2031,29 +2073,6 @@ export const view = {
                     dotsContainer.appendChild(dot);
                 });
                 
-                wrapper.onclick = () => {
-                    const p = this.DOM.calDetalle;
-                    if(movs.length === 0) {
-                        p.innerHTML = `<div style="text-align:center; color:var(--text-muted); padding: 40px; border: 2px dashed var(--border-color); border-radius: 12px;"><h3 style="margin-bottom: 10px; font-size:1.2rem; font-weight: 900; letter-spacing: 1px;">${fStr}</h3><p style="font-size: 1rem;">Día sin movimientos registrados.</p></div>`;
-                        return;
-                    }
-                    
-                    let detailBuffer = [`<h3 style="margin-bottom: 20px; font-size:1.2rem; font-weight: 900; letter-spacing: 0.5px; color: var(--color-primary); text-shadow: var(--shadow-neon-primary); border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">Movimientos del ${fStr}</h3>`];
-                    movs.forEach(m => {
-                        let c = this.getBadgeClass(m.tipo);
-                        let descStr = m.activo ? `${m.cantidad||''}x ${m.activo}` : (m.categoria ? m.categoria : (m.proveedor ? m.proveedor : (m.socio ? m.socio : (m.entidad ? m.entidad : (m.tipo === 'Ajuste Stock Inicial' ? 'Inventario Base' : (m.tipo === 'Rescate a Caja' ? 'Inyección Liquidez a Caja' : (m.tipo === 'Transferencia Ahorro' ? 'Fuga hacia Billetera Bursátil' : (m.usd?`u$s ${m.usd}`:'-'))))))));
-                        
-                        let desc = DOMPurify.sanitize(descStr); 
-                        
-                        detailBuffer.push(
-                            `<div style="padding:15px 20px; background:var(--bg-input); border-radius:12px; margin-bottom:12px; display:flex; justify-content:space-between; align-items:center; border: 1px solid var(--border-color); box-shadow: var(--shadow-card); transition: transform 0.2s;">`,
-                            `<div><span class="badge ${c}" style="margin-bottom:8px;">${m.tipo}</span><br><span style="font-size:1rem; font-weight: 700;">${desc}</span></div>`,
-                            `<strong class="data-font ${m.tipo==='Venta'?'texto-primario':''}" style="font-size: 1.2rem; font-weight: 900; text-align:right;">${this.zenMode ? '---' : this.fmt(m.monto, modelData.dolarBlue, modelData.vistaUSD)}</strong>`,
-                            `</div>`
-                        );
-                    });
-                    p.innerHTML = detailBuffer.join('');
-                };
                 fragment.appendChild(cellNode);
             }
             grid.appendChild(fragment);
@@ -2334,11 +2353,16 @@ export const view = {
             const inflacionFija = 3.0; // Promedio histórico estructural
             const cagrRealPct = cagrNominal - inflacionFija; 
             const swrPct = parseFloat(document.getElementById('fire-swr').value) || 4;
-            const swrSeguro = swrPct > 0 ? swrPct : 0.01; 
+            
+            // CORRECCIÓN: Prevención de División por cero e Infinity
+            const swrSeguro = Math.max(0.01, swrPct); 
 
             const gastoTotal = gastoBase + gastoExtra;
             const gastoAnual = gastoTotal * 12;
-            const targetFIRE = gastoAnual / (swrSeguro / 100);
+            
+            // CORRECCIÓN: Evitar Infinite Math. Evalúa a 0 si es inmanejable.
+            let targetFIRE = gastoAnual / (swrSeguro / 100);
+            if (!isFinite(targetFIRE)) targetFIRE = 0;
 
             document.getElementById('fire-res-gasto').innerHTML = this.zenMode ? '---' : `<span class="privacy-mask" style="font-size: 2.5rem; font-weight: 900; color: var(--color-down); text-shadow: var(--shadow-neon-down);">$ ${this.fmtStr(gastoTotal, 1, false)}</span>`;
             document.getElementById('fire-res-objetivo').innerHTML = this.zenMode ? '---' : `<span class="privacy-mask" style="font-size: 2.5rem; font-weight: 900; color: var(--color-purple); text-shadow: var(--shadow-neon-purple);">$ ${this.fmtStr(targetFIRE, 1, false)}</span>`;
@@ -2382,8 +2406,11 @@ export const view = {
             if (elProbabilidad) {
                 const inVol = document.getElementById('info-volatilidad');
                 let volTxt = inVol ? inVol.innerText.replace('%', '').trim() : '15';
-                let volatilidad = parseFloat(volTxt) || 15;
-                if(volatilidad === 0) volatilidad = 15; 
+                
+                // CORRECCIÓN: Filtrado para predecir colapsos de cálculo si Vol = 0
+                let volatilidad = parseFloat(volTxt);
+                if (isNaN(volatilidad) || volatilidad <= 0) volatilidad = 15; 
+                
                 let volReal = volatilidad / 100;
 
                 let exitos = 0;
@@ -2443,7 +2470,7 @@ export const view = {
 
                 const getCSS = (varName, fallBack) => getComputedStyle(document.documentElement).getPropertyValue(varName).trim() || fallBack;
                 const c1 = getCSS('--color-up', '#00FF95');
-                const c2 = getCSS('--color-purple', '#7C13A4'); // Cambio a tonalidad violeta
+                const c2 = getCSS('--color-purple', '#7C13A4'); 
 
                 const gradient = canvas.getContext('2d').createLinearGradient(0, 0, 0, 400);
                 gradient.addColorStop(0, c1.replace(')', ', 0.3)').replace('rgb', 'rgba'));

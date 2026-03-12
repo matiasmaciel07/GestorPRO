@@ -460,10 +460,8 @@ const controller = {
     guardarOperacion(formData) {
         let isAltaPrestamo = formData.tipo === 'Alta Préstamo';
         
-        // Extracción segura del DOM acoplado al fallback, parseado estrictamente
-        let capInput = document.getElementById('eco-prestamo-capital');
-        let capitalAdicional = capInput && capInput.value ? this._safeParse(capInput.value) : 0;
-        
+        // CORRECCIÓN: Captura desacomplada mediante DTO (Data Transfer Object)
+        let capitalAdicional = isAltaPrestamo ? (formData.capital || 0) : 0;
         let montoOperacion = isAltaPrestamo && capitalAdicional > 0 ? capitalAdicional : formData.monto;
 
         if(!formData.fecha || isNaN(montoOperacion) || montoOperacion <= 0) { 
@@ -494,10 +492,8 @@ const controller = {
             }
         } 
         else if(formData.tipo === 'Transferencia Ahorro' || formData.tipo === 'Ahorro' || formData.tipo === 'Rescate a Caja') { 
-            // FASE 4: Validaciones Silenciosas para Flujos de Capital
-            // Se garantiza que estas transferencias inter-cajas no arrastren ruido al P&L.
             if(formData.usd > 0) mov.usd = formData.usd;
-            mov.contexto = 'Capital'; // Marca explícita para segregarlo de los bucles comerciales
+            mov.contexto = 'Capital'; 
         }
         else if (['Gasto Local', 'Gasto Familiar'].includes(formData.tipo)) {
             mov.categoria = formData.categoria;
@@ -531,10 +527,8 @@ const controller = {
         else if (formData.tipo === 'Alta Préstamo') {
             mov.entidad = formData.entidad;
             mov.montoTotalDevolver = formData.montoTotalDevolver;
-            
-            let cuotasInput = document.getElementById('eco-prestamo-cuotas');
             mov.capital = montoOperacion;
-            mov.cuotas = cuotasInput && cuotasInput.value ? parseInt(cuotasInput.value, 10) : 1;
+            mov.cuotas = formData.cuotas || 1;
 
             if(!mov.entidad) return events.emit('app:toast', { msg: "Entidad emisora no definida", type: "error" });
         } 
@@ -548,7 +542,6 @@ const controller = {
             events.emit('app:toast', { msg: "Transacción modificada con éxito", type: "success" });
             this.limpiarModoEdicion();
         } else {
-            // Delega la generación del ID seguro al modelo
             model.agregarMovimiento(mov);
             events.emit('app:toast', { msg: "Asiento contable consolidado", type: "success" });
             
@@ -565,6 +558,8 @@ const controller = {
             }
         }
         
+        // Limpieza de inputs residuales en DOM
+        let capInput = document.getElementById('eco-prestamo-capital');
         if (capInput) capInput.value = '';
         const cuoInput = document.getElementById('eco-prestamo-cuotas');
         if (cuoInput) cuoInput.value = '1';
@@ -597,25 +592,34 @@ const controller = {
                 });
             });
 
-            let nuevosPrecios = {};
-            for (const ticker of activos) {
-                let apiData = await api.fetchPrecioUnico(ticker, model.data.cachePrecios);
-                if (apiData) nuevosPrecios[ticker] = { data: apiData, time: Date.now() };
-            }
+            // CORRECCIÓN: Promise Race - Timeout Watchdog
+            const fetchTask = (async () => {
+                let nuevosPrecios = {};
+                for (const ticker of activos) {
+                    let apiData = await api.fetchPrecioUnico(ticker, model.data.cachePrecios);
+                    if (apiData) nuevosPrecios[ticker] = { data: apiData, time: Date.now() };
+                }
+                return nuevosPrecios;
+            })();
+
+            const timeoutTask = new Promise((_, reject) => setTimeout(() => reject(new Error('TIMEOUT_SEGURIDAD_API')), 15000));
+
+            let nuevosPrecios = await Promise.race([fetchTask, timeoutTask]);
+
             if(Object.keys(nuevosPrecios).length > 0) {
                 model.actualizarPreciosPortafolio(nuevosPrecios);
             }
+        } catch (error) {
+            if (error.message === 'TIMEOUT_SEGURIDAD_API') {
+                console.warn("[Controlador] Ejecutado Watchdog de seguridad (Timeout) en fetch de precios.");
+            } else {
+                console.error("[Controlador] Fallo en la cascada de fetch de precios:", error);
+            }
         } finally {
-            // Liberación del lock pase lo que pase
+            // Liberación del lock garantizada bajo cualquier escenario de estrés
             this._isFetchingPrices = false;
         }
     },
-
-    async comprobarBloqueo() {
-        const pin = await storage.get('gestor_pin');
-        if(pin) events.emit('app:pinStatus', 'LOCKED');
-        else events.emit('app:pinStatus', 'NO_PIN');
-    }
 };
 
 window.addEventListener('DOMContentLoaded', () => controller.init());

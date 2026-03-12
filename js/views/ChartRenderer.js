@@ -897,5 +897,15 @@ export const ChartRenderer = {
                 layout: { padding: 2 }
             }
         });
-    }
+    },
+
+    destroySparklines() {
+        Object.keys(chartInstances).forEach(key => {
+            if (key.startsWith('spark-')) {
+                chartInstances[key].destroy();
+                delete chartInstances[key];
+            }
+        });
+    },
+
 };
