@@ -178,10 +178,6 @@ export const FinancialMath = {
         });
     },
 
-    /**
-     * Calcula los promedios desglosados (Mes, Semana, Día, Hora) de un monto total.
-     * Implementa el delta real en días desde la primera transacción para precisión absoluta.
-     */
     calcularPromediosDesglosados(montoTotal, temporalidad, transacciones = []) {
         if (montoTotal === 0) return { mes: 0, semana: 0, dia: 0, hora: 0 };
         
@@ -201,30 +197,34 @@ export const FinancialMath = {
 
         const isHistorico = !temporalidad || temporalidad.toLowerCase() === 'histórico' || temporalidad.toLowerCase() === 'historico';
 
+        // Cálculo exacto vía motor de Timestamp en UTC
+        const getExactDays = (d1, d2) => {
+            const utc1 = Date.UTC(d1.getFullYear(), d1.getMonth(), d1.getDate());
+            const utc2 = Date.UTC(d2.getFullYear(), d2.getMonth(), d2.getDate());
+            return Math.max(1, (utc2 - utc1) / (1000 * 3600 * 24));
+        };
+
         if (isHistorico) {
             if (minFecha) {
-                // Cálculo del delta real en días desde el primer registro histórico hasta hoy
-                const diferenciaMs = ahora - minFecha;
-                diasDivisor = Math.max(1, diferenciaMs / (1000 * 3600 * 24));
+                diasDivisor = getExactDays(minFecha, ahora);
             } else {
-                diasDivisor = 30.41; // Fallback estandarizado
+                diasDivisor = 30.4166; // Fallback extremo
             }
         } else if (temporalidad.toLowerCase() === 'anual') {
             const inicioAnio = new Date(ahora.getFullYear(), 0, 1);
-            diasDivisor = Math.max(1, (ahora - inicioAnio) / (1000 * 3600 * 24));
+            diasDivisor = getExactDays(inicioAnio, ahora);
         } else if (temporalidad.toLowerCase() === 'mensual') {
             const inicioMes = new Date(ahora.getFullYear(), ahora.getMonth(), 1);
-            diasDivisor = Math.max(1, (ahora - inicioMes) / (1000 * 3600 * 24));
+            diasDivisor = getExactDays(inicioMes, ahora);
         } else if (temporalidad.toLowerCase() === 'semanal') {
             diasDivisor = 7;
         }
 
-        // Obtención del flujo diario purificado
         const montoDiario = montoTotal / diasDivisor;
 
-        // Proyección exacta mediante coeficientes
+        // Estandarización de métricas
         return {
-            mes: montoDiario * 30.41,
+            mes: montoDiario * (365.25 / 12),
             semana: montoDiario * 7,
             dia: montoDiario,
             hora: montoDiario / 24

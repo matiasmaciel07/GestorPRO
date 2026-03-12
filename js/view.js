@@ -1779,6 +1779,14 @@ export const view = {
 
     aplicarFiltrosHistorial(filtros) {
         this.historialFiltros = filtros;
+        // Caché pre-procesada para evitar cuellos de botella en el scroll virtual
+        this.historialDataFiltrada = this.historialData.filter(m => {
+            let pass = true;
+            if(this.historialFiltros.desde && m.fecha < this.historialFiltros.desde) pass = false;
+            if(this.historialFiltros.hasta && m.fecha > this.historialFiltros.hasta) pass = false;
+            if(this.historialFiltros.tipo && this.historialFiltros.tipo !== 'Todos' && m.tipo !== this.historialFiltros.tipo) pass = false;
+            return pass;
+        });
         this.renderVirtualScroll(true);
     },
 
@@ -1789,23 +1797,15 @@ export const view = {
             UIMetrics.animateValue(this.DOM.histNeto, modelData.stats.ahorroArsPuro, (val) => this.zenMode ? "---" : this.fmt(val, modelData.dolarBlue, modelData.vistaUSD));
 
             this.historialData = modelData.movimientos.slice().reverse();
+            this.historialDataFiltrada = [...this.historialData]; // Inicialización de caché de scroll
             this.DOM.vsTbody.innerHTML = ''; // Fuerza repintado total al editar
             this.renderVirtualScroll();
         });
     },
 
     renderVirtualScroll(resetScroll = false) {
-        let datosAmostrar = this.historialData;
-        
-        if(this.historialFiltros) {
-            datosAmostrar = datosAmostrar.filter(m => {
-                let pass = true;
-                if(this.historialFiltros.desde && m.fecha < this.historialFiltros.desde) pass = false;
-                if(this.historialFiltros.hasta && m.fecha > this.historialFiltros.hasta) pass = false;
-                if(this.historialFiltros.tipo && this.historialFiltros.tipo !== 'Todos' && m.tipo !== this.historialFiltros.tipo) pass = false;
-                return pass;
-            });
-        }
+        // Eliminación de la fuga de memoria: uso de la caché estática O(1)
+        let datosAmostrar = this.historialDataFiltrada || this.historialData;
 
         if(resetScroll) {
             this.DOM.vsViewport.scrollTop = 0;
@@ -1896,9 +1896,16 @@ export const view = {
 
                     let badgeClass = this.getBadgeClass(m.tipo);
                     let descStr = m.activo ? `${m.cantidad||''}x ${m.activo}` : (m.categoria ? m.categoria : (m.proveedor ? m.proveedor : (m.socio ? m.socio : (m.entidad ? m.entidad : (m.tipo === 'Ajuste Stock Inicial' ? 'Inventario Base' : (m.tipo === 'Rescate a Caja' ? 'Inyección Liquidez a Caja' : (m.tipo === 'Transferencia Ahorro' ? 'Fuga hacia Billetera Bursátil' : (m.usd?`u$s ${m.usd}`:'-'))))))));
+                    let desc = DOMPurify.sanitize(descStr);
                     
                     if (m.notas) {
-                        let markdownHtml = DOMPurify.sanitize(marked.parse(m.notas));
+                        let markdownHtml;
+                        if (this._mdCache.has(m.notas)) {
+                            markdownHtml = this._mdCache.get(m.notas);
+                        } else {
+                            markdownHtml = DOMPurify.sanitize(marked.parse(m.notas));
+                            this._mdCache.set(m.notas, markdownHtml);
+                        }
                         desc += `<div style="margin-top: 8px; font-size: 0.8rem; color: var(--text-muted); background: var(--bg-base); padding: 8px 12px; border-radius: 6px; border-left: 3px solid var(--color-primary); line-height:1.5;">${markdownHtml}</div>`;
                     }
 
@@ -1954,7 +1961,11 @@ export const view = {
 
             for(let d=1; d<=diasMes; d++) {
                 let fStr = `${this.calAno}-${String(this.calMes+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-                let movs = modelData.movimientos.filter(m => m.fecha === fStr);
+                
+                // Extracción directa de la caché (Eliminación de búsqueda lineal)
+                let movs = modelData.stats.movimientosPorFecha && modelData.stats.movimientosPorFecha[fStr] 
+                            ? modelData.stats.movimientosPorFecha[fStr] 
+                            : [];
                 
                 let cssClass = (fStr === new Date().toISOString().split('T')[0]) ? 'today' : '';
                 if(movs.length > 0) cssClass += ' has-data';
@@ -1997,7 +2008,6 @@ export const view = {
                         let c = this.getBadgeClass(m.tipo);
                         let descStr = m.activo ? `${m.cantidad||''}x ${m.activo}` : (m.categoria ? m.categoria : (m.proveedor ? m.proveedor : (m.socio ? m.socio : (m.entidad ? m.entidad : (m.tipo === 'Ajuste Stock Inicial' ? 'Inventario Base' : (m.tipo === 'Rescate a Caja' ? 'Inyección Liquidez a Caja' : (m.tipo === 'Transferencia Ahorro' ? 'Fuga hacia Billetera Bursátil' : (m.usd?`u$s ${m.usd}`:'-'))))))));
                         
-                        // Corrección Crítica: Se define la variable desc que generaba el fallo
                         let desc = DOMPurify.sanitize(descStr); 
                         
                         detailBuffer.push(
@@ -2048,7 +2058,6 @@ export const view = {
             }
 
             if (this.DOM.infoAtribucionSector) {
-                // SE ELIMINÓ class="dataTable-table" PARA EVITAR EL MIN-WIDTH DE 800PX Y EL SCROLL HORIZONTAL INNECESARIO
                 let attribBuffer = ['<table style="width:100%; font-size:1rem; margin-top:10px; border-collapse: separate; border-spacing: 0 5px;">'];
                 let sectores = Object.entries(s.atribucionSector || {}).sort((a,b) => b[1] - a[1]);
                 
@@ -2131,9 +2140,12 @@ export const view = {
                 '<div class="hm-header">Año</div><div class="hm-header">Ene</div><div class="hm-header">Feb</div><div class="hm-header">Mar</div><div class="hm-header">Abr</div><div class="hm-header">May</div><div class="hm-header">Jun</div><div class="hm-header">Jul</div><div class="hm-header">Ago</div><div class="hm-header">Sep</div><div class="hm-header">Oct</div><div class="hm-header">Nov</div><div class="hm-header">Dic</div><div class="hm-header" style="color:var(--color-primary); text-shadow: var(--shadow-neon-primary);">YTD</div>'
             ];
 
+            let maxPatrimonioHistorico = peak || 1;
+
             Object.keys(pnlMensual).sort().reverse().forEach(y => {
                 heatmapBuffer.push(`<div class="hm-cell" style="background:var(--bg-input); color:var(--text-main); font-weight: 900;">${DOMPurify.sanitize(y)}</div>`);
                 let productReturnAnual = 1;
+                let mesesContabilizadosParaYtd = false;
                 
                 for(let m=1; m<=12; m++) {
                     let mStr = String(m).padStart(2,'0');
@@ -2141,30 +2153,38 @@ export const view = {
                     if(dataMes === undefined) {
                         heatmapBuffer.push(`<div class="hm-cell" style="color:var(--text-muted); font-weight:normal; background: transparent;">-</div>`);
                     } else {
-                        let capBaseMes = capMensualTracker[`${y}-${mStr}`] || 1;
-                        if (capBaseMes <= 0) capBaseMes = 1;
+                        let capBaseMes = capMensualTracker[`${y}-${mStr}`] || 0;
                         
-                        let returnPorcentual = (dataMes.pnlPuro / capBaseMes) * 100;
-                        productReturnAnual *= (1 + (returnPorcentual / 100));
-                        
-                        let cls = '';
-                        if(returnPorcentual > 5) cls = 'hm-cell--pos';
-                        else if(returnPorcentual > 0) cls = 'hm-cell--pos';
-                        else if(returnPorcentual < -5) cls = 'hm-cell--neg';
-                        else if(returnPorcentual < 0) cls = 'hm-cell--neg';
-                        
-                        let numTxt = returnPorcentual === 0 ? '0%' : (returnPorcentual>0?'+':'') + returnPorcentual.toFixed(1) + '%';
-                        let divValStr = this.fmtStr(modelData.vistaUSD ? (dataMes.pnlPuro/modelData.dolarBlue) : dataMes.pnlPuro, modelData.dolarBlue, modelData.vistaUSD);
-                        
-                        heatmapBuffer.push(`<div class="hm-cell ${cls} data-font" title="PnL Mes: ${this.zenMode ? 'Oculto en Zen' : divValStr}" style="font-size: 0.95rem;">${numTxt}</div>`);
+                        // Bloqueo Matemático: Previene distorsión YTD por descapitalización temporal
+                        if (capBaseMes < (maxPatrimonioHistorico * 0.01)) {
+                            heatmapBuffer.push(`<div class="hm-cell" style="color:var(--text-muted); font-weight:normal; background: transparent;" title="Capital insuficiente para métrica TWR">-</div>`);
+                        } else {
+                            let returnPorcentual = (dataMes.pnlPuro / capBaseMes) * 100;
+                            productReturnAnual *= (1 + (returnPorcentual / 100));
+                            mesesContabilizadosParaYtd = true;
+                            
+                            let cls = '';
+                            if(returnPorcentual > 5) cls = 'hm-cell--pos';
+                            else if(returnPorcentual > 0) cls = 'hm-cell--pos';
+                            else if(returnPorcentual < -5) cls = 'hm-cell--neg';
+                            else if(returnPorcentual < 0) cls = 'hm-cell--neg';
+                            
+                            let numTxt = returnPorcentual === 0 ? '0%' : (returnPorcentual>0?'+':'') + returnPorcentual.toFixed(1) + '%';
+                            let divValStr = this.fmtStr(modelData.vistaUSD ? (dataMes.pnlPuro/modelData.dolarBlue) : dataMes.pnlPuro, modelData.dolarBlue, modelData.vistaUSD);
+                            
+                            heatmapBuffer.push(`<div class="hm-cell ${cls} data-font" title="PnL Mes: ${this.zenMode ? 'Oculto en Zen' : divValStr}" style="font-size: 0.95rem;">${numTxt}</div>`);
+                        }
                     }
                 }
                 
-                let ytdPct = (productReturnAnual - 1) * 100;
-                let ytdCls = ytdPct >= 0 ? 'texto-verde' : 'texto-rojo';
-                let ytdSign = ytdPct > 0 ? '+' : '';
-                
-                heatmapBuffer.push(`<div class="hm-cell data-font" style="background:var(--bg-panel); border-left: 2px solid var(--border-color);"><span class="${ytdCls}" style="font-size: 1rem;">${ytdSign}${ytdPct.toFixed(1)}%</span></div>`);
+                if (mesesContabilizadosParaYtd) {
+                    let ytdPct = (productReturnAnual - 1) * 100;
+                    let ytdCls = ytdPct >= 0 ? 'texto-verde' : 'texto-rojo';
+                    let ytdSign = ytdPct > 0 ? '+' : '';
+                    heatmapBuffer.push(`<div class="hm-cell data-font" style="background:var(--bg-panel); border-left: 2px solid var(--border-color);"><span class="${ytdCls}" style="font-size: 1rem;">${ytdSign}${ytdPct.toFixed(1)}%</span></div>`);
+                } else {
+                    heatmapBuffer.push(`<div class="hm-cell data-font" style="background:var(--bg-panel); border-left: 2px solid var(--border-color);"><span style="font-size: 1rem; color:var(--text-muted);">-</span></div>`);
+                }
             });
 
             hGrid.innerHTML = heatmapBuffer.join('');

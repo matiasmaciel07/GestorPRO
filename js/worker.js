@@ -75,7 +75,9 @@ function getEmptyStats() {
 
         xirr: 0, cagr: 0, riesgoConcentracion: { hhi: 0, label: "Sin Datos" },
         riesgo: { sharpe: "0.00", sortino: "0.00", volatilidad: "0.00" },
-        healthScore: 0
+        healthScore: 0,
+        
+        movimientosPorFecha: {} // Mapeo O(1) inyectado para el calendario
     };
 }
 
@@ -96,6 +98,12 @@ function processSingle(m) {
     let flujoExternoHoy = 0;
     
     st.mesesOperativos.add(mesStr);
+
+    // Inyección al diccionario en tiempo de parseo
+    if (!st.stats.movimientosPorFecha[m.fecha]) {
+        st.stats.movimientosPorFecha[m.fecha] = [];
+    }
+    st.stats.movimientosPorFecha[m.fecha].push(m);
     
     if (!st.stats.flujoMensual[mesStr]) {
         st.stats.flujoMensual[mesStr] = { ingresos: 0, cuotas: 0, costoVida: 0 };
