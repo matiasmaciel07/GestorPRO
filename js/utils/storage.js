@@ -5,7 +5,6 @@ const STORE_NAME = 'keyval';
 const KEY_STORE = 'crypto_keys';
 const DB_VERSION = 2; // Soporte almacenamiento de llaves y cursores
 
-// Promesa interna para iniciar o conectar la BD
 function getDB() {
     return new Promise((resolve, reject) => {
         const request = indexedDB.open(DB_NAME, DB_VERSION);
@@ -18,6 +17,12 @@ function getDB() {
             if (!db.objectStoreNames.contains(KEY_STORE)) {
                 db.createObjectStore(KEY_STORE);
             }
+        };
+        
+        // CORRECCIÓN: Prevención de Deadlock si la DB está bloqueada por otra pestaña abierta
+        request.onblocked = () => {
+            console.error("[Storage] IndexedDB bloqueada por otra instancia/pestaña.");
+            reject(new Error('IDB_BLOCKED'));
         };
         
         request.onsuccess = () => resolve(request.result);

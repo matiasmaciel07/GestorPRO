@@ -155,13 +155,18 @@ export const model = {
                 const { type, payload } = e.data;
                 
                 if (type === 'ENGINE_RESULT') {
-                    // Auditoría Comercial Correctiva antes de inyectar al estado global
-                    const auditoria = FinancialMath.calcularAuditoriaComercial(payload.movimientosOrdenados);
-                    
-                    // FASE 4: Inyección de la Métrica Pura de Facturación para el Sankey y P&L
-                    payload.stats.ingresosBrutosDeclaradosPuros = auditoria.ingresosBrutosDeclarados;
-                    payload.stats.ingresosNetosAuditoria = auditoria.ingresosBrutosNetos;
-                    payload.stats.inventarioBaseCorregido = auditoria.inventarioBaseCosto;
+                    // CORRECCIÓN: Evitar que un fallo matemático hunda la resolución del motor
+                    try {
+                        const auditoria = FinancialMath.calcularAuditoriaComercial(payload.movimientosOrdenados || []);
+                        payload.stats.ingresosBrutosDeclaradosPuros = auditoria.ingresosBrutosDeclarados;
+                        payload.stats.ingresosNetosAuditoria = auditoria.ingresosBrutosNetos;
+                        payload.stats.inventarioBaseCorregido = auditoria.inventarioBaseCosto;
+                    } catch (calcError) {
+                        console.warn("[Arquitectura] Fallo en auditoría comercial amortiguado.", calcError);
+                        payload.stats.ingresosBrutosDeclaradosPuros = 0;
+                        payload.stats.ingresosNetosAuditoria = 0;
+                        payload.stats.inventarioBaseCorregido = 0;
+                    }
 
                     this._data.stats = payload.stats;
                     this._data.portafolio = payload.portafolio;
@@ -182,7 +187,6 @@ export const model = {
             };
         } catch (e) {
             console.warn("[Arquitectura] Entorno restringido detectado (posible file:// en Desktop). Web Workers module bloqueados por CORS. Se requiere empaquetado seguro.", e);
-            // Preparación futura para fallback síncrono en Electron si el Worker falla
         }
     },
 
@@ -326,24 +330,43 @@ export const model = {
         return new Promise((resolve) => {
             this._engineResolver = resolve;
             
+            // CORRECCIÓN ESTRUCTURAL: Watchdog Timer. Rompe el Deadlock si el Worker muere o es bloqueado por el navegador.
+            const timeout = setTimeout(() => {
+                console.error("[Arquitectura] Timeout del Web Worker. Forzando liberación del hilo principal.");
+                if (this._engineResolver) {
+                    this._engineResolver();
+                    this._engineResolver = null;
+                }
+            }, 5000);
+
+            const originalResolve = this._engineResolver;
+            this._engineResolver = (err) => {
+                clearTimeout(timeout);
+                if (originalResolve) originalResolve(err);
+            };
+            
             if (!this.worker) {
-                // Prevención de cuelgues si el worker falla la inicialización
-                console.warn("[Arquitectura] Worker inactivo. Saltando fase de procesamiento.");
-                return resolve();
+                console.warn("[Arquitectura] Worker inactivo. Saltando fase de procesamiento paralelo.");
+                return this._engineResolver();
             }
             
-            if (isDelta && mov) {
-                this.worker.postMessage({ 
-                    type: 'ADD_DELTA', 
-                    movimiento: structuredClone(mov),
-                    inflacionINDEC: structuredClone(this.inflacionINDEC) 
-                });
-            } else {
-                this.worker.postMessage({ 
-                    type: 'FULL_PROCESS', 
-                    movimientos: structuredClone(this._rawData.movimientos),
-                    inflacionINDEC: structuredClone(this.inflacionINDEC) 
-                });
+            try {
+                if (isDelta && mov) {
+                    this.worker.postMessage({ 
+                        type: 'ADD_DELTA', 
+                        movimiento: structuredClone(mov),
+                        inflacionINDEC: structuredClone(this.inflacionINDEC) 
+                    });
+                } else {
+                    this.worker.postMessage({ 
+                        type: 'FULL_PROCESS', 
+                        movimientos: structuredClone(this._rawData.movimientos),
+                        inflacionINDEC: structuredClone(this.inflacionINDEC) 
+                    });
+                }
+            } catch (cloneError) {
+                console.error("[Arquitectura] Error clonando datos para el Worker:", cloneError);
+                this._engineResolver();
             }
         });
     },

@@ -42,14 +42,34 @@ const controller = {
         return parseFloat(str) || 0;
     },
 
-    async init() {
-        document.body.classList.add('privacy-active');
-
-        this.setupEventListeners();
-        await this.comprobarBloqueo(); 
-        view.initUI();
-
+    async comprobarBloqueo() {
         try {
+            const pin = await storage.get('gestor_pin');
+            if (pin) {
+                events.emit('app:pinStatus', 'LOCKED');
+            } else {
+                events.emit('app:pinStatus', 'NO_PIN');
+            }
+        } catch (error) {
+            console.warn("[Controlador] Error al verificar bóveda de seguridad. Omitiendo bloqueo.", error);
+            events.emit('app:pinStatus', 'NO_PIN');
+        }
+    },
+
+    async init() {
+        // CORRECCIÓN: Wrapper maestro try...catch. Previene la muerte silenciosa del hilo principal.
+        try {
+            document.body.classList.add('privacy-active');
+
+            this.setupEventListeners();
+            await this.comprobarBloqueo(); 
+            
+            try {
+                view.initUI();
+            } catch (uiError) {
+                console.error("[Controlador] Fallo interceptado en InitUI (Ignorado para salvaguardar motor):", uiError);
+            }
+
             await model.inicializar();
             
             // FASE DE SANEAMIENTO: Asignación de IDs para registros legados (Previene bug de edición del primer registro)
@@ -64,20 +84,29 @@ const controller = {
                 if (modificados) await model.guardarLocal();
             }
 
-            const dolarCache = await api.fetchDolar().catch((err) => {
-                console.warn("[Controlador] API de Dólar inaccesible. Operando con caché local.", err);
+            // CORRECCIÓN ESTRUCTURAL DE UX: Forzamos la liberación visual del Dashboard ANTES de consultar APIs de cotización.
+            // Esto elimina la sensación de "Cuelgue" si Yahoo Finance o DolarAPI tardan en responder.
+            events.emit('state:tabChanged', TabFSM.state);
+
+            // CORRECCIÓN: Implementación de Watchdog (Timeout) garantizado para evitar Hang de Red
+            const dolarTask = api.fetchDolar();
+            const timeoutTask = new Promise((_, reject) => setTimeout(() => reject(new Error('TIMEOUT_API_DOLAR')), 5000));
+            
+            const dolarCache = await Promise.race([dolarTask, timeoutTask]).catch((err) => {
+                console.warn("[Controlador] API de Dólar inaccesible o en Timeout. Operando con caché local.", err);
                 return null;
             });
 
             this.actualizarEstadoMercado();
             if(dolarCache) model.setDolarBlue(dolarCache);
             
-            events.emit('state:tabChanged', TabFSM.state);
             this.iniciarFetchPrecios();
             
         } catch (err) {
             console.error("[Controlador] Falla Crítica en el Arranque del Motor:", err);
             events.emit('app:toast', { msg: "Error fatal al cargar la base de datos.", type: "error" });
+            // Forzar liberación de pantalla de carga incluso si el modelo falla, para mostrar el error.
+            events.emit('state:tabChanged', 'dashboard'); 
         }
     },
 
@@ -94,6 +123,31 @@ const controller = {
                 }
             }
         });
+
+        // CORRECCIÓN: Inyección de Listeners faltantes para Privacidad y Tema Visual
+        const btnPrivacy = document.getElementById('btn-privacy');
+        if (btnPrivacy) {
+            btnPrivacy.addEventListener('click', () => {
+                document.body.classList.toggle('privacy-active');
+                const isActive = document.body.classList.contains('privacy-active');
+                const icon = document.querySelector('#icon-privacy-toggle use');
+                if (icon) icon.setAttribute('href', isActive ? '#icon-privacy' : '#icon-eye');
+                events.emit('app:toast', { msg: isActive ? "Bóveda Visual Activada" : "Visibilidad Expuesta", type: "info" });
+            });
+        }
+
+        const btnTheme = document.getElementById('btn-theme');
+        if (btnTheme) {
+            btnTheme.addEventListener('click', () => {
+                const html = document.documentElement;
+                const currentTheme = html.getAttribute('data-theme');
+                const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+                html.setAttribute('data-theme', newTheme);
+                const icon = document.querySelector('#icon-theme-toggle use');
+                if (icon) icon.setAttribute('href', newTheme === 'light' ? '#icon-moon' : '#icon-sun');
+                events.emit('app:toast', { msg: `Tema ${newTheme === 'dark' ? 'Oscuro' : 'Claro'} Activado`, type: "info" });
+            });
+        }
 
         // Mutación inmutable segura compatible con la Fase 1 del Modelo
         events.on('ui:borrar-categoria', async (data) => {

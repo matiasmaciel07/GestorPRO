@@ -142,10 +142,10 @@ export const view = {
         this.initFiltrosTemporales(); 
         this.initExportacionPDF(); 
         
-        this.DOM.opFecha.value = new Date().toISOString().split('T')[0];
-        if(this.DOM.ecoFecha) this.DOM.ecoFecha.value = new Date().toISOString().split('T')[0];
-        
-        if(this.DOM.dashRatioEI) this.DOM.dashRatioEI.style.display = 'none';
+        // CORRECCIÓN: Protección estricta contra TypeError si el DOM aún no completó su renderizado
+        if (this.DOM.opFecha) this.DOM.opFecha.value = new Date().toISOString().split('T')[0];
+        if (this.DOM.ecoFecha) this.DOM.ecoFecha.value = new Date().toISOString().split('T')[0];
+        if (this.DOM.dashRatioEI) this.DOM.dashRatioEI.style.display = 'none';
 
         const iconSvg = document.getElementById('icon-privacy-toggle');
         if (iconSvg) {
