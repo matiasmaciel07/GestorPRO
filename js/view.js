@@ -2191,19 +2191,22 @@ export const view = {
                     let c = this.getBadgeClass(m.tipo);
                     
                     let dotColor = 'var(--color-primary)';
-                    if (c.includes('bg-retiro') || c.includes('bg-gasto-local')) dotColor = 'var(--color-down)';
-                    else if (c.includes('bg-ingreso-local') || c.includes('bg-prestamo-pago')) dotColor = 'var(--color-up)';
-                    else if (c.includes('bg-gasto-vida')) dotColor = 'var(--color-orange)';
-                    else if (c.includes('bg-proveedor')) dotColor = 'var(--color-warning)';
-                    else if (c.includes('bg-sociedad')) dotColor = 'var(--color-purple)';
-                    else if (c.includes('bg-ahorro-transf') || c.includes('bg-prestamo-alta')) dotColor = 'var(--color-primary)';
-                    else if (c.includes('bg-compra')) dotColor = 'var(--color-accent)';
-                    else if (c.includes('bg-venta')) dotColor = 'var(--color-chart)';
-                    else if (c.includes('bg-rendimiento')) dotColor = '#1AA7EC';
+                    // Ajuste de intensidad de colores al extremo para evitar tonos apagados
+                    if (c.includes('bg-retiro') || c.includes('bg-gasto-local')) dotColor = '#FF003C'; // Rojo neón vibrante
+                    else if (c.includes('bg-ingreso-local') || c.includes('bg-prestamo-pago')) dotColor = '#00FF95'; // Verde láser
+                    else if (c.includes('bg-gasto-vida')) dotColor = '#FF871A'; // Naranja puro
+                    else if (c.includes('bg-proveedor')) dotColor = '#FFD500'; // Amarillo advertencia
+                    else if (c.includes('bg-sociedad')) dotColor = '#B800FF'; // Púrpura eléctrico
+                    else if (c.includes('bg-ahorro-transf') || c.includes('bg-prestamo-alta')) dotColor = '#6045F4'; // Índigo corporativo
+                    else if (c.includes('bg-compra')) dotColor = '#FF007B'; // Magenta
+                    else if (c.includes('bg-venta')) dotColor = '#00F0FF'; // Cyan
+                    else if (c.includes('bg-rendimiento')) dotColor = '#1AA7EC'; // Azul agua
                     
                     let dot = document.createElement('div');
                     dot.className = `cal-dot`;
                     dot.style.backgroundColor = dotColor;
+                    // FIX: Doble capa de Glow en línea que anula el currentColor del modo claro
+                    dot.style.boxShadow = `0 0 6px ${dotColor}, 0 0 12px ${dotColor}80`;
                     dotsContainer.appendChild(dot);
                 });
                 
@@ -2397,7 +2400,7 @@ export const view = {
             else if (frecCapitalizacion === 'trimestral') rMensual = Math.pow(1 + rAnualReal/4, 4/12) - 1; 
             else if (frecCapitalizacion === 'mensual') rMensual = rAnualReal / 12; 
             else if (frecCapitalizacion === 'diaria') rMensual = Math.pow(1 + rAnualReal/365, 365/12) - 1; 
-            else if (frecCapitalizacion === 'continua') rMensual = Math.exp(rAnualReal/12) - 1; // Euler - Continuously Compounded
+            else if (frecCapitalizacion === 'continua') rMensual = rAnualReal / 12; // Base diferencial para la integral
 
             let lbl = [];
             let dAp = [];
@@ -2410,8 +2413,19 @@ export const view = {
             for(let anio = 1; anio <= ans; anio++) {
                 for (let mes = 1; mes <= 12; mes++) {
                     aportesAcumulados += cuotaMensualEnCurso;
-                    capitalActual += cuotaMensualEnCurso;
-                    capitalActual *= (1 + rMensual); // Capitalización iterativa
+                    
+                    if (frecCapitalizacion === 'continua') {
+                        // Integral Exponencial Directa sobre el flujo
+                        // FV = PV * e^(rt) + PMT * (e^(rt) - 1) / r
+                        if (rMensual === 0) {
+                            capitalActual += cuotaMensualEnCurso;
+                        } else {
+                            capitalActual = capitalActual * Math.exp(rMensual) + cuotaMensualEnCurso * ((Math.exp(rMensual) - 1) / rMensual);
+                        }
+                    } else {
+                        capitalActual += cuotaMensualEnCurso;
+                        capitalActual *= (1 + rMensual); // Capitalización iterativa discreta
+                    }
                 }
                 
                 // Incremento anual escalonado de aportes (Ajuste por paritarias / ascensos)

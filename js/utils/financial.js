@@ -69,18 +69,26 @@ export const FinancialMath = {
         };
     },
 
-    /**
-     * Calcula la tendencia inflacionaria estadística.
-     */
     proyectarInflacion(inflacionINDEC) {
         let inflacionKeys = Object.keys(inflacionINDEC).sort();
         let last12 = inflacionKeys.slice(-12);
-        let avgInflacionMensual = 0;
+        
+        // CORRECCIÓN MATEMÁTICA: La inflación es un fenómeno multiplicativo (geométrico), no aditivo.
+        let inflacionAcumuladaGeometrica = 1;
         
         if (last12.length > 0) {
-            let totalInf = last12.reduce((a, k) => a + parseFloat(inflacionINDEC[k]), 0);
-            avgInflacionMensual = totalInf / last12.length;
+            last12.forEach(k => {
+                let tasaMensual = parseFloat(inflacionINDEC[k]) / 100;
+                if (!isNaN(tasaMensual)) {
+                    inflacionAcumuladaGeometrica *= (1 + tasaMensual);
+                }
+            });
         }
+
+        // Se extrae la media geométrica mensual exacta que llevó al capital al estado actual
+        let avgInflacionMensual = last12.length > 0 
+            ? (Math.pow(inflacionAcumuladaGeometrica, 1 / last12.length) - 1) * 100 
+            : 0;
 
         return {
             avgMensual: avgInflacionMensual,
