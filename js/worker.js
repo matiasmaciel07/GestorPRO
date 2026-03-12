@@ -39,7 +39,7 @@ function getEmptyStats() {
         
         ingresosLocal: 0, gastosLocal: 0, gastosFamiliar: 0, 
         pagosProveedores: 0, deudaActiva: 0,
-        ingresosCapital: 0,
+        ingresosCapital: 0, entradasCajaNoOperativas: 0, ingresosConsolidadosGlobal: 0,
         
         stockCosto: 0, stockValorVenta: 0, markupPromedio: 1,
         stockCostoHistorico: 0, stockValorVentaHistorico: 0,
@@ -114,14 +114,9 @@ function processSingle(m) {
             st.stats.costoUsdArs = safeFloat(st.stats.costoUsdArs + montoNum); 
         }
 
-        // CORRECCIÓN ESTRUCTURAL: Fondeo aislado del Flujo Operativo Consolidado
         st.stats.ingresosCapital = safeFloat((st.stats.ingresosCapital || 0) + montoNum);
-        
-        let [y, mo, da] = m.fecha.split('-');
-        let d = new Date(parseInt(y, 10), parseInt(mo, 10) - 1, parseInt(da, 10));
-        let dayOfWeek = d.getDay();
-        st.stats.ventasPorDiaSemana[dayOfWeek] = safeFloat((st.stats.ventasPorDiaSemana[dayOfWeek] || 0) + montoNum);
-        st.diasOperadosPorDiaSemana[dayOfWeek].add(m.fecha);
+        st.stats.entradasCajaNoOperativas = safeFloat(st.stats.entradasCajaNoOperativas + montoNum);
+        st.stats.ingresosConsolidadosGlobal = safeFloat(st.stats.ingresosConsolidadosGlobal + montoNum);
     } 
     else if (m.tipo === 'Transferencia Ahorro') {
         st.stats.cajaLocal = safeFloat(st.stats.cajaLocal - montoNum);
@@ -141,7 +136,6 @@ function processSingle(m) {
         st.stats.billetera = safeFloat(st.stats.billetera - montoNum);
         st.stats.cajaLocal = safeFloat(st.stats.cajaLocal + montoNum);
         
-        // CORRECCIÓN: Eliminación de limitadores para tolerancia a desfasaje cronológico
         st.stats.totalAhorradoFisico = safeFloat(st.stats.totalAhorradoFisico - montoNum);
         st.stats.ahorroArsPuro = safeFloat(st.stats.ahorroArsPuro - montoNum);
         st.stats.ahorroHaciaBursatil = safeFloat(st.stats.ahorroHaciaBursatil - montoNum);
@@ -156,14 +150,9 @@ function processSingle(m) {
         st.stats.cajaLocal = safeFloat(st.stats.cajaLocal + montoNum);
         flujoExternoHoy = montoNum;
 
-        // CORRECCIÓN ESTRUCTURAL: Fondeo aislado del Flujo Operativo Consolidado
         st.stats.ingresosCapital = safeFloat((st.stats.ingresosCapital || 0) + montoNum);
-        
-        let [y, mo, da] = m.fecha.split('-');
-        let d = new Date(parseInt(y, 10), parseInt(mo, 10) - 1, parseInt(da, 10));
-        let dayOfWeek = d.getDay();
-        st.stats.ventasPorDiaSemana[dayOfWeek] = safeFloat((st.stats.ventasPorDiaSemana[dayOfWeek] || 0) + montoNum);
-        st.diasOperadosPorDiaSemana[dayOfWeek].add(m.fecha);
+        st.stats.entradasCajaNoOperativas = safeFloat(st.stats.entradasCajaNoOperativas + montoNum);
+        st.stats.ingresosConsolidadosGlobal = safeFloat(st.stats.ingresosConsolidadosGlobal + montoNum);
     }
     else if (m.tipo === 'Retiro') {
         st.stats.billetera = safeFloat(st.stats.billetera - montoNum);
@@ -184,6 +173,7 @@ function processSingle(m) {
     } 
     else if (m.tipo === 'Venta') {
         st.stats.billetera = safeFloat(st.stats.billetera + montoNum); 
+        st.stats.flujoMensual[mesStr].ingresos = safeFloat(st.stats.flujoMensual[mesStr].ingresos + montoNum);
         let p = st.portafolio[m.activo];
         
         if (p && p.cant > 0.000001) {
@@ -239,6 +229,7 @@ function processSingle(m) {
     else if (m.tipo === 'Ingreso Local') {
         st.stats.cajaLocal = safeFloat(st.stats.cajaLocal + montoNum);
         st.stats.ingresosLocal = safeFloat(st.stats.ingresosLocal + montoNum);
+        st.stats.ingresosConsolidadosGlobal = safeFloat(st.stats.ingresosConsolidadosGlobal + montoNum);
         st.stats.flowIngreso = safeFloat(st.stats.flowIngreso + montoNum); 
         st.stats.flujoMensual[mesStr].ingresos = safeFloat(st.stats.flujoMensual[mesStr].ingresos + montoNum); 
         
@@ -398,7 +389,6 @@ function processSingle(m) {
     if (m.fecha !== st.lastDate) {
         st.stats.historyPatrimonio.push(currentPatrimonioTotal);
         st.stats.historyPatrimonioConStock.push(currentPatrimonioTotal); 
-        // CORRECCIÓN: Alineación del Sparkline unificando la Liquidez Física Total
         st.stats.historyLiquidez.push(safeFloat(st.stats.billetera + st.stats.cajaLocal));
         st.stats.historyInvertido.push(st.stats.capInvertido);
         st.stats.historyCajaLocal.push(st.stats.cajaLocal);
@@ -415,7 +405,6 @@ function processSingle(m) {
         let idx = st.stats.historyPatrimonio.length - 1;
         st.stats.historyPatrimonio[idx] = currentPatrimonioTotal;
         st.stats.historyPatrimonioConStock[idx] = currentPatrimonioTotal;
-        // CORRECCIÓN: Actualización in-place con la Liquidez unificada
         st.stats.historyLiquidez[idx] = safeFloat(st.stats.billetera + st.stats.cajaLocal);
         st.stats.historyInvertido[idx] = st.stats.capInvertido;
         st.stats.historyCajaLocal[idx] = st.stats.cajaLocal;
