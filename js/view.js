@@ -123,17 +123,56 @@ export const view = {
     },
     
     initUI() {
-        // CORRECCIÓN ESTRUCTURAL: Inyección en caliente para destrabar el apilamiento de capas (z-index)
-        // y anular el recorte violento de content-visibility en el grid virtual, salvando las Tooltips.
+        // CORRECCIÓN ESTRUCTURAL: Limpieza del Hack del DOM. Delegación al contenedor global.
         const styleFix = document.createElement('style');
         styleFix.innerHTML = `
             #vs-tbody tr { content-visibility: visible !important; contain-intrinsic-size: auto !important; will-change: auto !important; }
             .card { overflow: visible !important; }
-            [data-tooltip]::after { white-space: pre-wrap !important; word-wrap: break-word !important; max-width: 320px !important; z-index: 999999 !important; }
             .dataTable-table > tbody > tr { position: relative; z-index: 1; }
             .dataTable-table > tbody > tr:hover { z-index: 9999 !important; }
         `;
         document.head.appendChild(styleFix);
+
+        // NUCLEO: Renderizador Flotante Global
+        const tooltipContainer = document.createElement('div');
+        tooltipContainer.id = 'global-tooltip-container';
+        Object.assign(tooltipContainer.style, {
+            position: 'absolute', pointerEvents: 'none', zIndex: '999999',
+            background: 'var(--bg-panel)', color: 'var(--text-main)', padding: '10px 14px',
+            borderRadius: '8px', boxShadow: 'var(--shadow-card)', border: '1px solid var(--border-color)',
+            fontSize: '0.85rem', maxWidth: '320px', whiteSpace: 'pre-wrap', wordWrap: 'break-word',
+            display: 'none', transition: 'opacity 0.15s ease-in-out', opacity: '0', backdropFilter: 'blur(10px)'
+        });
+        document.body.appendChild(tooltipContainer);
+
+        document.body.addEventListener('mouseover', (e) => {
+            const target = e.target.closest('[title], [data-tooltip]');
+            if (target) {
+                const titleText = target.getAttribute('title') || target.getAttribute('data-tooltip');
+                if (!titleText) return;
+                
+                target.setAttribute('data-original-title', titleText);
+                target.removeAttribute('title'); 
+                
+                tooltipContainer.innerHTML = titleText;
+                tooltipContainer.style.display = 'block';
+                
+                const rect = target.getBoundingClientRect();
+                tooltipContainer.style.left = Math.min(rect.left + window.scrollX, document.body.clientWidth - 330) + 'px';
+                tooltipContainer.style.top = (rect.bottom + window.scrollY + 8) + 'px';
+                
+                requestAnimationFrame(() => tooltipContainer.style.opacity = '1');
+            }
+        });
+
+        document.body.addEventListener('mouseout', (e) => {
+            const target = e.target.closest('[data-original-title]');
+            if (target) {
+                target.setAttribute('title', target.getAttribute('data-original-title'));
+                tooltipContainer.style.opacity = '0';
+                setTimeout(() => { if (tooltipContainer.style.opacity === '0') tooltipContainer.style.display = 'none'; }, 150);
+            }
+        });
 
         this.cacheDOM();
         this.bindUIEvents();
@@ -142,7 +181,6 @@ export const view = {
         this.initFiltrosTemporales(); 
         this.initExportacionPDF(); 
         
-        // CORRECCIÓN: Protección estricta contra TypeError usando Optional Chaining (?.)
         if (this.DOM.opFecha) this.DOM.opFecha.value = new Date().toISOString().split('T')[0];
         if (this.DOM.ecoFecha) this.DOM.ecoFecha.value = new Date().toISOString().split('T')[0];
         if (this.DOM.dashRatioEI) this.DOM.dashRatioEI.style.display = 'none';
@@ -2243,7 +2281,6 @@ export const view = {
                 return;
             }
 
-            // NUEVO CÁLCULO TWR (Evita que el pico se rompa por depósitos)
             let peakBursatilReal = Math.max(...s.historyBursatil);
             document.getElementById('info-max-patrimonio').innerHTML = `<span style="font-size: 3rem; font-weight: 900; color: var(--color-primary); text-shadow: var(--shadow-neon-primary);">${this.zenMode ? '---' : this.fmt(peakBursatilReal, modelData.dolarBlue, modelData.vistaUSD)}</span>`;
             
@@ -2302,7 +2339,9 @@ export const view = {
                         else if(returnPorcentual < 0) cls = 'hm-cell--neg';
                         
                         let numTxt = returnPorcentual === 0 ? '0%' : (returnPorcentual>0?'+':'') + returnPorcentual.toFixed(1) + '%';
-                        let divValStr = this.fmtStr(modelData.vistaUSD ? (dataMes.pnlPuro/modelData.dolarBlue) : dataMes.pnlPuro, modelData.dolarBlue, modelData.vistaUSD);
+                        
+                        // CORRECCIÓN: Se elimina la doble división. Se asume que dataMes.pnlPuro ya está en ARS.
+                        let divValStr = this.fmtStr(dataMes.pnlPuro, modelData.dolarBlue, modelData.vistaUSD);
                         
                         heatmapBuffer.push(`<div class="hm-cell ${cls} data-font" title="Variación Absoluta Mes: ${this.zenMode ? 'Oculto' : divValStr}" style="font-size: 0.95rem;">${numTxt}</div>`);
                     }

@@ -90,13 +90,13 @@ export const FinancialMath = {
 
     /**
      * Calcula el valor neto del Esfuerzo Físico
-     * Basado en la jornada comercial estandarizada.
+     * Parametrizado para soportar iteraciones de optimización de tiempo laboral.
      */
-    calcularEsfuerzoFisico(gananciaNetaMensual) {
+    calcularEsfuerzoFisico(gananciaNetaMensual, parametros = { semanasPorMes: 4.3333, diasPorSemana: 6, horasPorDia: 9 }) {
         let neto = gananciaNetaMensual > 0 ? gananciaNetaMensual : 0;
-        let semana = neto / 4.3333; 
-        let dia = semana / 6;       
-        let hora = semana / 54;     
+        let semana = neto / parametros.semanasPorMes; 
+        let dia = semana / parametros.diasPorSemana;       
+        let hora = dia / parametros.horasPorDia; // Equivalente matemático limpio de semana/(dias*horas)
 
         return {
             mes: neto,

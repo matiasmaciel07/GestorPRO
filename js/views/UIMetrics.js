@@ -12,7 +12,8 @@ export const UIMetrics = {
 
     fmtStr(num, db, v) {
         if (isNaN(num)) num = 0;
-        let val = v ? num / db : num;
+        let divisor = (db && db > 0) ? db : 1;
+        let val = v ? num / divisor : num;
         return val.toLocaleString(v ? 'en-US' : 'es-AR', { 
             minimumFractionDigits: v ? 2 : 0, 
             maximumFractionDigits: v ? 2 : 0 

@@ -391,7 +391,8 @@ function processSingle(m) {
     } else {
         let daysElapsed = (new Date(m.fecha).getTime() - new Date(st.lastDate).getTime()) / 86400000;
         if (daysElapsed > 0 && st.dailyInfRate > 0) {
-            st.inflacionAcumuladaAbsoluta = st.inflacionAcumuladaAbsoluta * Math.pow(1 + st.dailyInfRate, daysElapsed);
+            // CORRECCIÓN: Compound Logarítmico Neperiano para prevenir overflow de mantisa.
+            st.inflacionAcumuladaAbsoluta = st.inflacionAcumuladaAbsoluta * Math.exp(Math.log(1 + st.dailyInfRate) * daysElapsed);
         }
         if (flujoExternoHoy !== 0) {
             st.inflacionAcumuladaAbsoluta += flujoExternoHoy;
@@ -447,39 +448,9 @@ function finalizeMetrics() {
     st.stats.ratioEfectivoInvertido = st.stats.capInvertido > 0 ? (st.stats.billetera / st.stats.capInvertido) : 0;
     st.stats.precioPromedioDolar = st.stats.usdComprado > 0 ? safeFloat(st.stats.costoUsdArs / st.stats.usdComprado) : 0;
 
-    let cashFlowsTIR = [];
-    st.movimientos.forEach(m => {
-        if (m.tipo === 'Ahorro' || m.tipo === 'Transferencia Ahorro') cashFlowsTIR.push({ date: new Date(m.fecha + "T00:00:00").getTime(), amount: -safeFloat(m.monto) });
-        else if (m.tipo === 'Retiro') cashFlowsTIR.push({ date: new Date(m.fecha + "T00:00:00").getTime(), amount: safeFloat(m.monto) });
-    });
-    
-    if (cashFlowsTIR.length > 0) {
-        let lastVal = st.stats.historyPatrimonioPuro[st.stats.historyPatrimonioPuro.length - 1] || 0;
-        cashFlowsTIR.push({ date: new Date().getTime(), amount: lastVal });
-        
-        let firstDate = cashFlowsTIR[0].date;
-        let lastDate = cashFlowsTIR[cashFlowsTIR.length - 1].date;
-        let daysDiff = (lastDate - firstDate) / 86400000;
-        
-        if (daysDiff < 365) {
-            let totalInvested = cashFlowsTIR.filter(c => c.amount < 0).reduce((a, b) => a + Math.abs(b.amount), 0);
-            if (totalInvested > 0) { 
-                let totalRetrieved = cashFlowsTIR.filter(c => c.amount > 0 && c.date !== lastDate).reduce((a, b) => a + b.amount, 0);
-                st.stats.cagr = safeFloat(((lastVal + totalRetrieved - totalInvested) / totalInvested) * 100);
-            } else {
-                st.stats.cagr = 0;
-            }
-        } else {
-            st.stats.cagr = safeFloat(FinancialMath.calculateXIRR(cashFlowsTIR, 0.1) * 100); 
-        }
-    } else {
-        st.stats.cagr = 0;
-    }
-
     let hhiMetrics = FinancialMath.calcularConcentrationRisk(Object.values(st.stats.atribucionSector));
     st.stats.riesgoConcentracion = { hhi: safeFloat(hhiMetrics.hhi), label: hhiMetrics.label };
 
-    // TWR Matemáticamente Limpio para Bursátil y Drawdown
     let indexTWR = 100;
     let peakTWR = 100;
     
@@ -501,6 +472,17 @@ function finalizeMetrics() {
     }
     
     st.stats.maxDrawdownBursatil = st.stats.historyDrawdown.length > 0 ? safeFloat(Math.min(...st.stats.historyDrawdown)) : 0;
+
+    // CORRECCIÓN: CAGR Sincronizado estrictamente al comportamiento TWR.
+    if (st.stats.historyFechas.length > 1 && st.firstDateMs) {
+        let lastDateMs = new Date(st.lastDate).getTime();
+        let daysDiff = Math.max(1, (lastDateMs - st.firstDateMs) / 86400000);
+        let finalTWR = st.stats.historyIndexTWR[st.stats.historyIndexTWR.length - 1] || 100;
+        
+        st.stats.cagr = safeFloat((Math.pow(finalTWR / 100, 365 / daysDiff) - 1) * 100);
+    } else {
+        st.stats.cagr = 0;
+    }
 
     let len = st.stats.historyPatrimonio.length;
     if (len > 2) {
