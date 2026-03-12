@@ -346,13 +346,15 @@ export const view = {
         if(this.DOM.simVentas) this.DOM.simVentas.addEventListener('input', () => this.renderSimuladorWhatIf());
         if(this.DOM.simBolsa) this.DOM.simBolsa.addEventListener('input', () => this.renderSimuladorWhatIf());
 
-        document.body.addEventListener('click', (e) => {
+        // CORRECCIÓN: Event Router Unificado. Un solo Listener maestro para toda la aplicación.
+        document.body.addEventListener('click', async (e) => {
             const target = e.target;
-            const btnNav = target.closest('.nav__item');
             
+            // --- BLOQUE 1: Navegación y UI Base ---
+            const btnNav = target.closest('.nav__item');
             if (btnNav) {
                 events.emit('ui:cambiar-pestana', btnNav.getAttribute('aria-controls'));
-                return; // Cortocircuito para optimización del árbol de eventos
+                return; 
             }
 
             const btnFilter = target.closest('.btn--filter');
@@ -361,14 +363,8 @@ export const view = {
             }
             
             if (target.closest('#btn-toggle-moneda')) events.emit('ui:toggle-moneda');
-            
-            if (target.closest('#btn-sidebar-toggle')) {
-                const sidebar = document.getElementById('sidebar');
-                if (sidebar) sidebar.classList.toggle('sidebar--collapsed');
-            }
-            
+            if (target.closest('#btn-sidebar-toggle')) document.getElementById('sidebar')?.classList.toggle('sidebar--collapsed');
             if (target.closest('#btn-privacy')) this.togglePrivacy();
-            
             if (target.closest('#btn-save-manual')) events.emit('ui:guardar-manual');
             if (target.closest('#btn-zen')) events.emit('ui:toggle-zen');
             
@@ -381,8 +377,63 @@ export const view = {
                 if (iconToggle) {
                     iconToggle.innerHTML = newTheme === 'dark' ? `<use href="#icon-sun"></use>` : `<use href="#icon-moon"></use>`;
                 }
-                
                 this.toast(`Tema ${newTheme === 'dark' ? 'Oscuro' : 'Claro'} Activado`, "info");
+            }
+
+            // --- BLOQUE 2: Reglas de Negocio (Business Actions fusionadas) ---
+            const actionBtn = target.closest('[data-action]');
+            if (actionBtn) {
+                const action = actionBtn.dataset.action;
+                
+                if (action === 'guardar-operacion') events.emit('ui:guardar-operacion', this.getOperacionFormData());
+                if (action === 'editar-operacion') events.emit('ui:editar-operacion', actionBtn.dataset.id);
+                if (action === 'cancelar-edicion') events.emit('ui:cancelar-edicion');
+                
+                if (action === 'borrar-operacion') {
+                    if (await this.customConfirm("¿Borrar este registro permanentemente?")) {
+                        events.emit('ui:borrar-operacion', actionBtn.dataset.id);
+                    }
+                }
+                
+                if (action === 'add-watchlist') events.emit('ui:add-watchlist', { activo: DOMPurify.sanitize(document.getElementById('wl-activo').value.trim().toUpperCase()), precio: parseFloat(document.getElementById('wl-precio').value) });
+                if (action === 'del-watchlist') events.emit('ui:del-watchlist', actionBtn.dataset.id);
+                if (action === 'filtrar-historial') events.emit('ui:filtrar-historial', { desde: document.getElementById('filtro-desde').value, hasta: document.getElementById('filtro-hasta').value, tipo: document.getElementById('filtro-tipo').value });
+                
+                if (action === 'limpiar-filtros') {
+                    document.getElementById('filtro-desde').value = '';
+                    document.getElementById('filtro-hasta').value = '';
+                    document.getElementById('filtro-tipo').value = 'Todos';
+                    events.emit('ui:filtrar-historial', null);
+                }
+                
+                if (action === 'guardar-inflacion') {
+                    let inputVal = document.getElementById('inf-val').value;
+                    let valParsed = parseFloat(inputVal.replace(',', '.'));
+                    events.emit('ui:guardar-inflacion', { mes: DOMPurify.sanitize(document.getElementById('inf-mes').value), val: valParsed });
+                }
+                
+                if (action === 'borrar-inflacion') {
+                    if (await this.customConfirm(`¿Borrar dato de inflación del período ${actionBtn.dataset.mes}?`)) {
+                        events.emit('ui:borrar-inflacion', actionBtn.dataset.mes);
+                    }
+                }
+                
+                if (action === 'verificar-pin') events.emit('ui:verificar-pin', document.getElementById('input-pin-login').value);
+                if (action === 'guardar-pin') events.emit('ui:guardar-pin', document.getElementById('nuevo-pin').value);
+                
+                if (action === 'eliminar-pin') {
+                    let p = await this.customPrompt("Ingresa tu PIN actual para desactivar la Bóveda:", "password", 4);
+                    if(p !== null && p.trim() !== '') events.emit('ui:eliminar-pin', p);
+                }
+                
+                if (action === 'exportar') events.emit('ui:exportar');
+                
+                if (action === 'borrar-todo') {
+                    let p = await this.customPrompt("Escribe BORRAR para formatear el sistema completo (Irreversible):", "text", 10);
+                    if (p && p.trim().toUpperCase() === 'BORRAR') events.emit('ui:borrar-todo');
+                }
+                
+                if (action === 'cambiar-mes') this.cambiarMesCalendario(parseInt(actionBtn.dataset.dir));
             }
         });
 
@@ -407,7 +458,6 @@ export const view = {
             }, { passive: true });
         }
         
-        // Efecto Hover de Foco Neon-Tech en el Virtual DOM
         if(this.DOM.vsTbody) {
             this.DOM.vsTbody.addEventListener('mouseover', (e) => {
                 let tr = e.target.closest('tr');
@@ -421,67 +471,8 @@ export const view = {
     },
 
     bindBusinessEvents() {
-        document.body.addEventListener('click', async (e) => {
-            const target = e.target;
-            const actionBtn = target.closest('[data-action]');
-            if (actionBtn) {
-                const action = actionBtn.dataset.action;
-                if (action === 'guardar-operacion') events.emit('ui:guardar-operacion', this.getOperacionFormData());
-                if (action === 'editar-operacion') events.emit('ui:editar-operacion', actionBtn.dataset.id);
-                if (action === 'cancelar-edicion') events.emit('ui:cancelar-edicion');
-                
-                // Reemplazo de confirm()
-                if (action === 'borrar-operacion') {
-                    if (await this.customConfirm("¿Borrar este registro permanentemente?")) {
-                        events.emit('ui:borrar-operacion', actionBtn.dataset.id);
-                    }
-                }
-                
-                if (action === 'add-watchlist') events.emit('ui:add-watchlist', { activo: DOMPurify.sanitize(document.getElementById('wl-activo').value.trim().toUpperCase()), precio: parseFloat(document.getElementById('wl-precio').value) });
-                if (action === 'del-watchlist') events.emit('ui:del-watchlist', actionBtn.dataset.id);
-                if (action === 'filtrar-historial') events.emit('ui:filtrar-historial', { desde: document.getElementById('filtro-desde').value, hasta: document.getElementById('filtro-hasta').value, tipo: document.getElementById('filtro-tipo').value });
-                
-                if (action === 'limpiar-filtros') {
-                    document.getElementById('filtro-desde').value = '';
-                    document.getElementById('filtro-hasta').value = '';
-                    document.getElementById('filtro-tipo').value = 'Todos';
-                    events.emit('ui:filtrar-historial', null);
-                }
-                
-                if (action === 'guardar-inflacion') {
-                    let inputVal = document.getElementById('inf-val').value;
-                    let valParsed = parseFloat(inputVal.replace(',', '.'));
-                    events.emit('ui:guardar-inflacion', { mes: DOMPurify.sanitize(document.getElementById('inf-mes').value), val: valParsed });
-                }
-                
-                // Reemplazo de confirm()
-                if (action === 'borrar-inflacion') {
-                    if (await this.customConfirm(`¿Borrar dato de inflación del período ${actionBtn.dataset.mes}?`)) {
-                        events.emit('ui:borrar-inflacion', actionBtn.dataset.mes);
-                    }
-                }
-                
-                if (action === 'verificar-pin') events.emit('ui:verificar-pin', document.getElementById('input-pin-login').value);
-                if (action === 'guardar-pin') events.emit('ui:guardar-pin', document.getElementById('nuevo-pin').value);
-                
-                // Reemplazo de prompt()
-                if (action === 'eliminar-pin') {
-                    let p = await this.customPrompt("Ingresa tu PIN actual para desactivar la Bóveda:", "password", 4);
-                    if(p !== null && p.trim() !== '') events.emit('ui:eliminar-pin', p);
-                }
-                
-                if (action === 'exportar') events.emit('ui:exportar');
-                
-                // Reemplazo de prompt() crítico con sanitización
-                if (action === 'borrar-todo') {
-                    let p = await this.customPrompt("Escribe BORRAR para formatear el sistema completo (Irreversible):", "text", 10);
-                    if (p && p.trim().toUpperCase() === 'BORRAR') events.emit('ui:borrar-todo');
-                }
-                
-                if (action === 'cambiar-mes') this.cambiarMesCalendario(parseInt(actionBtn.dataset.dir));
-            }
-        });
-
+        // CORRECCIÓN: Función vaciada por seguridad para no romper referencias de llamadas previas.
+        // Toda su lógica fue encapsulada dentro del Event Router Unificado en bindUIEvents().
         document.getElementById('file-import')?.addEventListener('change', (e) => {
             if(e.target.files.length > 0) events.emit('ui:importar-backup', e.target.files[0]);
         });

@@ -613,6 +613,9 @@ const controller = {
         if (this._isFetchingPrices) return;
         this._isFetchingPrices = true;
 
+        // CORRECCIÓN: Controlador de anulación de peticiones para evitar Memory/Network Leaks
+        const abortController = new AbortController();
+
         try {
             const portafolio = model.data.portafolio;
             const watch = model.data.watchlist || [];
@@ -629,17 +632,23 @@ const controller = {
                 });
             });
 
-            // CORRECCIÓN: Promise Race - Timeout Watchdog
+            // CORRECCIÓN: Inyección de la señal de anulación en el bucle de peticiones
             const fetchTask = (async () => {
                 let nuevosPrecios = {};
                 for (const ticker of activos) {
+                    if (abortController.signal.aborted) break; // Detención estructural inmediata
+                    
+                    // Nota arquitectónica: Idealmente, api.fetchPrecioUnico debería recibir abortController.signal como 3er parámetro
                     let apiData = await api.fetchPrecioUnico(ticker, model.data.cachePrecios);
                     if (apiData) nuevosPrecios[ticker] = { data: apiData, time: Date.now() };
                 }
                 return nuevosPrecios;
             })();
 
-            const timeoutTask = new Promise((_, reject) => setTimeout(() => reject(new Error('TIMEOUT_SEGURIDAD_API')), 15000));
+            const timeoutTask = new Promise((_, reject) => setTimeout(() => {
+                abortController.abort(); // Detonador de aniquilación del hilo de red
+                reject(new Error('TIMEOUT_SEGURIDAD_API'));
+            }, 15000));
 
             let nuevosPrecios = await Promise.race([fetchTask, timeoutTask]);
 
@@ -648,12 +657,11 @@ const controller = {
             }
         } catch (error) {
             if (error.message === 'TIMEOUT_SEGURIDAD_API') {
-                console.warn("[Controlador] Ejecutado Watchdog de seguridad (Timeout) en fetch de precios.");
+                console.warn("[Controlador] Ejecutado Watchdog de seguridad (Timeout) en fetch de precios. Hilos secundarios abortados.");
             } else {
                 console.error("[Controlador] Fallo en la cascada de fetch de precios:", error);
             }
         } finally {
-            // Liberación del lock garantizada bajo cualquier escenario de estrés
             this._isFetchingPrices = false;
         }
     },

@@ -204,8 +204,8 @@ export const model = {
         return arrayMovimientos.map(item => {
             let mov = { ...item };
             
-            // Generación de ID robusta inmune a truncamiento de parseInt()
-            if (!mov.id) mov.id = Date.now() * 1000 + Math.floor(Math.random() * 1000);
+            // CORRECCIÓN: Prevención absoluta de colisiones mediante criptografía nativa (UUIDv4)
+            if (!mov.id) mov.id = crypto.randomUUID();
             
             if (!mov.fecha) mov.fecha = new Date().toISOString().split('T')[0];
             if (!mov.tipo) mov.tipo = 'Ahorro';
