@@ -80,3 +80,23 @@ app.whenReady().then(() => {
 app.on('window-all-closed', function () {
     if (process.platform !== 'darwin') app.quit();
 });
+// INYECCIÓN DE TELEMETRÍA GLOBAL (Backend / Main Process)
+process.on('uncaughtException', (error) => {
+    console.error('[Arquitectura Main] Error Crítico No Capturado:', error);
+    if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.executeJavaScript(`
+            window.dispatchEvent(new CustomEvent('network:circuit-breaker', { detail: { state: 'OPEN' } }));
+            console.error("Main Process Fatal Error:", \`${error.message.replace(/`/g, '\\`')}\`);
+        `).catch(e => console.error(e));
+    }
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('[Arquitectura Main] Rechazo de Promesa No Manejado:', reason);
+    if (mainWindow && !mainWindow.isDestroyed()) {
+        const msg = reason instanceof Error ? reason.message : String(reason);
+        mainWindow.webContents.executeJavaScript(`
+            console.error("Main Process Async Error:", \`${msg.replace(/`/g, '\\`')}\`);
+        `).catch(e => console.error(e));
+    }
+});

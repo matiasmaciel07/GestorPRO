@@ -478,10 +478,9 @@ const controller = {
     },
 
     prepararEdicion(id) {
-        const parsedId = typeof id === 'string' ? parseInt(id, 10) : id;
-        
-        // Búsqueda robusta bypasseando fallos de coerción de tipos del Modelo
-        const mov = model.data.movimientos.find(m => m.id === parsedId || m.id == id);
+        // Búsqueda robusta forzando comparación de cadenas.
+        // Evita la pérdida de precisión IEEE-754 y fallos de coerción entre DOM String y Number del Modelo
+        const mov = model.data.movimientos.find(m => String(m.id) === String(id));
         
         if(!mov) return events.emit('app:toast', { msg: "Error de lectura del registro en base de datos", type: "error" });
         

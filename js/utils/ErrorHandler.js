@@ -61,3 +61,13 @@ export const ErrorHandler = {
         }
     }
 };
+// INYECCIÓN DE TELEMETRÍA GLOBAL (Frontend Process)
+window.addEventListener('error', (event) => {
+    const msg = event.message || "Fallo crítico en el hilo principal";
+    ErrorHandler.handle(new AppError(msg, 'CRITICAL_DOM_ERROR', event.error));
+});
+
+window.addEventListener('unhandledrejection', (event) => {
+    const msg = event.reason?.message || "Fallo asíncrono no capturado";
+    ErrorHandler.handle(new AppError(msg, 'CRITICAL_ASYNC_ERROR', event.reason));
+});

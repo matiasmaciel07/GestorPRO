@@ -1814,8 +1814,27 @@ export const view = {
             return;
         }
 
-        let wlBuffer = [];
+        // Cache del template nativo en memoria para re-renderizados ultrarrápidos y prevención XSS
+        if (!this._tplWatchlistRow) {
+            const tpl = document.createElement('template');
+            tpl.innerHTML = `
+                <tr style="transition: background 0.2s; background: var(--bg-input); border-bottom: 1px solid var(--border-color);">
+                    <td class="td-activo" style="padding: 15px 20px;"></td>
+                    <td class="td-precio data-font" style="padding: 15px 20px; text-align:right;"></td>
+                    <td class="td-objetivo data-font privacy-mask" style="padding: 15px 20px; font-size: 1.15rem; text-align:right;"></td>
+                    <td class="td-dif data-font" style="padding: 15px 20px; text-align:right;"></td>
+                    <td style="padding: 15px 20px; text-align:center;">
+                        <button class="btn-del btn--danger" style="padding: 8px 16px; font-size:11px; border-radius: 8px;" data-action="del-watchlist" title="Eliminar del Radar">Quitar</button>
+                    </td>
+                </tr>
+            `;
+            this._tplWatchlistRow = tpl;
+        }
+
+        const fragment = document.createDocumentFragment();
+
         wlData.forEach(w => {
+            const row = document.importNode(this._tplWatchlistRow.content, true);
 
             let precioStr = '<div class="skeleton" style="width: 80px; margin-left:auto;"></div>';
             let difStr = '-';
@@ -1832,18 +1851,19 @@ export const view = {
             let apiDataObj = cacheSafeguard[w.activo];
             let origPriceText = (apiDataObj && apiDataObj.data && apiDataObj.data.originalPrice) ? `<span style="font-size:0.8rem; color:var(--color-up); margin-left:6px; font-weight:900;">(USD ${apiDataObj.data.originalPrice.toFixed(2)})</span>` : '';
 
-            wlBuffer.push(
-                `<tr style="transition: background 0.2s; background: var(--bg-input); border-bottom: 1px solid var(--border-color);">`,
-                `<td style="padding: 15px 20px;"><strong style="color: var(--text-main); font-size: 1.15rem; text-shadow: var(--shadow-neon-primary);">${DOMPurify.sanitize(w.activo)}</strong>${origPriceText}${ratioText}</td>`,
-                `<td class="data-font" style="padding: 15px 20px; text-align:right;">${this.zenMode ? '---' : precioStr}</td>`,
-                `<td class="data-font privacy-mask" style="padding: 15px 20px; font-size: 1.15rem; text-align:right;">${this.zenMode ? '---' : '$' + this.fmtStr(w.precioObjetivo, this.currentModelData.dolarBlue, this.currentModelData.vistaUSD)}</td>`,
-                `<td class="data-font" style="padding: 15px 20px; text-align:right;">${this.zenMode ? '---' : difStr}</td>`,
-                `<td style="padding: 15px 20px; text-align:center;"><button class="btn--danger" style="padding: 8px 16px; font-size:11px; border-radius: 8px;" data-action="del-watchlist" data-id="${w.activo}" title="Eliminar del Radar">Quitar</button></td>`,
-                `</tr>`
-            );
+            // Asignación DOM vectorizada segura contra XSS
+            row.querySelector('.td-activo').innerHTML = `<strong style="color: var(--text-main); font-size: 1.15rem; text-shadow: var(--shadow-neon-primary);">${DOMPurify.sanitize(w.activo)}</strong>${origPriceText}${ratioText}`;
+            row.querySelector('.td-precio').innerHTML = this.zenMode ? '---' : precioStr;
+            row.querySelector('.td-objetivo').textContent = this.zenMode ? '---' : '$' + this.fmtStr(w.precioObjetivo, this.currentModelData.dolarBlue, this.currentModelData.vistaUSD);
+            row.querySelector('.td-dif').innerHTML = this.zenMode ? '---' : difStr;
+            
+            row.querySelector('.btn-del').dataset.id = w.activo;
+
+            fragment.appendChild(row);
         });
 
-        this.DOM.tbodyWatchlist.innerHTML = wlBuffer.join('');
+        this.DOM.tbodyWatchlist.innerHTML = '';
+        this.DOM.tbodyWatchlist.appendChild(fragment);
     },
 
     aplicarFiltrosHistorial(filtros) {
