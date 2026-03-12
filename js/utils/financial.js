@@ -41,32 +41,38 @@ export const FinancialMath = {
     calcularRiesgoTWR(retornosDiarios, riskFreeRateAnual = 0.05, diasTranscurridos = 365) {
         let len = retornosDiarios.length;
         
-        // CORRECCIÓN DE TIPOS: Se retorna 0 como Number, no como String, para que el Worker pueda aplicar .toFixed(2) sin crashear.
         if (len < 2 || diasTranscurridos <= 0) return { sharpe: 0, sortino: 0, volatilidad: 0 };
 
         let mean = retornosDiarios.reduce((a, b) => a + b, 0) / len;
-        let variance = retornosDiarios.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / len;
+        
+        // CORRECCIÓN MATEMÁTICA: Uso de Corrección de Bessel (len - 1) para varianza muestral no sesgada
+        let variance = retornosDiarios.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / (len - 1);
         let stdDev = Math.sqrt(variance);
         
-        // Ajuste maestro: factor de anualización basado en la densidad de transacciones
         let factorAnualizacion = (len / diasTranscurridos) * 365;
         let volAnual = stdDev * Math.sqrt(factorAnualizacion); 
         
-        // CORRECCIÓN MATEMÁTICA: Uso de descapitalización geométrica para la Tasa Libre de Riesgo.
         let riskFreePorPeriodo = Math.pow(1 + riskFreeRateAnual, 1 / Math.max(1, factorAnualizacion)) - 1;
         
         let sharpe = stdDev > 0 ? ((mean - riskFreePorPeriodo) / stdDev) * Math.sqrt(factorAnualizacion) : 0;
         
-        // REFACTOR ALGORÍTMICO: Cálculo real de Desviación a la Baja (Sortino) utilizando el total de períodos (len) y el RiskFree pivot
+        // REFACTOR ALGORÍTMICO: Cálculo real de Desviación a la Baja (Downside Deviation)
         let negReturns = retornosDiarios.filter(r => r < riskFreePorPeriodo);
-        let downVar = len > 0 ? negReturns.reduce((a, b) => a + Math.pow(b - riskFreePorPeriodo, 2), 0) / len : 0;
-        let sortino = downVar > 0 ? ((mean - riskFreePorPeriodo) / Math.sqrt(downVar)) * Math.sqrt(factorAnualizacion) : 0;
+        let downVar = negReturns.length > 0 ? negReturns.reduce((a, b) => a + Math.pow(b - riskFreePorPeriodo, 2), 0) / len : 0;
+        
+        // Manejo de escenario ideal (sin retornos negativos por debajo del Risk-Free)
+        let sortino;
+        if (downVar > 0) {
+            sortino = ((mean - riskFreePorPeriodo) / Math.sqrt(downVar)) * Math.sqrt(factorAnualizacion);
+        } else {
+            sortino = mean > riskFreePorPeriodo ? 99.99 : 0; // Techo lógico
+        }
 
-        // RETORNO ESTRICTO NUMÉRICO: Evita TypeError al delegar el formateo a worker.js o UI.
+        // Parseo estricto para evitar propagación de NaN o desbordamientos al hilo principal
         return { 
-            sharpe: sharpe, 
-            sortino: sortino, 
-            volatilidad: volAnual 
+            sharpe: isFinite(sharpe) ? Number(sharpe.toFixed(4)) : 0, 
+            sortino: isFinite(sortino) ? Number(sortino.toFixed(4)) : 0, 
+            volatilidad: isFinite(volAnual) ? Number(volAnual.toFixed(4)) : 0 
         };
     },
 
@@ -260,28 +266,33 @@ export const FinancialMath = {
     calcularAuditoriaComercial(transacciones) {
         let ingresosBrutos = 0;
         let costosProveedoresLogistica = 0;
+        let costosOperativosEstructurales = 0;
+
+        // Matrices Regex precompiladas para evaluación matricial O(1) por iteración
+        const rxIngreso = /ingreso|venta|cobro/i;
+        const rxLogistica = /proveedor|logística|logistica|insumo|mercadería|mercaderia|stock|compra merca/i;
+        const rxAmortizacion = /amortización|amortizacion|deuda|préstamo/i;
 
         transacciones.forEach(t => {
             const monto = Math.abs(parseFloat(t.monto || t.amount || 0));
-            if (monto === 0) return;
+            if (monto === 0 || isNaN(monto)) return;
 
-            const tipoStr = String(t.tipo || "").toLowerCase().trim();
-            const catStr = String(t.categoria || "").toLowerCase().trim();
+            const tipoStr = String(t.tipo || "").trim();
+            const catStr = String(t.categoria || "").trim();
+            const estadoPagoStr = String(t.estadoPago || "").trim();
 
-            if (tipoStr === 'ingreso local' || tipoStr === 'ingreso' || tipoStr === 'venta') {
+            if (rxIngreso.test(tipoStr)) {
                 ingresosBrutos += monto;
             } else {
-                // CORRECCIÓN LÓGICA: Ampliación de la matriz de detección y normalización segura
-                const patronesLogistica = ['proveedor', 'logística', 'logistica', 'insumo', 'mercadería', 'mercaderia', 'stock'];
-                const esGastoLogistica = tipoStr === 'gasto local' && patronesLogistica.some(patron => catStr.includes(patron));
-                
-                // Blindaje P&L: Evaluación de estado estricto para evitar impactar deudas no pagadas.
-                const estadoPagoStr = String(t.estadoPago || "").toLowerCase().trim();
-                const esPagoAlContado = (tipoStr.includes('pago proveedor') || tipoStr.includes('pago a proveedor')) && estadoPagoStr !== 'pendiente';
-                const esAmortizacion = tipoStr.includes('amortización deuda') || tipoStr.includes('amortizacion deuda');
+                const esPagoContado = tipoStr.toLowerCase().includes('pago') && estadoPagoStr.toLowerCase() !== 'pendiente';
+                const esGastoLogistica = tipoStr.toLowerCase().includes('gasto') && rxLogistica.test(catStr);
+                const esAmortizacionDirecta = rxAmortizacion.test(tipoStr) || rxAmortizacion.test(catStr);
 
-                if (esGastoLogistica || esPagoAlContado || esAmortizacion) {
+                // Clasificación estricta (COGS vs OPEX)
+                if (esGastoLogistica || esPagoContado || esAmortizacionDirecta) {
                     costosProveedoresLogistica += monto;
+                } else if (tipoStr.toLowerCase().includes('gasto local') || tipoStr.toLowerCase().includes('operativo')) {
+                    costosOperativosEstructurales += monto;
                 }
             }
         });
@@ -293,7 +304,8 @@ export const FinancialMath = {
             ingresosBrutosDeclarados: ingresosBrutos,
             ingresosBrutosNetos: ingresosBrutosNetos,
             inventarioBaseCosto: inventarioBaseCosto,
-            costoOperativoDeducido: costosProveedoresLogistica
+            costoOperativoDeducido: costosProveedoresLogistica,
+            costoOperativoEstructural: costosOperativosEstructurales // Nueva métrica para analíticas de Fase 6
         };
     },
 

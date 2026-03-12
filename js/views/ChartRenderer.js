@@ -624,9 +624,9 @@ export const ChartRenderer = {
         const div = isUSD ? Math.max(1, dBlue || 1) : 1;
         
         const aplicarPromedio = (monto) => {
+            if (!monto || isNaN(monto)) return 0;
             if (!temporalidad || temporalidad.toLowerCase() === 'histórico' || temporalidad.toLowerCase() === 'historico') return monto;
             
-            // BLINDAJE MATEMÁTICO: Evitar propagación de Infinity o NaN en el renderizado
             let meses = Math.max(1, stats.numMesesOperativos || 1);
             let val = monto;
             
@@ -635,7 +635,8 @@ export const ChartRenderer = {
             else if (temporalidad.toLowerCase() === 'semanal') { val = (monto / meses) / 4.3333; } 
             else if (temporalidad.toLowerCase() === 'diario') { val = (monto / meses) / 30.4166; }
             
-            return Math.max(0, val);
+            // Sanitización absoluta: Redondeo seguro a 2 decimales para evitar artefactos de punto flotante en ChartJS
+            return Math.max(0, Number(val.toFixed(2)));
         };
 
         const ingresosBrutos = aplicarPromedio((stats.ingresosLocal || 0) / div);
@@ -644,41 +645,47 @@ export const ChartRenderer = {
         const gastosPersonales = aplicarPromedio((stats.gastosFamiliar || 0) / div);
         const inver = aplicarPromedio((stats.totalAhorrado || 0) / div);
 
-        if (ingresosBrutos === 0 && gastosLocales === 0 && pagosProv === 0) {
+        const costosOperativos = gastosLocales + pagosProv;
+        
+        // Bloqueo de ciclo vacío
+        if (ingresosBrutos <= 0.01 && costosOperativos <= 0.01) {
             wrap.innerHTML = '<div style="display:flex; height:100%; align-items:center; justify-content:center; color:var(--text-muted);"><svg width="48" height="48" style="margin-bottom:10px; opacity:0.5;"><use href="#icon-empty"></use></svg><span>Sin flujo financiero en esta temporalidad</span></div>';
             return;
         }
 
-        const costosOperativos = gastosLocales + pagosProv;
         const sumatoriaSalidas = gastosPersonales + inver;
-        
         let flujoLibreReal = 0;
         let deficitOperativo = 0;
         let deficitEstructural = 0;
         let excedente = 0;
 
         const links = [];
+        
+        // Función inyectora segura: Impide valores cero o negativos que crashean el renderer Sankey
+        const pushLink = (source, target, val) => {
+            if (val >= 0.01) links.push({ source, target, value: val });
+        };
 
         if (ingresosBrutos >= costosOperativos) {
             flujoLibreReal = ingresosBrutos - costosOperativos;
-            if (costosOperativos > 0) links.push({ source: 'Ingresos', target: 'Costos Op.', value: costosOperativos });
-            if (flujoLibreReal > 0) links.push({ source: 'Ingresos', target: 'Flujo Libre', value: flujoLibreReal });
+            pushLink('Ingresos', 'Costos Op.', costosOperativos);
+            pushLink('Ingresos', 'Flujo Libre', flujoLibreReal);
         } else {
             deficitOperativo = costosOperativos - ingresosBrutos;
-            if (ingresosBrutos > 0) links.push({ source: 'Ingresos', target: 'Costos Op.', value: ingresosBrutos });
-            links.push({ source: 'Ahorros Previos', target: 'Costos Op.', value: deficitOperativo });
+            pushLink('Ingresos', 'Costos Op.', ingresosBrutos);
+            pushLink('Ahorros Previos', 'Costos Op.', deficitOperativo);
         }
 
         if (sumatoriaSalidas > flujoLibreReal) {
             deficitEstructural = sumatoriaSalidas - flujoLibreReal;
-            if (deficitEstructural > 0) links.push({ source: 'Ahorros Previos', target: 'Flujo Libre', value: deficitEstructural });
-            if (gastosPersonales > 0) links.push({ source: 'Flujo Libre', target: 'G. Personal', value: gastosPersonales });
-            if (inver > 0) links.push({ source: 'Flujo Libre', target: 'Inversión', value: inver });
+            pushLink('Ahorros Previos', 'Flujo Libre', deficitEstructural);
+            pushLink('Flujo Libre', 'G. Personal', gastosPersonales);
+            pushLink('Flujo Libre', 'Inversión', inver);
         } else {
             excedente = flujoLibreReal - sumatoriaSalidas;
-            if (gastosPersonales > 0) links.push({ source: 'Flujo Libre', target: 'G. Personal', value: gastosPersonales });
-            if (inver > 0) links.push({ source: 'Flujo Libre', target: 'Inversión', value: inver });
-            if (excedente > 0) links.push({ source: 'Flujo Libre', target: 'Excedente Líquido', value: excedente });
+            pushLink('Flujo Libre', 'G. Personal', gastosPersonales);
+            pushLink('Flujo Libre', 'Inversión', inver);
+            pushLink('Flujo Libre', 'Excedente Líquido', excedente);
         }
 
         const getCSS = (varName, fallBack) => getComputedStyle(document.documentElement).getPropertyValue(varName).trim() || fallBack;
