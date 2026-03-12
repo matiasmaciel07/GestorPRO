@@ -50,11 +50,20 @@ const controller = {
         view.initUI();
 
         try {
-            // ARRANQUE RESILIENTE (Preparado para entorno Offline/Electron)
-            // Separamos el modelo local de la dependencia de red (API Dólar)
             await model.inicializar();
             
-            // Intentamos obtener el dólar, pero si falla la red, no bloqueamos la app
+            // FASE DE SANEAMIENTO: Asignación de IDs para registros legados (Previene bug de edición del primer registro)
+            if (model.data && model.data.movimientos) {
+                let modificados = false;
+                model.data.movimientos.forEach((m, idx) => {
+                    if (m.id === undefined || m.id === null) {
+                        m.id = Date.now() + idx;
+                        modificados = true;
+                    }
+                });
+                if (modificados) await model.guardarLocal();
+            }
+
             const dolarCache = await api.fetchDolar().catch((err) => {
                 console.warn("[Controlador] API de Dólar inaccesible. Operando con caché local.", err);
                 return null;
@@ -431,10 +440,14 @@ const controller = {
     },
 
     prepararEdicion(id) {
-        const mov = model.getMovimiento(id);
+        const parsedId = typeof id === 'string' ? parseInt(id, 10) : id;
+        
+        // Búsqueda robusta bypasseando fallos de coerción de tipos del Modelo
+        const mov = model.data.movimientos.find(m => m.id === parsedId || m.id == id);
+        
         if(!mov) return events.emit('app:toast', { msg: "Error de lectura del registro en base de datos", type: "error" });
         
-        this.state.editingId = id;
+        this.state.editingId = mov.id;
         TabFSM.transition('operar');
         events.emit('ui:poblar-formulario-edicion', mov);
     },

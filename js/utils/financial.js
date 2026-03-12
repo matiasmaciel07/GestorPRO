@@ -242,20 +242,17 @@ export const FinancialMath = {
             const tipoStr = (t.tipo || "").toLowerCase().trim();
             const catStr = (t.categoria || "").toLowerCase().trim();
 
-            // CORRECCIÓN ESTRUCTURAL (FASE 3): Blindaje del P&L. 
-            // Se restringe el acumulador de ingresos brutos exclusivamente a facturación comercial genuina.
-            // Se excluyen explícitamente fondeos externos ('ahorro', 'aporte capital') para no distorsionar el Estado de Resultados.
             if (tipoStr === 'ingreso local' || tipoStr === 'ingreso' || tipoStr === 'venta') {
                 ingresosBrutos += monto;
             } else {
-                const esGastoLogistica = tipoStr === 'gasto' && (catStr.includes('proveedor') || catStr.includes('logística') || catStr.includes('logistica') || catStr.includes('insumos'));
+                const esGastoLogistica = tipoStr === 'gasto local' && (catStr.includes('proveedor') || catStr.includes('logística') || catStr.includes('logistica') || catStr.includes('insumos'));
                 
-                const esPagoDirecto = tipoStr === 'pago proveedor' || 
-                                      tipoStr === 'pago a proveedor' || 
-                                      tipoStr === 'amortización deuda a proveedor' || 
-                                      tipoStr === 'amortizacion deuda a proveedor';
+                // CORRECCIÓN ESTRUCTURAL: Blindaje P&L para evitar doble contabilización en deudas logísticas.
+                // Se reconoce el impacto en P&L solo si se pagó al contado o si es una amortización de deuda.
+                const esPagoAlContado = (tipoStr === 'pago proveedor' || tipoStr === 'pago a proveedor') && t.estadoPago !== 'Pendiente';
+                const esAmortizacion = tipoStr === 'amortización deuda a proveedor' || tipoStr === 'amortizacion deuda a proveedor';
 
-                if (esGastoLogistica || esPagoDirecto) {
+                if (esGastoLogistica || esPagoAlContado || esAmortizacion) {
                     costosProveedoresLogistica += monto;
                 }
             }
