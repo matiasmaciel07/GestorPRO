@@ -46,10 +46,11 @@ function getEmptyStats() {
         liquidezAcida: 0, liquidezCorriente: 0,
         
         prestamosDetalle: {}, proveedoresMensual: {}, proveedoresDetalle: {},
-        deudaProveedoresDetalle: {},
+        deudaProveedoresDetalle: {}, deudaProveedoresActiva: 0,
         
         totalPedidoPrestamos: 0, totalDevolverPrestamos: 0, 
         totalCuotaMensualPrestamos: 0, tasaPromedioPrestamos: 0,
+        totalHistoricoPedidoPrestamos: 0,
 
         historyPatrimonio: [], historyPatrimonioConStock: [],
         historyLiquidez: [], historyInvertido: [], historyCajaLocal: [], 
@@ -302,6 +303,8 @@ function processSingle(m) {
                 id: deudaId, proveedor: prov, fecha: m.fecha, capitalExigibleTotal: montoNum,
                 capitalServido: 0, amortizacionPct: 0, activo: true
             };
+            st.stats.deudaActiva = safeFloat(st.stats.deudaActiva + montoNum);
+            st.stats.deudaProveedoresActiva = safeFloat((st.stats.deudaProveedoresActiva || 0) + montoNum);
         } else {
             st.stats.cajaLocal = safeFloat(st.stats.cajaLocal - montoNum);
             st.stats.pagosProveedores = safeFloat(st.stats.pagosProveedores + montoNum);
@@ -315,6 +318,8 @@ function processSingle(m) {
         st.stats.cajaLocal = safeFloat(st.stats.cajaLocal - montoNum);
         st.stats.pagosProveedores = safeFloat(st.stats.pagosProveedores + montoNum);
         st.stats.flowProveedores = safeFloat(st.stats.flowProveedores + montoNum);
+        st.stats.deudaActiva = Math.max(0, safeFloat(st.stats.deudaActiva - montoNum));
+        st.stats.deudaProveedoresActiva = Math.max(0, safeFloat((st.stats.deudaProveedoresActiva || 0) - montoNum));
         
         let prov = m.proveedor || 'Desconocido';
         st.stats.gastosPorProveedor[prov] = safeFloat((st.stats.gastosPorProveedor[prov] || 0) + montoNum);
@@ -325,8 +330,11 @@ function processSingle(m) {
             let deuda = st.stats.deudaProveedoresDetalle[m.deudaAsociadaId];
             deuda.capitalServido = safeFloat(deuda.capitalServido + montoNum);
             deuda.amortizacionPct = safeFloat((deuda.capitalServido / deuda.capitalExigibleTotal) * 100);
-            if (deuda.capitalServido >= deuda.capitalExigibleTotal) {
+            
+            if (deuda.capitalServido >= (deuda.capitalExigibleTotal - 0.01)) {
                 deuda.activo = false;
+                deuda.capitalServido = deuda.capitalExigibleTotal;
+                deuda.amortizacionPct = 100;
             }
         }
     }
@@ -361,6 +369,8 @@ function processSingle(m) {
         let capitalSolicitado = safeFloat(m.capital || montoNum);
         let totalDevolver = safeFloat(m.montoTotalDevolver || montoNum);
         st.stats.deudaActiva = safeFloat(st.stats.deudaActiva + totalDevolver);
+        st.stats.totalHistoricoPedidoPrestamos = safeFloat((st.stats.totalHistoricoPedidoPrestamos || 0) + capitalSolicitado);
+        
         st.stats.prestamosDetalle[m.id] = {
             id: m.id, fecha: m.fecha, entidad: m.entidad || 'Entidad',
             capital: capitalSolicitado, totalDevolver: totalDevolver, pagado: 0, 
@@ -378,7 +388,11 @@ function processSingle(m) {
             let prestamo = st.stats.prestamosDetalle[m.prestamoAsociado];
             prestamo.pagado = safeFloat(prestamo.pagado + montoNum);
             prestamo.cuotasPagadas += 1; 
-            if (prestamo.pagado >= prestamo.totalDevolver) prestamo.activo = false;
+            
+            if (prestamo.pagado >= (prestamo.totalDevolver - 0.01)) {
+                prestamo.activo = false;
+                prestamo.pagado = prestamo.totalDevolver;
+            }
         }
     }
 
@@ -391,7 +405,6 @@ function processSingle(m) {
     } else {
         let daysElapsed = (new Date(m.fecha).getTime() - new Date(st.lastDate).getTime()) / 86400000;
         if (daysElapsed > 0 && st.dailyInfRate > 0) {
-            // CORRECCIÓN: Compound Logarítmico Neperiano para prevenir overflow de mantisa.
             st.inflacionAcumuladaAbsoluta = st.inflacionAcumuladaAbsoluta * Math.exp(Math.log(1 + st.dailyInfRate) * daysElapsed);
         }
         if (flujoExternoHoy !== 0) {

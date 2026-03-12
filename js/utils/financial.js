@@ -142,6 +142,20 @@ export const FinancialMath = {
     calculateXIRR(cashFlows, guess = 0.1) {
         if (!cashFlows || cashFlows.length < 2) return 0;
         
+        // CORRECCIÓN ESTRUCTURAL: Pre-validación de convergencia O(N). 
+        // Se requiere obligatoriamente un flujo positivo y uno negativo para que exista una TIR matemática.
+        let tienePositivo = false;
+        let tieneNegativo = false;
+        
+        for (let i = 0; i < cashFlows.length; i++) {
+            if (cashFlows[i].amount > 0) tienePositivo = true;
+            else if (cashFlows[i].amount < 0) tieneNegativo = true;
+            
+            if (tienePositivo && tieneNegativo) break; // Early exit de optimización
+        }
+        
+        if (!tienePositivo || !tieneNegativo) return 0;
+        
         const sortedFlows = [...cashFlows].sort((a, b) => a.date - b.date);
         
         let t0 = sortedFlows[0].date;
