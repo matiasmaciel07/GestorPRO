@@ -621,18 +621,19 @@ export const ChartRenderer = {
         const ctx = canvas.getContext('2d');
         if (chartInstances['chartSankey']) chartInstances['chartSankey'].destroy();
 
-        const div = isUSD ? dBlue : 1;
+        const div = isUSD ? Math.max(1, dBlue || 1) : 1;
         
         const aplicarPromedio = (monto) => {
             if (!temporalidad || temporalidad.toLowerCase() === 'histórico' || temporalidad.toLowerCase() === 'historico') return monto;
             
-            let meses = stats.numMesesOperativos || 1;
+            // BLINDAJE MATEMÁTICO: Evitar propagación de Infinity o NaN en el renderizado
+            let meses = Math.max(1, stats.numMesesOperativos || 1);
             let val = monto;
             
             if (temporalidad.toLowerCase() === 'anual') { val = monto / Math.max(1, meses / 12); } 
             else if (temporalidad.toLowerCase() === 'mensual') { val = monto / meses; } 
             else if (temporalidad.toLowerCase() === 'semanal') { val = (monto / meses) / 4.3333; } 
-            else if (temporalidad.toLowerCase() === 'diario') { val = (monto / meses) / 30.416; }
+            else if (temporalidad.toLowerCase() === 'diario') { val = (monto / meses) / 30.4166; }
             
             return Math.max(0, val);
         };

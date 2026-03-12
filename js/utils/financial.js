@@ -40,7 +40,9 @@ export const FinancialMath = {
      */
     calcularRiesgoTWR(retornosDiarios, riskFreeRateAnual = 0.05, diasTranscurridos = 365) {
         let len = retornosDiarios.length;
-        if (len < 2 || diasTranscurridos <= 0) return { sharpe: "0.00", sortino: "0.00", volatilidad: 0 };
+        
+        // CORRECCIÓN DE TIPOS: Se retorna 0 como Number, no como String, para que el Worker pueda aplicar .toFixed(2) sin crashear.
+        if (len < 2 || diasTranscurridos <= 0) return { sharpe: 0, sortino: 0, volatilidad: 0 };
 
         let mean = retornosDiarios.reduce((a, b) => a + b, 0) / len;
         let variance = retornosDiarios.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / len;
@@ -50,14 +52,21 @@ export const FinancialMath = {
         let factorAnualizacion = (len / diasTranscurridos) * 365;
         let volAnual = stdDev * Math.sqrt(factorAnualizacion); 
         
-        let riskFreePorPeriodo = riskFreeRateAnual / factorAnualizacion;
+        // CORRECCIÓN MATEMÁTICA: Uso de descapitalización geométrica para la Tasa Libre de Riesgo.
+        let riskFreePorPeriodo = Math.pow(1 + riskFreeRateAnual, 1 / Math.max(1, factorAnualizacion)) - 1;
+        
         let sharpe = stdDev > 0 ? ((mean - riskFreePorPeriodo) / stdDev) * Math.sqrt(factorAnualizacion) : 0;
         
         let negReturns = retornosDiarios.filter(r => r < 0);
         let downVar = negReturns.length > 0 ? negReturns.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / negReturns.length : 0;
         let sortino = downVar > 0 ? ((mean - riskFreePorPeriodo) / Math.sqrt(downVar)) * Math.sqrt(factorAnualizacion) : 0;
 
-        return { sharpe, sortino, volatilidad: volAnual };
+        // RETORNO ESTRICTO NUMÉRICO: Evita TypeError al delegar el formateo a worker.js o UI.
+        return { 
+            sharpe: sharpe, 
+            sortino: sortino, 
+            volatilidad: volAnual 
+        };
     },
 
     /**
@@ -157,9 +166,15 @@ export const FinancialMath = {
         const mesActual = ahora.getMonth();
 
         return transacciones.filter(t => {
-            let fechaStr = String(t.fecha || t.date || t.timestamp);
-            if (fechaStr.length === 10) fechaStr += "T12:00:00";
-            const fechaTx = new Date(fechaStr);
+            let rawDate = t.fecha || t.date || t.timestamp;
+            if (!rawDate) return false;
+            
+            // CORRECCIÓN ESTRUCTURAL: Parseo seguro aislando componentes para evitar desfase de Timezone UTC->Local
+            let fechaStr = String(rawDate).split('T')[0];
+            const partes = fechaStr.split('-');
+            if (partes.length !== 3) return false;
+
+            const fechaTx = new Date(parseInt(partes[0], 10), parseInt(partes[1], 10) - 1, parseInt(partes[2], 10));
             
             if (isNaN(fechaTx.getTime())) return false;
 
@@ -170,8 +185,10 @@ export const FinancialMath = {
                 return fechaTx.getFullYear() === añoActual && fechaTx.getMonth() === mesActual;
             }
             if (temporalidad.toLowerCase() === 'semanal') {
-                const unDia = 24 * 60 * 60 * 1000;
-                const diasDiferencia = Math.round(Math.abs((ahora - fechaTx) / unDia));
+                // Cálculo estricto de diferencia en días absolutos (ignorando horas)
+                const utcAhora = Date.UTC(ahora.getFullYear(), ahora.getMonth(), ahora.getDate());
+                const utcTx = Date.UTC(fechaTx.getFullYear(), fechaTx.getMonth(), fechaTx.getDate());
+                const diasDiferencia = Math.abs((utcAhora - utcTx) / (24 * 60 * 60 * 1000));
                 return diasDiferencia <= 7;
             }
             return true;
@@ -239,18 +256,20 @@ export const FinancialMath = {
             const monto = Math.abs(parseFloat(t.monto || t.amount || 0));
             if (monto === 0) return;
 
-            const tipoStr = (t.tipo || "").toLowerCase().trim();
-            const catStr = (t.categoria || "").toLowerCase().trim();
+            const tipoStr = String(t.tipo || "").toLowerCase().trim();
+            const catStr = String(t.categoria || "").toLowerCase().trim();
 
             if (tipoStr === 'ingreso local' || tipoStr === 'ingreso' || tipoStr === 'venta') {
                 ingresosBrutos += monto;
             } else {
-                const esGastoLogistica = tipoStr === 'gasto local' && (catStr.includes('proveedor') || catStr.includes('logística') || catStr.includes('logistica') || catStr.includes('insumos'));
+                // CORRECCIÓN LÓGICA: Ampliación de la matriz de detección y normalización segura
+                const patronesLogistica = ['proveedor', 'logística', 'logistica', 'insumo', 'mercadería', 'mercaderia', 'stock'];
+                const esGastoLogistica = tipoStr === 'gasto local' && patronesLogistica.some(patron => catStr.includes(patron));
                 
-                // CORRECCIÓN ESTRUCTURAL: Blindaje P&L para evitar doble contabilización en deudas logísticas.
-                // Se reconoce el impacto en P&L solo si se pagó al contado o si es una amortización de deuda.
-                const esPagoAlContado = (tipoStr === 'pago proveedor' || tipoStr === 'pago a proveedor') && t.estadoPago !== 'Pendiente';
-                const esAmortizacion = tipoStr === 'amortización deuda a proveedor' || tipoStr === 'amortizacion deuda a proveedor';
+                // Blindaje P&L: Evaluación de estado estricto para evitar impactar deudas no pagadas.
+                const estadoPagoStr = String(t.estadoPago || "").toLowerCase().trim();
+                const esPagoAlContado = (tipoStr.includes('pago proveedor') || tipoStr.includes('pago a proveedor')) && estadoPagoStr !== 'pendiente';
+                const esAmortizacion = tipoStr.includes('amortización deuda') || tipoStr.includes('amortizacion deuda');
 
                 if (esGastoLogistica || esPagoAlContado || esAmortizacion) {
                     costosProveedoresLogistica += monto;
