@@ -309,13 +309,21 @@
                     </div>
 
                     <div class="card" style="margin-bottom: var(--spacing-xl); padding: 35px; border-radius: 28px;">
-                        <h3 class="stat__title" style="margin-bottom: 30px; text-align:center; font-size: 0.9rem;">Histórico de Flujo de Ingresos Operativos Mensuales</h3>
+                        <h3 class="stat__title" data-tooltip="Histórico mensual de ingresos generados directamente por la actividad comercial (Facturación Bruta)." style="margin-bottom: 30px; text-align:center; font-size: 0.9rem;">Histórico de Flujo de Ingresos Operativos Mensuales</h3>
                         <div id="wrap-ventas-mensuales" style="height: 320px; width: 100%; position: relative;"></div>
                     </div>
 
                     <div class="card" style="margin-bottom: var(--spacing-xl); padding: 35px; border-radius: 28px;">
-                        <h3 class="stat__title" style="margin-bottom: 30px; text-align:center; font-size: 0.9rem;">Termómetro de Demanda por Día de Actividad</h3>
+                        <h3 class="stat__title" data-tooltip="Comportamiento del volumen de negocio agrupado por día de la semana. Evalúa tu pico productivo." style="margin-bottom: 30px; text-align:center; font-size: 0.9rem;">Termómetro de Demanda por Día de Actividad</h3>
                         <div id="wrap-termometro-dias" style="height: 280px; width: 100%; position: relative;"></div>
+                    </div>
+                    
+                    <div class="card" style="margin-bottom: var(--spacing-xl); padding: 35px; border-radius: 28px;">
+                        <h3 class="stat__title" data-tooltip="El porcentaje refleja el Margen Neto Operativo (Ganancia limpia tras pagar estructura y vida personal sobre el total facturado)." style="margin-bottom: 30px; font-size:0.9rem; text-align: center;">Matriz de Crecimiento Operativo (Variación Neta)</h3>
+                        <div style="text-align:center; font-size:0.85rem; color:var(--text-muted); margin-top:-20px; margin-bottom:20px; font-weight:600;">Ganancia limpia mensual post-gastos (excluyendo inversión en inventario).</div>
+                        <div style="overflow-x:auto;">
+                            <div id="heatmap-operativo-grid" style="display:grid; grid-template-columns: 6rem repeat(12, 1fr) 7rem; text-align:center; gap:8px;"></div>
+                        </div>
                     </div>
 
                     <div class="grid-2" style="margin-bottom: var(--spacing-xl);">

@@ -56,6 +56,8 @@ function getEmptyStats() {
         historyIngresosLocal: [], historyFlujoNeto: [], historyFechas: [],
         historyPatrimonioPuro: [], historyInflacion: [],
         historyCostoVida: [], historyMediaVida: [], historyFlujoPatrimonial: [],
+        historyBursatil: [], historyFlujoBursatil: [], historyIndexTWR: [],
+        historyDrawdown: [], maxDrawdownBursatil: 0,
         
         gastosPorCategoriaLocal: {}, gastosPorCategoriaFamiliar: {}, gastosPorProveedor: {},
         ahorroHaciaBursatil: 0, flujoMensual: {}, 
@@ -77,7 +79,7 @@ function getEmptyStats() {
         riesgo: { sharpe: "0.00", sortino: "0.00", volatilidad: "0.00" },
         healthScore: 0,
         
-        movimientosPorFecha: {} // Mapeo O(1) inyectado para el calendario
+        movimientosPorFecha: {} 
     };
 }
 
@@ -96,17 +98,17 @@ function processSingle(m) {
     let cantNum = safeFloat(m.cantidad);
     let mesStr = m.fecha.substring(0, 7);
     let flujoExternoHoy = 0;
+    let flujoBursatilHoy = 0;
     
     st.mesesOperativos.add(mesStr);
 
-    // Inyección al diccionario en tiempo de parseo
     if (!st.stats.movimientosPorFecha[m.fecha]) {
         st.stats.movimientosPorFecha[m.fecha] = [];
     }
     st.stats.movimientosPorFecha[m.fecha].push(m);
     
     if (!st.stats.flujoMensual[mesStr]) {
-        st.stats.flujoMensual[mesStr] = { ingresos: 0, cuotas: 0, costoVida: 0 };
+        st.stats.flujoMensual[mesStr] = { ingresos: 0, cuotas: 0, costoVida: 0, gastosComerciales: 0, ingresosComerciales: 0 };
     }
 
     if (m.tipo === 'Ahorro') {
@@ -116,6 +118,7 @@ function processSingle(m) {
         st.stats.ahorroHaciaBursatil = safeFloat(st.stats.ahorroHaciaBursatil + montoNum); 
         st.stats.flowAhorro = safeFloat(st.stats.flowAhorro + montoNum);
         flujoExternoHoy = montoNum; 
+        flujoBursatilHoy += montoNum;
         
         if (m.usd > 0) { 
             st.stats.usdComprado = safeFloat(st.stats.usdComprado + parseFloat(m.usd));
@@ -134,6 +137,7 @@ function processSingle(m) {
         st.stats.ahorroArsPuro = safeFloat(st.stats.ahorroArsPuro + montoNum);
         st.stats.ahorroHaciaBursatil = safeFloat(st.stats.ahorroHaciaBursatil + montoNum); 
         st.stats.flowAhorro = safeFloat(st.stats.flowAhorro + montoNum);
+        flujoBursatilHoy += montoNum;
         
         if (m.usd > 0) { 
             st.stats.usdComprado = safeFloat(st.stats.usdComprado + parseFloat(m.usd));
@@ -148,6 +152,7 @@ function processSingle(m) {
         st.stats.ahorroArsPuro = safeFloat(st.stats.ahorroArsPuro - montoNum);
         st.stats.ahorroHaciaBursatil = safeFloat(st.stats.ahorroHaciaBursatil - montoNum);
         st.stats.flowAhorro = safeFloat(st.stats.flowAhorro - montoNum);
+        flujoBursatilHoy -= montoNum;
 
         if (m.usd > 0) {
             st.stats.usdComprado = safeFloat(st.stats.usdComprado - parseFloat(m.usd));
@@ -167,6 +172,7 @@ function processSingle(m) {
         st.stats.totalRetirado = safeFloat(st.stats.totalRetirado + montoNum);
         st.stats.ahorroArsPuro = safeFloat(st.stats.ahorroArsPuro - montoNum);
         flujoExternoHoy = -montoNum;
+        flujoBursatilHoy -= montoNum;
     } 
     else if (m.tipo === 'Compra') {
         st.stats.billetera = safeFloat(st.stats.billetera - montoNum); 
@@ -240,6 +246,7 @@ function processSingle(m) {
         st.stats.ingresosConsolidadosGlobal = safeFloat(st.stats.ingresosConsolidadosGlobal + montoNum);
         st.stats.flowIngreso = safeFloat(st.stats.flowIngreso + montoNum); 
         st.stats.flujoMensual[mesStr].ingresos = safeFloat(st.stats.flujoMensual[mesStr].ingresos + montoNum); 
+        st.stats.flujoMensual[mesStr].ingresosComerciales = safeFloat((st.stats.flujoMensual[mesStr].ingresosComerciales || 0) + montoNum);
         
         let costoVendidoEstimado = montoNum; 
         
@@ -266,6 +273,7 @@ function processSingle(m) {
         st.stats.flowOperativo = safeFloat(st.stats.flowOperativo + montoNum);
         st.stats.gastosPorCategoriaLocal[m.categoria || 'Varios'] = safeFloat((st.stats.gastosPorCategoriaLocal[m.categoria || 'Varios'] || 0) + montoNum);
         st.stats.flujoMensual[mesStr].costoVida = safeFloat((st.stats.flujoMensual[mesStr].costoVida || 0) + montoNum);
+        st.stats.flujoMensual[mesStr].gastosComerciales = safeFloat((st.stats.flujoMensual[mesStr].gastosComerciales || 0) + montoNum);
     } 
     else if (m.tipo === 'Gasto Familiar') {
         st.stats.cajaLocal = safeFloat(st.stats.cajaLocal - montoNum);
@@ -375,6 +383,7 @@ function processSingle(m) {
     }
 
     let currentPatrimonioTotal = safeFloat(st.stats.cajaLocal + st.stats.stockCosto + st.stats.billetera + st.stats.capInvertido);
+    let currentBursatil = safeFloat(st.stats.billetera + st.stats.capInvertido);
     
     if (!st.firstDateMs) {
         st.firstDateMs = new Date(m.fecha).getTime();
@@ -408,6 +417,10 @@ function processSingle(m) {
         st.stats.historyInflacion.push(safeFloat(st.inflacionAcumuladaAbsoluta));
         st.stats.historyMediaVida.push(safeFloat(avgVida));
         st.stats.historyFlujoPatrimonial.push(safeFloat(flujoExternoHoy));
+        
+        st.stats.historyBursatil.push(currentBursatil);
+        st.stats.historyFlujoBursatil.push(flujoBursatilHoy);
+        
         st.lastDate = m.fecha;
     } else {
         let idx = st.stats.historyPatrimonio.length - 1;
@@ -423,6 +436,9 @@ function processSingle(m) {
         st.stats.historyInflacion[idx] = safeFloat(st.inflacionAcumuladaAbsoluta);
         st.stats.historyMediaVida[idx] = safeFloat(avgVida);
         st.stats.historyFlujoPatrimonial[idx] = safeFloat(st.stats.historyFlujoPatrimonial[idx] + flujoExternoHoy);
+        
+        st.stats.historyBursatil[idx] = currentBursatil;
+        st.stats.historyFlujoBursatil[idx] = safeFloat(st.stats.historyFlujoBursatil[idx] + flujoBursatilHoy);
     }
 }
 
@@ -462,6 +478,29 @@ function finalizeMetrics() {
 
     let hhiMetrics = FinancialMath.calcularConcentrationRisk(Object.values(st.stats.atribucionSector));
     st.stats.riesgoConcentracion = { hhi: safeFloat(hhiMetrics.hhi), label: hhiMetrics.label };
+
+    // TWR Matemáticamente Limpio para Bursátil y Drawdown
+    let indexTWR = 100;
+    let peakTWR = 100;
+    
+    for(let i=0; i<st.stats.historyBursatil.length; i++) {
+        let prevVal = i > 0 ? st.stats.historyBursatil[i-1] : 0;
+        let todayVal = st.stats.historyBursatil[i];
+        let flow = st.stats.historyFlujoBursatil[i] || 0;
+        
+        let base = prevVal + flow;
+        let dailyRet = base > 0 ? (todayVal - base) / base : 0;
+        
+        indexTWR = indexTWR * (1 + dailyRet);
+        st.stats.historyIndexTWR.push(safeFloat(indexTWR));
+        
+        if (indexTWR > peakTWR) peakTWR = indexTWR;
+        
+        let dd = peakTWR > 0 ? ((indexTWR - peakTWR) / peakTWR) * 100 : 0;
+        st.stats.historyDrawdown.push(safeFloat(dd));
+    }
+    
+    st.stats.maxDrawdownBursatil = st.stats.historyDrawdown.length > 0 ? safeFloat(Math.min(...st.stats.historyDrawdown)) : 0;
 
     let len = st.stats.historyPatrimonio.length;
     if (len > 2) {
@@ -621,6 +660,11 @@ function runFullProcess(movimientosArray, inflacionINDEC = {}) {
             st.stats.historyPatrimonioPuro.push(st.stats.historyPatrimonioPuro[lastIdx]);
             st.stats.historyCostoVida.push(st.stats.historyCostoVida[lastIdx]);
             st.stats.historyFlujoPatrimonial.push(st.stats.historyFlujoPatrimonial[lastIdx]);
+            
+            st.stats.historyBursatil.push(st.stats.historyBursatil[lastIdx]);
+            st.stats.historyFlujoBursatil.push(0);
+            st.stats.historyIndexTWR.push(st.stats.historyIndexTWR[lastIdx]);
+            st.stats.historyDrawdown.push(st.stats.historyDrawdown[lastIdx]);
         }
     }
 

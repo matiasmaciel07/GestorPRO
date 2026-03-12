@@ -1379,10 +1379,70 @@ export const view = {
                 }
             }
 
+            // NUEVA INTEGRACIÓN FASE 4: Matriz Operativa Mensual
+            const hmOpGrid = document.getElementById('heatmap-operativo-grid');
+            if (hmOpGrid) {
+                let hmOpBuffer = [
+                    '<div class="hm-header">Año</div><div class="hm-header">Ene</div><div class="hm-header">Feb</div><div class="hm-header">Mar</div><div class="hm-header">Abr</div><div class="hm-header">May</div><div class="hm-header">Jun</div><div class="hm-header">Jul</div><div class="hm-header">Ago</div><div class="hm-header">Sep</div><div class="hm-header">Oct</div><div class="hm-header">Nov</div><div class="hm-header">Dic</div><div class="hm-header" style="color:var(--color-primary); text-shadow: var(--shadow-neon-primary);">AVG</div>'
+                ];
+                
+                let opMensual = {};
+                for(let mes in s.flujoMensual) {
+                    let y = mes.split('-')[0];
+                    let m = mes.split('-')[1];
+                    if(!opMensual[y]) opMensual[y] = {};
+                    let f = s.flujoMensual[mes];
+                    
+                    let ing = f.ingresosComerciales || 0;
+                    let gLocal = f.gastosComerciales || 0;
+                    let gVida = f.costoVida || 0;
+                    let neto = ing - gLocal - gVida;
+                    let margen = ing > 0 ? (neto / ing) * 100 : 0;
+                    
+                    opMensual[y][m] = { neto, margen, ing };
+                }
+
+                Object.keys(opMensual).sort().reverse().forEach(y => {
+                    hmOpBuffer.push(`<div class="hm-cell" style="background:var(--bg-input); color:var(--text-main); font-weight: 900;">${DOMPurify.sanitize(y)}</div>`);
+                    let totalNetoYear = 0;
+                    let totalIngYear = 0;
+                    
+                    for(let m=1; m<=12; m++) {
+                        let mStr = String(m).padStart(2,'0');
+                        let dataMes = opMensual[y][mStr];
+                        if(!dataMes) {
+                            hmOpBuffer.push(`<div class="hm-cell" style="color:var(--text-muted); font-weight:normal; background: transparent;">-</div>`);
+                        } else {
+                            totalNetoYear += dataMes.neto;
+                            totalIngYear += dataMes.ing;
+                            
+                            let cls = '';
+                            if(dataMes.margen >= 30) cls = 'hm-cell--pos';
+                            else if(dataMes.margen > 0) cls = 'hm-cell--pos';
+                            else if(dataMes.margen <= 0) cls = 'hm-cell--neg';
+                            
+                            let valStr = this.fmtStr(dataMes.neto, modelData.dolarBlue, modelData.vistaUSD);
+                            let disp = this.zenMode ? `${dataMes.margen.toFixed(1)}%` : valStr;
+                            
+                            hmOpBuffer.push(`<div class="hm-cell ${cls} data-font" title="Margen: ${dataMes.margen.toFixed(1)}% | Neto: ${valStr}" style="font-size: 0.95rem;">${disp}</div>`);
+                        }
+                    }
+                    
+                    if (totalIngYear > 0) {
+                        let avgMargen = (totalNetoYear / totalIngYear) * 100;
+                        let avgCls = avgMargen >= 0 ? 'texto-verde' : 'texto-rojo';
+                        let dispAvg = this.zenMode ? `${avgMargen.toFixed(1)}%` : this.fmtStr(totalNetoYear/12, modelData.dolarBlue, modelData.vistaUSD);
+                        hmOpBuffer.push(`<div class="hm-cell data-font" style="background:var(--bg-panel); border-left: 2px solid var(--border-color);"><span class="${avgCls}" style="font-size: 1rem;" title="Margen Promedio: ${avgMargen.toFixed(1)}%">${dispAvg}</span></div>`);
+                    } else {
+                        hmOpBuffer.push(`<div class="hm-cell data-font" style="background:var(--bg-panel); border-left: 2px solid var(--border-color);"><span style="font-size: 1rem; color:var(--text-muted);">-</span></div>`);
+                    }
+                });
+                hmOpGrid.innerHTML = hmOpBuffer.join('');
+            }
+
             if (this.DOM.metStockCosto) this.DOM.metStockCosto.innerHTML = this.zenMode ? "- %" : this.fmt(s.stockCosto, modelData.dolarBlue, modelData.vistaUSD);
             if (this.DOM.metStockRetail) this.DOM.metStockRetail.innerHTML = this.zenMode ? "- %" : this.fmt(s.stockValorVenta, modelData.dolarBlue, modelData.vistaUSD);
             
-            // CORRECCIÓN APLICADA: Blindaje matemático ante valores vacíos de liquidez
             if (this.DOM.metRatioLiquidez) this.DOM.metRatioLiquidez.innerText = `${(s.liquidezAcida || 0).toFixed(2)}x / ${(s.liquidezCorriente || 0).toFixed(2)}x`;
             
             if (this.DOM.metHedgeStock) {
@@ -2183,92 +2243,73 @@ export const view = {
                 return;
             }
 
-            let fechas = [...new Set(modelData.movimientos.map(m=>m.fecha))].sort();
-            let pAcum = 0;
-            let peak = 0;
-            let dataDD = [];
-            let dataFechas = [];
-            let pnlMensual = {};
-            let capMensualTracker = {};
-
-            fechas.forEach((f) => {
-                let diaMovs = modelData.movimientos.filter(x=>x.fecha===f);
-                let valMes = f.substring(0,7);
-                let year = valMes.split('-')[0];
-                let month = valMes.split('-')[1];
-
-                if(!pnlMensual[year]) pnlMensual[year] = {};
-                if(!pnlMensual[year][month]) pnlMensual[year][month] = { pnlPuro: 0 };
-                
-                capMensualTracker[valMes] = pAcum;
-
-                diaMovs.forEach(m => {
-                    if(m.tipo === 'Compra' || m.tipo === 'Transferencia Ahorro') pAcum += m.monto;
-                    if(m.tipo === 'Venta' || m.tipo === 'Retiro') pAcum -= m.monto;
-                    
-                    if(m.tipo === 'Venta' && m.resultadoCalculado) pnlMensual[year][month].pnlPuro += m.resultadoCalculado;
-                });
-                
-                let val = modelData.vistaUSD ? (pAcum/modelData.dolarBlue) : pAcum;
-                if(val > peak) peak = val;
-                let dd = peak > 0 ? ((val - peak) / peak) * 100 : 0;
-                dataDD.push(dd);
-                dataFechas.push(f);
-            });
-
-            document.getElementById('info-max-patrimonio').innerHTML = `<span style="font-size: 3rem; font-weight: 900; color: var(--color-primary); text-shadow: var(--shadow-neon-primary);">${this.zenMode ? '---' : this.fmt(peak, modelData.dolarBlue, modelData.vistaUSD)}</span>`;
+            // NUEVO CÁLCULO TWR (Evita que el pico se rompa por depósitos)
+            let peakBursatilReal = Math.max(...s.historyBursatil);
+            document.getElementById('info-max-patrimonio').innerHTML = `<span style="font-size: 3rem; font-weight: 900; color: var(--color-primary); text-shadow: var(--shadow-neon-primary);">${this.zenMode ? '---' : this.fmt(peakBursatilReal, modelData.dolarBlue, modelData.vistaUSD)}</span>`;
             
-            let maxDD = Math.min(...dataDD);
-            if(!isFinite(maxDD)) maxDD = 0;
-            document.getElementById('info-max-dd').innerHTML = `<span style="font-size: 3rem; font-weight: 900; color: var(--color-down); text-shadow: var(--shadow-neon-down);">${maxDD.toFixed(2)}%</span>`;
-            document.getElementById('info-current-dd').innerHTML = `<span style="font-size: 1rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase;">Drawdown Actual: ${(dataDD[dataDD.length-1] || 0).toFixed(2)}%</span>`;
+            document.getElementById('info-max-dd').innerHTML = `<span style="font-size: 3rem; font-weight: 900; color: var(--color-down); text-shadow: var(--shadow-neon-down);">${(s.maxDrawdownBursatil || 0).toFixed(2)}%</span>`;
+            document.getElementById('info-current-dd').innerHTML = `<span style="font-size: 1rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase;">Drawdown Actual: ${(s.historyDrawdown[s.historyDrawdown.length-1] || 0).toFixed(2)}%</span>`;
 
-            ChartRenderer.renderDrawdown(dataFechas, dataDD);
+            ChartRenderer.renderDrawdown(s.historyFechas, s.historyDrawdown);
 
             const hGrid = document.getElementById('heatmap-grid');
             let heatmapBuffer = [
                 '<div class="hm-header">Año</div><div class="hm-header">Ene</div><div class="hm-header">Feb</div><div class="hm-header">Mar</div><div class="hm-header">Abr</div><div class="hm-header">May</div><div class="hm-header">Jun</div><div class="hm-header">Jul</div><div class="hm-header">Ago</div><div class="hm-header">Sep</div><div class="hm-header">Oct</div><div class="hm-header">Nov</div><div class="hm-header">Dic</div><div class="hm-header" style="color:var(--color-primary); text-shadow: var(--shadow-neon-primary);">YTD</div>'
             ];
 
-            let maxPatrimonioHistorico = peak || 1;
+            let fechas = s.historyFechas;
+            let pnlMensual = {};
+            
+            for (let i = 0; i < fechas.length; i++) {
+                let f = fechas[i];
+                let valMes = f.substring(0,7);
+                let year = valMes.split('-')[0];
+                let month = valMes.split('-')[1];
+                
+                if (!pnlMensual[year]) pnlMensual[year] = {};
+                if (!pnlMensual[year][month]) {
+                    pnlMensual[year][month] = { indexStart: i > 0 ? s.historyIndexTWR[i-1] : 100, indexEnd: 100, pnlPuro: 0 };
+                }
+                
+                pnlMensual[year][month].indexEnd = s.historyIndexTWR[i];
+                
+                let prevVal = i > 0 ? s.historyBursatil[i-1] : 0;
+                let todayVal = s.historyBursatil[i];
+                let flow = s.historyFlujoBursatil[i] || 0;
+                pnlMensual[year][month].pnlPuro += (todayVal - (prevVal + flow));
+            }
 
             Object.keys(pnlMensual).sort().reverse().forEach(y => {
                 heatmapBuffer.push(`<div class="hm-cell" style="background:var(--bg-input); color:var(--text-main); font-weight: 900;">${DOMPurify.sanitize(y)}</div>`);
-                let productReturnAnual = 1;
-                let mesesContabilizadosParaYtd = false;
+                let startYtdIndex = null;
+                let endYtdIndex = null;
                 
                 for(let m=1; m<=12; m++) {
                     let mStr = String(m).padStart(2,'0');
                     let dataMes = pnlMensual[y][mStr];
-                    if(dataMes === undefined) {
+                    if(!dataMes) {
                         heatmapBuffer.push(`<div class="hm-cell" style="color:var(--text-muted); font-weight:normal; background: transparent;">-</div>`);
                     } else {
-                        let capBaseMes = capMensualTracker[`${y}-${mStr}`] || 0;
+                        if (startYtdIndex === null) startYtdIndex = dataMes.indexStart;
+                        endYtdIndex = dataMes.indexEnd;
                         
-                        // Bloqueo Matemático: Previene distorsión YTD por descapitalización temporal
-                        if (capBaseMes < (maxPatrimonioHistorico * 0.01)) {
-                            heatmapBuffer.push(`<div class="hm-cell" style="color:var(--text-muted); font-weight:normal; background: transparent;" title="Capital insuficiente para métrica TWR">-</div>`);
-                        } else {
-                            let returnPorcentual = (dataMes.pnlPuro / capBaseMes) * 100;
-                            productReturnAnual *= (1 + (returnPorcentual / 100));
-                            mesesContabilizadosParaYtd = true;
-                            
-                            let cls = '';
-                            if(returnPorcentual > 5) cls = 'hm-cell--pos';
-                            else if(returnPorcentual > 0) cls = 'hm-cell--pos';
-                            else if(returnPorcentual < -5) cls = 'hm-cell--neg';
-                            else if(returnPorcentual < 0) cls = 'hm-cell--neg';
-                            
-                            let numTxt = returnPorcentual === 0 ? '0%' : (returnPorcentual>0?'+':'') + returnPorcentual.toFixed(1) + '%';
-                            let divValStr = this.fmtStr(modelData.vistaUSD ? (dataMes.pnlPuro/modelData.dolarBlue) : dataMes.pnlPuro, modelData.dolarBlue, modelData.vistaUSD);
-                            
-                            heatmapBuffer.push(`<div class="hm-cell ${cls} data-font" title="PnL Mes: ${this.zenMode ? 'Oculto en Zen' : divValStr}" style="font-size: 0.95rem;">${numTxt}</div>`);
-                        }
+                        let returnPorcentual = dataMes.indexStart > 0 ? ((dataMes.indexEnd / dataMes.indexStart) - 1) * 100 : 0;
+                        
+                        let cls = '';
+                        if(returnPorcentual > 5) cls = 'hm-cell--pos';
+                        else if(returnPorcentual > 0) cls = 'hm-cell--pos';
+                        else if(returnPorcentual < -5) cls = 'hm-cell--neg';
+                        else if(returnPorcentual < 0) cls = 'hm-cell--neg';
+                        
+                        let numTxt = returnPorcentual === 0 ? '0%' : (returnPorcentual>0?'+':'') + returnPorcentual.toFixed(1) + '%';
+                        let divValStr = this.fmtStr(modelData.vistaUSD ? (dataMes.pnlPuro/modelData.dolarBlue) : dataMes.pnlPuro, modelData.dolarBlue, modelData.vistaUSD);
+                        
+                        heatmapBuffer.push(`<div class="hm-cell ${cls} data-font" title="Variación Absoluta Mes: ${this.zenMode ? 'Oculto' : divValStr}" style="font-size: 0.95rem;">${numTxt}</div>`);
                     }
                 }
                 
-                if (mesesContabilizadosParaYtd) {
-                    let ytdPct = (productReturnAnual - 1) * 100;
+                if (startYtdIndex !== null && endYtdIndex !== null) {
+                    let ytdPct = ((endYtdIndex / startYtdIndex) - 1) * 100;
                     let ytdCls = ytdPct >= 0 ? 'texto-verde' : 'texto-rojo';
                     let ytdSign = ytdPct > 0 ? '+' : '';
                     heatmapBuffer.push(`<div class="hm-cell data-font" style="background:var(--bg-panel); border-left: 2px solid var(--border-color);"><span class="${ytdCls}" style="font-size: 1rem;">${ytdSign}${ytdPct.toFixed(1)}%</span></div>`);
