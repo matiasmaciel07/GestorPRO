@@ -208,7 +208,11 @@ export const model = {
             if (!mov.id) mov.id = crypto.randomUUID();
             
             if (!mov.fecha) mov.fecha = new Date().toISOString().split('T')[0];
-            if (!mov.tipo) mov.tipo = 'Ahorro';
+            
+            // CORRECCIÓN ESTRUCTURAL: Prevención de corrupción silenciosa de datos.
+            // En lugar de inyectar 'Ahorro', se marca para alertar al usuario y no inflar patrimonio.
+            if (!mov.tipo) mov.tipo = 'Revisión Pendiente';
+            
             if (isNaN(mov.monto)) mov.monto = 0;
             if (mov.activo) mov.activo = String(mov.activo).trim().toUpperCase();
             if (mov.tipo === 'Compra' && !mov.sector) mov.sector = 'Otro';

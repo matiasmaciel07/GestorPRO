@@ -146,22 +146,36 @@ export const FinancialMath = {
         
         let t0 = sortedFlows[0].date;
         let r = guess; 
-        let maxIter = 100;
+        let maxIter = 1000; // Incrementado para asegurar convergencia en flujos complejos
         let tol = 1e-6;
 
         for (let i = 0; i < maxIter; i++) {
             let f = 0, df = 0;
             for (let j = 0; j < sortedFlows.length; j++) {
                 let t = (sortedFlows[j].date - t0) / (1000 * 3600 * 24 * 365.25);
-                f += sortedFlows[j].amount / Math.pow(1 + r, t);
+                let discountFactor = Math.pow(1 + r, t);
+                
+                // Prevención de desbordamiento (Overflow) si discountFactor es asintótico
+                if (!isFinite(discountFactor) || discountFactor === 0) break;
+
+                f += sortedFlows[j].amount / discountFactor;
                 df -= (t * sortedFlows[j].amount) / Math.pow(1 + r, t + 1);
             }
+            
             if (Math.abs(f) < tol) return r;
-            if (df === 0) return r; 
+            if (df === 0) return r; // Fallback extremo para evitar división por cero
+            
             let nextR = r - f / df;
             if (isNaN(nextR) || !isFinite(nextR)) return 0;
+            
+            // CORRECCIÓN MATEMÁTICA: Amortiguación de oscilaciones para flujos alternantes.
+            // Impide saltos irrazonables limitando el delta en cada iteración.
+            if (nextR > r + 1.5) nextR = r + 1.5;
+            if (nextR < r - 1.5) nextR = r - 1.5;
+
             if (Math.abs(nextR - r) < tol) return nextR;
             r = nextR;
+            
             if (r <= -1) r = -0.9999; 
         }
         return r;
@@ -180,16 +194,32 @@ export const FinancialMath = {
         const añoActual = ahora.getFullYear();
         const mesActual = ahora.getMonth();
 
+        // CORRECCIÓN ESTRUCTURAL: Cálculo de límites de la semana actual (Lunes a Domingo) en Zona Horaria Local.
+        const hoy = new Date();
+        hoy.setHours(0, 0, 0, 0);
+        const diaSemana = hoy.getDay();
+        // Ajuste para forzar el inicio de semana en Lunes (1) y final en Domingo (0)
+        const diffLunes = hoy.getDate() - diaSemana + (diaSemana === 0 ? -6 : 1);
+        
+        const inicioSemana = new Date(hoy);
+        inicioSemana.setDate(diffLunes);
+        inicioSemana.setHours(0, 0, 0, 0);
+        
+        const finSemana = new Date(inicioSemana);
+        finSemana.setDate(inicioSemana.getDate() + 6);
+        finSemana.setHours(23, 59, 59, 999);
+
         return transacciones.filter(t => {
             let rawDate = t.fecha || t.date || t.timestamp;
             if (!rawDate) return false;
             
-            // CORRECCIÓN ESTRUCTURAL: Parseo seguro aislando componentes para evitar desfase de Timezone UTC->Local
+            // Parseo seguro aislando componentes para anclarlos a la hora local exacta
             let fechaStr = String(rawDate).split('T')[0];
             const partes = fechaStr.split('-');
             if (partes.length !== 3) return false;
 
             const fechaTx = new Date(parseInt(partes[0], 10), parseInt(partes[1], 10) - 1, parseInt(partes[2], 10));
+            fechaTx.setHours(0, 0, 0, 0);
             
             if (isNaN(fechaTx.getTime())) return false;
 
@@ -200,16 +230,13 @@ export const FinancialMath = {
                 return fechaTx.getFullYear() === añoActual && fechaTx.getMonth() === mesActual;
             }
             if (temporalidad.toLowerCase() === 'semanal') {
-                // Cálculo estricto de diferencia en días absolutos (ignorando horas)
-                const utcAhora = Date.UTC(ahora.getFullYear(), ahora.getMonth(), ahora.getDate());
-                const utcTx = Date.UTC(fechaTx.getFullYear(), fechaTx.getMonth(), fechaTx.getDate());
-                const diasDiferencia = Math.abs((utcAhora - utcTx) / (24 * 60 * 60 * 1000));
-                return diasDiferencia <= 7;
+                // Validación robusta dentro de la matriz local de la semana actual
+                return fechaTx.getTime() >= inicioSemana.getTime() && fechaTx.getTime() <= finSemana.getTime();
             }
             return true;
         });
     },
-
+    
     calcularPromediosDesglosados(montoTotal, temporalidad, transacciones = []) {
         if (montoTotal === 0) return { mes: 0, semana: 0, dia: 0, hora: 0 };
         

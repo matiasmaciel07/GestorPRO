@@ -31,6 +31,12 @@ export const UIMetrics = {
     animateValue(obj, end, formatter, duration = 800) {
         if (!obj) return;
         
+        // CORRECCIÓN ESTRUCTURAL: Recolector de basura (Garbage Collector) para Frames.
+        // Detiene el parpadeo y cancela ciclos de animación solapados en el mismo nodo.
+        if (obj.dataset.animationId) {
+            window.cancelAnimationFrame(parseInt(obj.dataset.animationId, 10));
+        }
+        
         let start = parseFloat(obj.dataset.currentValue) || 0;
         if (start === end) {
             obj.innerHTML = formatter(end);
@@ -50,13 +56,15 @@ export const UIMetrics = {
             obj.innerHTML = formatter(currentVal);
             
             if (progress < 1) {
-                window.requestAnimationFrame(step);
+                obj.dataset.animationId = window.requestAnimationFrame(step);
             } else {
                 obj.innerHTML = formatter(end);
                 obj.dataset.currentValue = end;
+                delete obj.dataset.animationId; // Limpieza del nodo
             }
         };
-        window.requestAnimationFrame(step);
+        
+        obj.dataset.animationId = window.requestAnimationFrame(step);
     },
 
     actualizarFavicon(ganancia) {
@@ -93,6 +101,9 @@ export const UIMetrics = {
             porcentaje: total > 0 ? ((datosGenerados.data[index] / total) * 100).toFixed(1) : 0
         })).sort((a, b) => b.monto - a.monto);
 
+        // OPTIMIZACIÓN DE RENDIMIENTO: Uso de DocumentFragment para evitar DOM Thrashing.
+        const fragment = document.createDocumentFragment();
+        
         const ul = document.createElement('ul');
         ul.className = 'lista-gastos-desglose';
         ul.style.listStyle = 'none';
@@ -117,9 +128,10 @@ export const UIMetrics = {
             ul.appendChild(li);
         });
 
-        container.appendChild(ul);
+        fragment.appendChild(ul);
+        container.appendChild(fragment);
     },
-
+    
     actualizarAuditoriaComercial(stats, divisor, isUSD) {
         const safeEl = (id, val) => { const e = document.getElementById(id); if (e) e.innerHTML = val; };
         
