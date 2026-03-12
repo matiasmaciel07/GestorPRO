@@ -339,15 +339,23 @@ export const model = {
                 }
             }, 5000);
 
-            const originalResolve = this._engineResolver;
-            this._engineResolver = (err) => {
+            // Captura segura de la función resolve original para no perderla en la closure
+            const safeResolve = () => {
                 clearTimeout(timeout);
-                if (originalResolve) originalResolve(err);
+                if (this._engineResolver) {
+                    const res = this._engineResolver;
+                    this._engineResolver = null;
+                    res();
+                } else {
+                    resolve(); // Fallback si ya fue limpiado
+                }
             };
             
+            this._engineResolver = safeResolve;
+
             if (!this.worker) {
                 console.warn("[Arquitectura] Worker inactivo. Saltando fase de procesamiento paralelo.");
-                return this._engineResolver();
+                return safeResolve();
             }
             
             try {
@@ -366,7 +374,7 @@ export const model = {
                 }
             } catch (cloneError) {
                 console.error("[Arquitectura] Error clonando datos para el Worker:", cloneError);
-                this._engineResolver();
+                safeResolve();
             }
         });
     },

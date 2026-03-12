@@ -142,7 +142,7 @@ export const view = {
         this.initFiltrosTemporales(); 
         this.initExportacionPDF(); 
         
-        // CORRECCIÓN: Protección estricta contra TypeError si el DOM aún no completó su renderizado
+        // CORRECCIÓN: Protección estricta contra TypeError usando Optional Chaining (?.)
         if (this.DOM.opFecha) this.DOM.opFecha.value = new Date().toISOString().split('T')[0];
         if (this.DOM.ecoFecha) this.DOM.ecoFecha.value = new Date().toISOString().split('T')[0];
         if (this.DOM.dashRatioEI) this.DOM.dashRatioEI.style.display = 'none';
@@ -349,17 +349,26 @@ export const view = {
         document.body.addEventListener('click', (e) => {
             const target = e.target;
             const btnNav = target.closest('.nav__item');
+            
+            if (btnNav) {
+                events.emit('ui:cambiar-pestana', btnNav.getAttribute('aria-controls'));
+                return; // Cortocircuito para optimización del árbol de eventos
+            }
+
             const btnFilter = target.closest('.btn--filter');
-            
-            if (btnNav) events.emit('ui:cambiar-pestana', btnNav.getAttribute('aria-controls'));
-            
             if (btnFilter && !target.closest('.gastos-filter-group') && !target.closest('.sankey-filter-group')) {
                 events.emit('ui:set-filtro', btnFilter.dataset.filter);
             }
             
             if (target.closest('#btn-toggle-moneda')) events.emit('ui:toggle-moneda');
-            if (target.closest('#btn-sidebar-toggle')) document.getElementById('sidebar').classList.toggle('sidebar--collapsed');
+            
+            if (target.closest('#btn-sidebar-toggle')) {
+                const sidebar = document.getElementById('sidebar');
+                if (sidebar) sidebar.classList.toggle('sidebar--collapsed');
+            }
+            
             if (target.closest('#btn-privacy')) this.togglePrivacy();
+            
             if (target.closest('#btn-save-manual')) events.emit('ui:guardar-manual');
             if (target.closest('#btn-zen')) events.emit('ui:toggle-zen');
             
@@ -367,7 +376,13 @@ export const view = {
                 const htmlEl = document.documentElement;
                 const newTheme = htmlEl.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
                 htmlEl.setAttribute('data-theme', newTheme);
-                document.getElementById('icon-theme-toggle').innerHTML = newTheme === 'dark' ? `<use href="#icon-sun"></use>` : `<use href="#icon-moon"></use>`;
+                
+                const iconToggle = document.getElementById('icon-theme-toggle');
+                if (iconToggle) {
+                    iconToggle.innerHTML = newTheme === 'dark' ? `<use href="#icon-sun"></use>` : `<use href="#icon-moon"></use>`;
+                }
+                
+                this.toast(`Tema ${newTheme === 'dark' ? 'Oscuro' : 'Claro'} Activado`, "info");
             }
         });
 
@@ -378,27 +393,31 @@ export const view = {
         document.querySelectorAll('.fire-input').forEach(input => input.addEventListener('input', debouncedFire));
 
         let isVirtualScrolling = false;
-        this.DOM.vsViewport.addEventListener('scroll', () => {
-            if (this.activeTab === 'historial') {
-                if (!isVirtualScrolling) {
-                    window.requestAnimationFrame(() => {
-                        this.renderVirtualScroll();
-                        isVirtualScrolling = false;
-                    });
-                    isVirtualScrolling = true;
+        if(this.DOM.vsViewport) {
+            this.DOM.vsViewport.addEventListener('scroll', () => {
+                if (this.activeTab === 'historial') {
+                    if (!isVirtualScrolling) {
+                        window.requestAnimationFrame(() => {
+                            this.renderVirtualScroll();
+                            isVirtualScrolling = false;
+                        });
+                        isVirtualScrolling = true;
+                    }
                 }
-            }
-        }, { passive: true });
+            }, { passive: true });
+        }
         
-        // FASE 3: Lógica Hover JS complementaria para el "Modo Foco"
-        this.DOM.vsTbody?.addEventListener('mouseover', (e) => {
-            let tr = e.target.closest('tr');
-            if(tr) tr.style.zIndex = '10';
-        });
-        this.DOM.vsTbody?.addEventListener('mouseout', (e) => {
-            let tr = e.target.closest('tr');
-            if(tr) tr.style.zIndex = '1';
-        });
+        // Efecto Hover de Foco Neon-Tech en el Virtual DOM
+        if(this.DOM.vsTbody) {
+            this.DOM.vsTbody.addEventListener('mouseover', (e) => {
+                let tr = e.target.closest('tr');
+                if(tr) tr.style.zIndex = '10';
+            });
+            this.DOM.vsTbody.addEventListener('mouseout', (e) => {
+                let tr = e.target.closest('tr');
+                if(tr) tr.style.zIndex = '1';
+            });
+        }
     },
 
     bindBusinessEvents() {
@@ -822,8 +841,14 @@ export const view = {
 
     togglePrivacy() {
         document.body.classList.toggle('privacy-active');
+        const isActive = document.body.classList.contains('privacy-active');
         const iconSvg = document.getElementById('icon-privacy-toggle');
-        iconSvg.innerHTML = document.body.classList.contains('privacy-active') ? `<use href="#icon-privacy-off"></use>` : `<use href="#icon-privacy"></use>`;
+        
+        if(iconSvg) {
+            iconSvg.innerHTML = isActive ? `<use href="#icon-privacy-off"></use>` : `<use href="#icon-privacy"></use>`;
+        }
+        
+        this.toast(isActive ? "Bóveda Visual Activada" : "Visibilidad de Fondos Expuesta", "info");
     },
 
     validarVentaRestrictiva() {

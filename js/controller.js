@@ -70,42 +70,51 @@ const controller = {
                 console.error("[Controlador] Fallo interceptado en InitUI (Ignorado para salvaguardar motor):", uiError);
             }
 
-            await model.inicializar();
-            
-            // FASE DE SANEAMIENTO: Asignación de IDs para registros legados (Previene bug de edición del primer registro)
-            if (model.data && model.data.movimientos) {
-                let modificados = false;
-                model.data.movimientos.forEach((m, idx) => {
-                    if (m.id === undefined || m.id === null) {
-                        m.id = Date.now() + idx;
-                        modificados = true;
-                    }
-                });
-                if (modificados) await model.guardarLocal();
+            try {
+                await model.inicializar();
+                
+                // FASE DE SANEAMIENTO: Asignación de IDs para registros legados (Previene bug de edición del primer registro)
+                if (model.data && model.data.movimientos) {
+                    let modificados = false;
+                    model.data.movimientos.forEach((m, idx) => {
+                        if (m.id === undefined || m.id === null) {
+                            m.id = Date.now() + idx;
+                            modificados = true;
+                        }
+                    });
+                    if (modificados) await model.guardarLocal();
+                }
+            } catch (modelError) {
+                console.error("[Controlador] Fallo interceptado en el Modelo de Datos:", modelError);
+                events.emit('app:toast', { msg: "Error al cargar la base de datos.", type: "error" });
             }
 
             // CORRECCIÓN ESTRUCTURAL DE UX: Forzamos la liberación visual del Dashboard ANTES de consultar APIs de cotización.
-            // Esto elimina la sensación de "Cuelgue" si Yahoo Finance o DolarAPI tardan en responder.
+            // Esto elimina la sensación de "Cuelgue" y habilita la navegación de pestañas INMEDIATAMENTE.
             events.emit('state:tabChanged', TabFSM.state);
 
-            // CORRECCIÓN: Implementación de Watchdog (Timeout) garantizado para evitar Hang de Red
-            const dolarTask = api.fetchDolar();
-            const timeoutTask = new Promise((_, reject) => setTimeout(() => reject(new Error('TIMEOUT_API_DOLAR')), 5000));
-            
-            const dolarCache = await Promise.race([dolarTask, timeoutTask]).catch((err) => {
-                console.warn("[Controlador] API de Dólar inaccesible o en Timeout. Operando con caché local.", err);
-                return null;
-            });
+            try {
+                // CORRECCIÓN: Implementación de Watchdog (Timeout) garantizado para evitar Hang de Red
+                const dolarTask = api.fetchDolar();
+                const timeoutTask = new Promise((_, reject) => setTimeout(() => reject(new Error('TIMEOUT_API_DOLAR')), 3000));
+                
+                const dolarCache = await Promise.race([dolarTask, timeoutTask]).catch((err) => {
+                    console.warn("[Controlador] API de Dólar inaccesible o en Timeout. Operando con caché local.", err);
+                    return null;
+                });
 
-            this.actualizarEstadoMercado();
-            if(dolarCache) model.setDolarBlue(dolarCache);
+                if(dolarCache) model.setDolarBlue(dolarCache);
+            } catch (networkError) {
+                console.warn("[Controlador] Bloqueo general de Red interceptado.", networkError);
+            }
             
+            this.actualizarEstadoMercado();
             this.iniciarFetchPrecios();
             
         } catch (err) {
             console.error("[Controlador] Falla Crítica en el Arranque del Motor:", err);
-            events.emit('app:toast', { msg: "Error fatal al cargar la base de datos.", type: "error" });
-            // Forzar liberación de pantalla de carga incluso si el modelo falla, para mostrar el error.
+            events.emit('app:toast', { msg: "Error fatal en el núcleo del sistema.", type: "error" });
+            // Seguro de vida absoluto: Forzar tab rendering
             events.emit('state:tabChanged', 'dashboard'); 
         }
     },
@@ -123,31 +132,6 @@ const controller = {
                 }
             }
         });
-
-        // CORRECCIÓN: Inyección de Listeners faltantes para Privacidad y Tema Visual
-        const btnPrivacy = document.getElementById('btn-privacy');
-        if (btnPrivacy) {
-            btnPrivacy.addEventListener('click', () => {
-                document.body.classList.toggle('privacy-active');
-                const isActive = document.body.classList.contains('privacy-active');
-                const icon = document.querySelector('#icon-privacy-toggle use');
-                if (icon) icon.setAttribute('href', isActive ? '#icon-privacy' : '#icon-eye');
-                events.emit('app:toast', { msg: isActive ? "Bóveda Visual Activada" : "Visibilidad Expuesta", type: "info" });
-            });
-        }
-
-        const btnTheme = document.getElementById('btn-theme');
-        if (btnTheme) {
-            btnTheme.addEventListener('click', () => {
-                const html = document.documentElement;
-                const currentTheme = html.getAttribute('data-theme');
-                const newTheme = currentTheme === 'light' ? 'dark' : 'light';
-                html.setAttribute('data-theme', newTheme);
-                const icon = document.querySelector('#icon-theme-toggle use');
-                if (icon) icon.setAttribute('href', newTheme === 'light' ? '#icon-moon' : '#icon-sun');
-                events.emit('app:toast', { msg: `Tema ${newTheme === 'dark' ? 'Oscuro' : 'Claro'} Activado`, type: "info" });
-            });
-        }
 
         // Mutación inmutable segura compatible con la Fase 1 del Modelo
         events.on('ui:borrar-categoria', async (data) => {
@@ -362,7 +346,7 @@ const controller = {
 
         events.on('ui:actualizar-distribucion-gastos', (config) => {
             const datosGenerados = FinancialMath.calcularDistribucionGastos(
-                model.data.movimientos, // Aseguramos usar el estado memoizado limpio
+                model.data.movimientos,
                 config.contexto, 
                 config.temporalidad
             );
