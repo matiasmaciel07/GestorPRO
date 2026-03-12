@@ -242,9 +242,10 @@ export const FinancialMath = {
             const tipoStr = (t.tipo || "").toLowerCase().trim();
             const catStr = (t.categoria || "").toLowerCase().trim();
 
-            // CORRECCIÓN ESTRUCTURAL: Fondeos externos (ahorro/aporte capital) se inyectan al flujo de ingresos brutos 
-            // a nivel de UI, y se remueve 'rescate a caja' por ser una transferencia patrimonial interna.
-            if (tipoStr === 'ingreso local' || tipoStr === 'ingreso' || tipoStr === 'venta' || tipoStr === 'ahorro' || tipoStr === 'aporte capital') {
+            // CORRECCIÓN ESTRUCTURAL (FASE 3): Blindaje del P&L. 
+            // Se restringe el acumulador de ingresos brutos exclusivamente a facturación comercial genuina.
+            // Se excluyen explícitamente fondeos externos ('ahorro', 'aporte capital') para no distorsionar el Estado de Resultados.
+            if (tipoStr === 'ingreso local' || tipoStr === 'ingreso' || tipoStr === 'venta') {
                 ingresosBrutos += monto;
             } else {
                 const esGastoLogistica = tipoStr === 'gasto' && (catStr.includes('proveedor') || catStr.includes('logística') || catStr.includes('logistica') || catStr.includes('insumos'));
