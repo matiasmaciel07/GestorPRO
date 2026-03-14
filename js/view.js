@@ -2047,14 +2047,15 @@ export const view = {
         }
 
         if(!datosAmostrar || datosAmostrar.length === 0) {
-            this.DOM.vsTbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding: 100px; color:var(--text-muted);"><svg width="80" height="80" style="margin-bottom:20px; opacity:0.3; filter: drop-shadow(0 0 10px rgba(9, 251, 255, 0.5));"><use href="#icon-empty"></use></svg><br><h3 style="margin-bottom:10px; font-weight: 900; letter-spacing: 1px;">Libro Mayor sin transacciones</h3><p style="font-size:1rem; font-weight: 600;">Ingrese los primeros asientos contables para iniciar el seguimiento del flujo patrimonial.</p></td></tr>`;
-            this.DOM.vsSpacer.style.height = '0px';
-            this.DOM.vsTable.style.transform = `translateY(0px)`;
+            requestAnimationFrame(() => {
+                this.DOM.vsTbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding: 100px; color:var(--text-muted);"><svg width="80" height="80" style="margin-bottom:20px; opacity:0.3; filter: drop-shadow(0 0 10px rgba(9, 251, 255, 0.5));"><use href="#icon-empty"></use></svg><br><h3 style="margin-bottom:10px; font-weight: 900; letter-spacing: 1px;">Libro Mayor sin transacciones</h3><p style="font-size:1rem; font-weight: 600;">Ingrese los primeros asientos contables para iniciar el seguimiento del flujo patrimonial.</p></td></tr>`;
+                this.DOM.vsSpacer.style.height = '0px';
+                this.DOM.vsTable.style.transform = `translateY(0px)`;
+            });
             return;
         }
 
-        this.DOM.vsSpacer.style.height = `${datosAmostrar.length * this.vsRowHeight}px`;
-
+        // FASE 1: LECTURA EN LOTE (Batch Reading) - No se toca el DOM aquí
         const scrollTop = this.DOM.vsViewport.scrollTop;
         const viewportHeight = this.DOM.vsViewport.clientHeight || 500;
         
@@ -2067,68 +2068,25 @@ export const view = {
 
         const existingRows = Array.from(this.DOM.vsTbody.children);
         const rowsNeeded = endIndex - startIndex;
+        const needsFullRebuild = existingRows.length !== rowsNeeded || existingRows[0]?.dataset?.diffId === undefined;
         
-        if (existingRows.length !== rowsNeeded || existingRows[0]?.dataset?.diffId === undefined) {
-            const fragment = document.createDocumentFragment();
-            const tpl = this.DOM.tplHistorial.content;
+        const spacerHeight = `${datosAmostrar.length * this.vsRowHeight}px`;
+        const tableTransform = `translateY(${startIndex * this.vsRowHeight}px)`;
 
-            for (let i = startIndex; i < endIndex; i++) {
-                const m = datosAmostrar[i];
-                const row = document.importNode(tpl, true);
-                let tr = row.querySelector('tr');
-                tr.dataset.diffId = m.id;
-                
-                let badgeClass = this.getBadgeClass(m.tipo);
-                let descStr = m.activo ? `${m.cantidad||''}x ${m.activo}` : (m.categoria ? m.categoria : (m.proveedor ? m.proveedor : (m.socio ? m.socio : (m.entidad ? m.entidad : (m.tipo === 'Ajuste Stock Inicial' ? 'Inventario Base' : (m.tipo === 'Rescate a Caja' ? 'Inyección Liquidez a Caja' : (m.tipo === 'Transferencia Ahorro' ? 'Fuga hacia Billetera Bursátil' : (m.usd?`u$s ${m.usd}`:'-'))))))));
-                let desc = DOMPurify.sanitize(descStr);
-                
-                if (m.notas) {
-                    let markdownHtml;
-                    if (this._mdCache.has(m.notas)) {
-                        markdownHtml = this._mdCache.get(m.notas);
-                    } else {
-                        markdownHtml = DOMPurify.sanitize(marked.parse(m.notas));
-                        this._mdCache.set(m.notas, markdownHtml);
-                    }
-                    desc += `<div style="margin-top: 8px; font-size: 0.8rem; color: var(--text-muted); background: var(--bg-base); padding: 8px 12px; border-radius: 6px; border-left: 3px solid var(--color-primary); line-height:1.5;">${markdownHtml}</div>`;
-                }
+        // FASE 2: ESCRITURA DIFERIDA (Deferred Mutating) - Delegación al Frame de Pintado
+        requestAnimationFrame(() => {
+            this.DOM.vsSpacer.style.height = spacerHeight;
+            
+            if (needsFullRebuild) {
+                const fragment = document.createDocumentFragment();
+                const tpl = this.DOM.tplHistorial.content;
 
-                let res = '-';
-                if(m.resultadoCalculado !== undefined && m.tipo === 'Venta') {
-                    let sign = m.resultadoCalculado > 0 ? '+' : (m.resultadoCalculado < 0 ? '-' : '');
-                    let colorClass = m.resultadoCalculado >= 0 ? 'texto-verde' : 'texto-rojo';
-                    let tag = this.currentModelData.vistaUSD ? `<span class="tag--usd">USD</span>` : `<span class="tag--ars">ARS</span>`;
-                    let valStr = this.fmtStr(Math.abs(m.resultadoCalculado), this.currentModelData.dolarBlue, this.currentModelData.vistaUSD);
-                    res = `<div style="display:inline-flex; align-items:center; justify-content:flex-end; width:100%; gap:8px; white-space:nowrap;">${this.zenMode ? '' : tag} <strong class="data-font ${colorClass} privacy-mask" style="font-size: 1.15rem;">${sign}${this.zenMode ? '---' : valStr}</strong></div>`;
-                }
-
-                row.querySelector('.td-fecha').innerHTML = `<span style="font-weight: 800; color: var(--text-muted); font-size: 0.95rem;">${m.fecha}</span>`;
-                row.querySelector('.td-tipo').innerHTML = `<span class="badge ${badgeClass}" style="box-shadow: none;">${m.tipo}</span>`;
-                row.querySelector('.td-desc').innerHTML = desc;
-                row.querySelector('.td-flujo').innerHTML = `<strong style="font-size: 1.15rem; color: var(--text-main);">${this.zenMode ? '---' : this.fmt(m.monto, this.currentModelData.dolarBlue, this.currentModelData.vistaUSD)}</strong>`;
-                row.querySelector('.td-res').innerHTML = res;
-                row.querySelector('.td-acc').innerHTML = `
-                    <button class="btn--icon" style="display:inline-flex; padding:10px; margin-right:4px;" data-action="editar-operacion" data-id="${m.id}" title="Editar Transacción">
-                        <svg width="18" height="18"><use href="#icon-edit"></use></svg>
-                    </button>
-                    <button class="btn--danger" style="display:inline-flex; padding:10px; border-radius:10px; box-shadow: none;" data-action="borrar-operacion" data-id="${m.id}" title="Eliminar Registro">
-                        <svg width="18" height="18"><use href="#icon-trash"></use></svg>
-                    </button>
-                `;
-                fragment.appendChild(row);
-            }
-            this.DOM.vsTbody.innerHTML = '';
-            this.DOM.vsTbody.appendChild(fragment);
-        } 
-        else {
-            for (let i = startIndex; i < endIndex; i++) {
-                const m = datosAmostrar[i];
-                const tr = existingRows[i - startIndex];
-                
-                if (tr.dataset.diffId != m.id || this.zenMode !== (tr.dataset.zen === 'true')) {
+                for (let i = startIndex; i < endIndex; i++) {
+                    const m = datosAmostrar[i];
+                    const row = document.importNode(tpl, true);
+                    let tr = row.querySelector('tr');
                     tr.dataset.diffId = m.id;
-                    tr.dataset.zen = this.zenMode;
-
+                    
                     let badgeClass = this.getBadgeClass(m.tipo);
                     let descStr = m.activo ? `${m.cantidad||''}x ${m.activo}` : (m.categoria ? m.categoria : (m.proveedor ? m.proveedor : (m.socio ? m.socio : (m.entidad ? m.entidad : (m.tipo === 'Ajuste Stock Inicial' ? 'Inventario Base' : (m.tipo === 'Rescate a Caja' ? 'Inyección Liquidez a Caja' : (m.tipo === 'Transferencia Ahorro' ? 'Fuga hacia Billetera Bursátil' : (m.usd?`u$s ${m.usd}`:'-'))))))));
                     let desc = DOMPurify.sanitize(descStr);
@@ -2153,12 +2111,12 @@ export const view = {
                         res = `<div style="display:inline-flex; align-items:center; justify-content:flex-end; width:100%; gap:8px; white-space:nowrap;">${this.zenMode ? '' : tag} <strong class="data-font ${colorClass} privacy-mask" style="font-size: 1.15rem;">${sign}${this.zenMode ? '---' : valStr}</strong></div>`;
                     }
 
-                    tr.querySelector('.td-fecha').innerHTML = `<span style="font-weight: 800; color: var(--text-muted); font-size: 0.95rem;">${m.fecha}</span>`;
-                    tr.querySelector('.td-tipo').innerHTML = `<span class="badge ${badgeClass}" style="box-shadow: none;">${m.tipo}</span>`;
-                    tr.querySelector('.td-desc').innerHTML = desc;
-                    tr.querySelector('.td-flujo').innerHTML = `<strong style="font-size: 1.15rem; color: var(--text-main);">${this.zenMode ? '---' : this.fmt(m.monto, this.currentModelData.dolarBlue, this.currentModelData.vistaUSD)}</strong>`;
-                    tr.querySelector('.td-res').innerHTML = res;
-                    tr.querySelector('.td-acc').innerHTML = `
+                    row.querySelector('.td-fecha').innerHTML = `<span style="font-weight: 800; color: var(--text-muted); font-size: 0.95rem;">${m.fecha}</span>`;
+                    row.querySelector('.td-tipo').innerHTML = `<span class="badge ${badgeClass}" style="box-shadow: none;">${m.tipo}</span>`;
+                    row.querySelector('.td-desc').innerHTML = desc;
+                    row.querySelector('.td-flujo').innerHTML = `<strong style="font-size: 1.15rem; color: var(--text-main);">${this.zenMode ? '---' : this.fmt(m.monto, this.currentModelData.dolarBlue, this.currentModelData.vistaUSD)}</strong>`;
+                    row.querySelector('.td-res').innerHTML = res;
+                    row.querySelector('.td-acc').innerHTML = `
                         <button class="btn--icon" style="display:inline-flex; padding:10px; margin-right:4px;" data-action="editar-operacion" data-id="${m.id}" title="Editar Transacción">
                             <svg width="18" height="18"><use href="#icon-edit"></use></svg>
                         </button>
@@ -2166,10 +2124,62 @@ export const view = {
                             <svg width="18" height="18"><use href="#icon-trash"></use></svg>
                         </button>
                     `;
+                    fragment.appendChild(row);
+                }
+                this.DOM.vsTbody.innerHTML = '';
+                this.DOM.vsTbody.appendChild(fragment);
+            } 
+            else {
+                for (let i = startIndex; i < endIndex; i++) {
+                    const m = datosAmostrar[i];
+                    const tr = this.DOM.vsTbody.children[i - startIndex]; // Evita leer de existingRows para no desfasar
+                    
+                    if (tr.dataset.diffId != m.id || this.zenMode !== (tr.dataset.zen === 'true')) {
+                        tr.dataset.diffId = m.id;
+                        tr.dataset.zen = this.zenMode;
+
+                        let badgeClass = this.getBadgeClass(m.tipo);
+                        let descStr = m.activo ? `${m.cantidad||''}x ${m.activo}` : (m.categoria ? m.categoria : (m.proveedor ? m.proveedor : (m.socio ? m.socio : (m.entidad ? m.entidad : (m.tipo === 'Ajuste Stock Inicial' ? 'Inventario Base' : (m.tipo === 'Rescate a Caja' ? 'Inyección Liquidez a Caja' : (m.tipo === 'Transferencia Ahorro' ? 'Fuga hacia Billetera Bursátil' : (m.usd?`u$s ${m.usd}`:'-'))))))));
+                        let desc = DOMPurify.sanitize(descStr);
+                        
+                        if (m.notas) {
+                            let markdownHtml;
+                            if (this._mdCache.has(m.notas)) {
+                                markdownHtml = this._mdCache.get(m.notas);
+                            } else {
+                                markdownHtml = DOMPurify.sanitize(marked.parse(m.notas));
+                                this._mdCache.set(m.notas, markdownHtml);
+                            }
+                            desc += `<div style="margin-top: 8px; font-size: 0.8rem; color: var(--text-muted); background: var(--bg-base); padding: 8px 12px; border-radius: 6px; border-left: 3px solid var(--color-primary); line-height:1.5;">${markdownHtml}</div>`;
+                        }
+
+                        let res = '-';
+                        if(m.resultadoCalculado !== undefined && m.tipo === 'Venta') {
+                            let sign = m.resultadoCalculado > 0 ? '+' : (m.resultadoCalculado < 0 ? '-' : '');
+                            let colorClass = m.resultadoCalculado >= 0 ? 'texto-verde' : 'texto-rojo';
+                            let tag = this.currentModelData.vistaUSD ? `<span class="tag--usd">USD</span>` : `<span class="tag--ars">ARS</span>`;
+                            let valStr = this.fmtStr(Math.abs(m.resultadoCalculado), this.currentModelData.dolarBlue, this.currentModelData.vistaUSD);
+                            res = `<div style="display:inline-flex; align-items:center; justify-content:flex-end; width:100%; gap:8px; white-space:nowrap;">${this.zenMode ? '' : tag} <strong class="data-font ${colorClass} privacy-mask" style="font-size: 1.15rem;">${sign}${this.zenMode ? '---' : valStr}</strong></div>`;
+                        }
+
+                        tr.querySelector('.td-fecha').innerHTML = `<span style="font-weight: 800; color: var(--text-muted); font-size: 0.95rem;">${m.fecha}</span>`;
+                        tr.querySelector('.td-tipo').innerHTML = `<span class="badge ${badgeClass}" style="box-shadow: none;">${m.tipo}</span>`;
+                        tr.querySelector('.td-desc').innerHTML = desc;
+                        tr.querySelector('.td-flujo').innerHTML = `<strong style="font-size: 1.15rem; color: var(--text-main);">${this.zenMode ? '---' : this.fmt(m.monto, this.currentModelData.dolarBlue, this.currentModelData.vistaUSD)}</strong>`;
+                        tr.querySelector('.td-res').innerHTML = res;
+                        tr.querySelector('.td-acc').innerHTML = `
+                            <button class="btn--icon" style="display:inline-flex; padding:10px; margin-right:4px;" data-action="editar-operacion" data-id="${m.id}" title="Editar Transacción">
+                                <svg width="18" height="18"><use href="#icon-edit"></use></svg>
+                            </button>
+                            <button class="btn--danger" style="display:inline-flex; padding:10px; border-radius:10px; box-shadow: none;" data-action="borrar-operacion" data-id="${m.id}" title="Eliminar Registro">
+                                <svg width="18" height="18"><use href="#icon-trash"></use></svg>
+                            </button>
+                        `;
+                    }
                 }
             }
-        }
-        this.DOM.vsTable.style.transform = `translateY(${startIndex * this.vsRowHeight}px)`;
+            this.DOM.vsTable.style.transform = tableTransform;
+        });
     },
 
     renderCalendario(modelData) {
@@ -2571,6 +2581,8 @@ export const view = {
                     anos++;
                     for (let m = 0; m < 12; m++) {
                         capitalAcumulado = (capitalAcumulado + ahorroMes) * (1 + rMensual);
+                        // PREVENCIÓN DE DESBORDAMIENTO: Límite arquitectónico V8 Engine
+                        if (capitalAcumulado > Number.MAX_SAFE_INTEGER) capitalAcumulado = Number.MAX_SAFE_INTEGER;
                     }
                     lbl.push(`Año ${anos}`);
                     dataCapital.push(capitalAcumulado);
@@ -2624,6 +2636,9 @@ export const view = {
 
                         if (!esRetiro) {
                             capMC = (capMC + (ahorroMes * 12)) * (1 + rSim);
+                            // Límite de control superior asintótico Montecarlo
+                            if (capMC > Number.MAX_SAFE_INTEGER) capMC = Number.MAX_SAFE_INTEGER;
+                            
                             if (capMC >= targetFIRE) esRetiro = true;
                         } else {
                             let currentSwr = swrSeguro / 100;

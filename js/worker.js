@@ -339,15 +339,28 @@ function processSingle(m) {
         if (!st.stats.proveedoresMensual[prov]) st.stats.proveedoresMensual[prov] = {};
         st.stats.proveedoresMensual[prov][mesStr] = safeFloat((st.stats.proveedoresMensual[prov][mesStr] || 0) + montoNum);
         
+        // REFACTORIZACIÓN: Seguro de vinculación nominal como fallback de ID
+        let deudaTarget = null;
         if (m.deudaAsociadaId && st.stats.deudaProveedoresDetalle[m.deudaAsociadaId]) {
-            let deuda = st.stats.deudaProveedoresDetalle[m.deudaAsociadaId];
-            deuda.capitalServido = safeFloat(deuda.capitalServido + montoNum);
-            deuda.amortizacionPct = safeFloat((deuda.capitalServido / deuda.capitalExigibleTotal) * 100);
+            deudaTarget = st.stats.deudaProveedoresDetalle[m.deudaAsociadaId];
+        } else if (prov !== 'Desconocido') {
+            let deudasActivasProv = Object.values(st.stats.deudaProveedoresDetalle)
+                .filter(d => d.proveedor === prov && d.activo)
+                .sort((a, b) => new Date(a.fecha).getTime() - new Date(b.fecha).getTime());
             
-            if (deuda.capitalServido >= (deuda.capitalExigibleTotal - 0.01)) {
-                deuda.activo = false;
-                deuda.capitalServido = deuda.capitalExigibleTotal;
-                deuda.amortizacionPct = 100;
+            if (deudasActivasProv.length > 0) {
+                deudaTarget = deudasActivasProv[0];
+            }
+        }
+
+        if (deudaTarget) {
+            deudaTarget.capitalServido = safeFloat(deudaTarget.capitalServido + montoNum);
+            deudaTarget.amortizacionPct = safeFloat((deudaTarget.capitalServido / deudaTarget.capitalExigibleTotal) * 100);
+            
+            if (deudaTarget.capitalServido >= (deudaTarget.capitalExigibleTotal - 0.01)) {
+                deudaTarget.activo = false;
+                deudaTarget.capitalServido = deudaTarget.capitalExigibleTotal;
+                deudaTarget.amortizacionPct = 100;
             }
         }
     }
