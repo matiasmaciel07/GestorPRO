@@ -264,7 +264,7 @@ const controller = {
             );
         });
 
-        events.on('ui:exportar', () => backup.exportar(model.data.movimientos));
+        events.on('ui:exportar', () => backup.exportar(model.generarBackup())); // CORREGIDO: Exporta todo el backup unificado
         events.on('ui:borrar-todo', async () => { 
             await storage.clearAll(); 
             localStorage.clear(); 

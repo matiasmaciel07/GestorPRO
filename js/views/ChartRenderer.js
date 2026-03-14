@@ -643,7 +643,7 @@ export const ChartRenderer = {
         const gastosLocales = aplicarPromedio((stats.gastosLocal || 0) / div);
         const pagosProv = aplicarPromedio((stats.pagosProveedores || 0) / div);
         const gastosPersonales = aplicarPromedio((stats.gastosFamiliar || 0) / div);
-        const inver = aplicarPromedio((stats.totalAhorrado || 0) / div);
+        const inver = aplicarPromedio((stats.flowAhorro || 0) / div); // CORREGIDO: Puntero redirigido a flowAhorro
 
         const costosOperativos = gastosLocales + pagosProv;
         

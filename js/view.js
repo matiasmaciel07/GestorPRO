@@ -1351,7 +1351,7 @@ export const view = {
         let pagosProv = (stats.pagosProveedores || 0) / div;
         let gastosPersonales = (stats.gastosFamiliar || 0) / div;
         let flowSociedad = (stats.sociedadRetiros || 0) / div;
-        let inver = (stats.totalAhorrado || 0) / div;
+        let inver = (stats.flowAhorro || 0) / div; // CORREGIDO: Puntero a flowAhorro
 
         const aplicarPromedio = (monto) => {
             if (!temporalidad || temporalidad.toLowerCase() === 'histórico' || temporalidad.toLowerCase() === 'historico') return monto;
@@ -1777,7 +1777,7 @@ export const view = {
             
             let inflacion = this.currentModelData.inflacion;
             let htmlBuffer = [
-                '<div style="background:var(--bg-base); border: 1px solid var(--border-color); border-radius:12px; overflow-x: auto; width: 100%;">',
+                '<div style="background:var(--bg-base); border: 1px solid var(--border-color); border-radius:12px; width: 100%; max-height: 250px; overflow-y: auto; overflow-x: hidden;">', // CORREGIDO: Scrollbar y altura máxima inyectada
                 '<table class="dataTable-table" style="width:100%; min-width: 100%; text-align:left; border-collapse: collapse; margin-top: 0;">',
                 '<thead style="background: var(--bg-panel); backdrop-filter: var(--glass-blur);"><tr><th style="padding:15px; font-weight: 900;">Período</th><th style="padding:15px; font-weight: 900; text-align:right;">Índice</th><th style="padding:15px;"></th></tr></thead>',
                 '<tbody>'
