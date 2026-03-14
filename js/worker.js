@@ -89,7 +89,8 @@ function getEmptyStats() {
 
 function sortMovimientos(arr) {
     arr.sort((a, b) => {
-        let diff = new Date(a.fecha).getTime() - new Date(b.fecha).getTime();
+        let diff = a.fecha.localeCompare(b.fecha);
+        
         if (diff === 0) {
             return (PESOS_TIPO[a.tipo] || 15) - (PESOS_TIPO[b.tipo] || 15);
         }

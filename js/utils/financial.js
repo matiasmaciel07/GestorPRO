@@ -159,21 +159,33 @@ export const FinancialMath = {
         const sortedFlows = [...cashFlows].sort((a, b) => a.date - b.date);
         
         let t0 = sortedFlows[0].date;
+        const len = sortedFlows.length;
+        
+        // OPTIMIZACIÓN EXTREMA: Pre-cálculo de constantes temporales para el algoritmo de Newton-Raphson
+        // Evita recalcular fracciones de milisegundos en cada una de las hasta 1000 iteraciones.
+        const timeFractions = new Float64Array(len);
+        const amounts = new Float64Array(len);
+        
+        for (let j = 0; j < len; j++) {
+            timeFractions[j] = (sortedFlows[j].date - t0) / (1000 * 3600 * 24 * 365.25);
+            amounts[j] = sortedFlows[j].amount;
+        }
+
         let r = guess; 
         let maxIter = 1000; // Incrementado para asegurar convergencia en flujos complejos
         let tol = 1e-6;
 
         for (let i = 0; i < maxIter; i++) {
             let f = 0, df = 0;
-            for (let j = 0; j < sortedFlows.length; j++) {
-                let t = (sortedFlows[j].date - t0) / (1000 * 3600 * 24 * 365.25);
+            for (let j = 0; j < len; j++) {
+                let t = timeFractions[j];
                 let discountFactor = Math.pow(1 + r, t);
                 
                 // Prevención de desbordamiento (Overflow) si discountFactor es asintótico
                 if (!isFinite(discountFactor) || discountFactor === 0) break;
 
-                f += sortedFlows[j].amount / discountFactor;
-                df -= (t * sortedFlows[j].amount) / Math.pow(1 + r, t + 1);
+                f += amounts[j] / discountFactor;
+                df -= (t * amounts[j]) / Math.pow(1 + r, t + 1);
             }
             
             if (Math.abs(f) < tol) return r;

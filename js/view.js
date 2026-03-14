@@ -2086,6 +2086,7 @@ export const view = {
                     const row = document.importNode(tpl, true);
                     let tr = row.querySelector('tr');
                     tr.dataset.diffId = m.id;
+                    tr.dataset.zen = this.zenMode;
                     
                     let badgeClass = this.getBadgeClass(m.tipo);
                     let descStr = m.activo ? `${m.cantidad||''}x ${m.activo}` : (m.categoria ? m.categoria : (m.proveedor ? m.proveedor : (m.socio ? m.socio : (m.entidad ? m.entidad : (m.tipo === 'Ajuste Stock Inicial' ? 'Inventario Base' : (m.tipo === 'Rescate a Caja' ? 'Inyección Liquidez a Caja' : (m.tipo === 'Transferencia Ahorro' ? 'Fuga hacia Billetera Bursátil' : (m.usd?`u$s ${m.usd}`:'-'))))))));
@@ -2132,11 +2133,19 @@ export const view = {
             else {
                 for (let i = startIndex; i < endIndex; i++) {
                     const m = datosAmostrar[i];
-                    const tr = this.DOM.vsTbody.children[i - startIndex]; // Evita leer de existingRows para no desfasar
+                    const tr = this.DOM.vsTbody.children[i - startIndex]; 
                     
-                    if (tr.dataset.diffId != m.id || this.zenMode !== (tr.dataset.zen === 'true')) {
+                    if (tr.dataset.diffId != m.id || String(this.zenMode) !== String(tr.dataset.zen)) {
                         tr.dataset.diffId = m.id;
                         tr.dataset.zen = this.zenMode;
+
+                        // OPTIMIZACIÓN: Caché de nodos nativos para evitar recorridos de árbol innecesarios
+                        const tdFecha = tr.children[0];
+                        const tdTipo = tr.children[1];
+                        const tdDesc = tr.children[2];
+                        const tdFlujo = tr.children[3];
+                        const tdRes = tr.children[4];
+                        const tdAcc = tr.children[5];
 
                         let badgeClass = this.getBadgeClass(m.tipo);
                         let descStr = m.activo ? `${m.cantidad||''}x ${m.activo}` : (m.categoria ? m.categoria : (m.proveedor ? m.proveedor : (m.socio ? m.socio : (m.entidad ? m.entidad : (m.tipo === 'Ajuste Stock Inicial' ? 'Inventario Base' : (m.tipo === 'Rescate a Caja' ? 'Inyección Liquidez a Caja' : (m.tipo === 'Transferencia Ahorro' ? 'Fuga hacia Billetera Bursátil' : (m.usd?`u$s ${m.usd}`:'-'))))))));
@@ -2162,19 +2171,23 @@ export const view = {
                             res = `<div style="display:inline-flex; align-items:center; justify-content:flex-end; width:100%; gap:8px; white-space:nowrap;">${this.zenMode ? '' : tag} <strong class="data-font ${colorClass} privacy-mask" style="font-size: 1.15rem;">${sign}${this.zenMode ? '---' : valStr}</strong></div>`;
                         }
 
-                        tr.querySelector('.td-fecha').innerHTML = `<span style="font-weight: 800; color: var(--text-muted); font-size: 0.95rem;">${m.fecha}</span>`;
-                        tr.querySelector('.td-tipo').innerHTML = `<span class="badge ${badgeClass}" style="box-shadow: none;">${m.tipo}</span>`;
-                        tr.querySelector('.td-desc').innerHTML = desc;
-                        tr.querySelector('.td-flujo').innerHTML = `<strong style="font-size: 1.15rem; color: var(--text-main);">${this.zenMode ? '---' : this.fmt(m.monto, this.currentModelData.dolarBlue, this.currentModelData.vistaUSD)}</strong>`;
-                        tr.querySelector('.td-res').innerHTML = res;
-                        tr.querySelector('.td-acc').innerHTML = `
-                            <button class="btn--icon" style="display:inline-flex; padding:10px; margin-right:4px;" data-action="editar-operacion" data-id="${m.id}" title="Editar Transacción">
-                                <svg width="18" height="18"><use href="#icon-edit"></use></svg>
-                            </button>
-                            <button class="btn--danger" style="display:inline-flex; padding:10px; border-radius:10px; box-shadow: none;" data-action="borrar-operacion" data-id="${m.id}" title="Eliminar Registro">
-                                <svg width="18" height="18"><use href="#icon-trash"></use></svg>
-                            </button>
-                        `;
+                        tdFecha.innerHTML = `<span style="font-weight: 800; color: var(--text-muted); font-size: 0.95rem;">${m.fecha}</span>`;
+                        tdTipo.innerHTML = `<span class="badge ${badgeClass}" style="box-shadow: none;">${m.tipo}</span>`;
+                        tdDesc.innerHTML = desc;
+                        tdFlujo.innerHTML = `<strong style="font-size: 1.15rem; color: var(--text-main);">${this.zenMode ? '---' : this.fmt(m.monto, this.currentModelData.dolarBlue, this.currentModelData.vistaUSD)}</strong>`;
+                        tdRes.innerHTML = res;
+                        
+                        // Solo actualizamos las acciones si cambia el ID para no destruir listeners/foco
+                        if (tdAcc.firstElementChild.dataset.id !== String(m.id)) {
+                            tdAcc.innerHTML = `
+                                <button class="btn--icon" style="display:inline-flex; padding:10px; margin-right:4px;" data-action="editar-operacion" data-id="${m.id}" title="Editar Transacción">
+                                    <svg width="18" height="18"><use href="#icon-edit"></use></svg>
+                                </button>
+                                <button class="btn--danger" style="display:inline-flex; padding:10px; border-radius:10px; box-shadow: none;" data-action="borrar-operacion" data-id="${m.id}" title="Eliminar Registro">
+                                    <svg width="18" height="18"><use href="#icon-trash"></use></svg>
+                                </button>
+                            `;
+                        }
                     }
                 }
             }
