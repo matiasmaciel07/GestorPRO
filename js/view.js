@@ -216,8 +216,14 @@ export const view = {
         this.initFiltrosTemporales(); 
         this.initExportacionPDF(); 
         
-        if (this.DOM.opFecha) this.DOM.opFecha.value = new Date().toISOString().split('T')[0];
-        if (this.DOM.ecoFecha) this.DOM.ecoFecha.value = new Date().toISOString().split('T')[0];
+        // CORRECCIÓN MATEMÁTICA: Obtención de Fecha Local exacta evadiendo el offset UTC
+        const getLocalISODate = () => {
+            const tzOffset = (new Date()).getTimezoneOffset() * 60000;
+            return new Date(Date.now() - tzOffset).toISOString().split('T')[0];
+        };
+
+        if (this.DOM.opFecha) this.DOM.opFecha.value = getLocalISODate();
+        if (this.DOM.ecoFecha) this.DOM.ecoFecha.value = getLocalISODate();
         if (this.DOM.dashRatioEI) this.DOM.dashRatioEI.style.display = 'none';
 
         const iconSvg = document.getElementById('icon-privacy-toggle');
@@ -2215,6 +2221,10 @@ export const view = {
             const fragment = document.createDocumentFragment();
             const tpl = this.DOM.tplCalDay.content;
 
+            // FASE DE CORRECCIÓN: Referencia estricta a la hora local para el resaltado del "Today"
+            const tzOffset = (new Date()).getTimezoneOffset() * 60000;
+            const fechaLocalHoy = new Date(Date.now() - tzOffset).toISOString().split('T')[0];
+
             for(let i=1; i<primerDia; i++) {
                 let emptyDiv = document.createElement('div');
                 emptyDiv.className = "cal-day empty";
@@ -2228,7 +2238,7 @@ export const view = {
                             ? modelData.stats.movimientosPorFecha[fStr] 
                             : [];
                 
-                let cssClass = (fStr === new Date().toISOString().split('T')[0]) ? 'today' : '';
+                let cssClass = (fStr === fechaLocalHoy) ? 'today' : '';
                 if(movs.length > 0) cssClass += ' has-data';
                 
                 const cellNode = document.importNode(tpl, true);
@@ -2244,7 +2254,8 @@ export const view = {
                     let dotColor = 'var(--color-primary)';
                     // Ajuste de intensidad de colores al extremo para evitar tonos apagados
                     if (c.includes('bg-retiro') || c.includes('bg-gasto-local')) dotColor = '#FF003C'; // Rojo neón vibrante
-                    else if (c.includes('bg-ingreso-local') || c.includes('bg-prestamo-pago')) dotColor = '#00FF95'; // Verde láser
+                    else if (c.includes('bg-ingreso-local')) dotColor = '#00FF95'; // Verde láser
+                    else if (c.includes('bg-prestamo-pago')) dotColor = '#00F5FF'; // Cyan Eléctrico (Corregido)
                     else if (c.includes('bg-gasto-vida')) dotColor = '#FF871A'; // Naranja puro
                     else if (c.includes('bg-proveedor')) dotColor = '#FFD500'; // Amarillo advertencia
                     else if (c.includes('bg-sociedad')) dotColor = '#B800FF'; // Púrpura eléctrico

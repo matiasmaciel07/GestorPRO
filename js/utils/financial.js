@@ -363,13 +363,17 @@ export const FinancialMath = {
 
         if (tipoGasto) {
             txsFiltradas = txsFiltradas.filter(t => {
-                const tipo = t.tipo || t.contexto || "";
+                const tipoStr = String(t.tipo || t.contexto || "").toLowerCase();
                 
                 // Mapeo estricto para conectar el contexto visual con el tipo de registro real
-                if (tipoGasto.toLowerCase() === 'local') return tipo.toLowerCase() === 'gasto local';
-                if (tipoGasto.toLowerCase() === 'personal') return tipo.toLowerCase() === 'gasto familiar' || tipo.toLowerCase() === 'gasto personal';
+                if (tipoGasto.toLowerCase() === 'local') {
+                    return tipoStr === 'gasto local' || tipoStr === 'pago proveedor' || tipoStr === 'amortización deuda a proveedor';
+                }
+                if (tipoGasto.toLowerCase() === 'personal') {
+                    return tipoStr === 'gasto familiar' || tipoStr === 'gasto personal' || tipoStr === 'pago préstamo';
+                }
                 
-                return tipo.toLowerCase() === tipoGasto.toLowerCase();
+                return tipoStr === tipoGasto.toLowerCase();
             });
         }
 
@@ -380,7 +384,14 @@ export const FinancialMath = {
         
         txsFiltradas.forEach(t => {
             const monto = Math.abs(parseFloat(t.monto || t.amount || 0)); 
-            const categoria = t.categoria || t.category || "Sin Categorizar";
+            
+            // Inyección algorítmica: Transformamos el proveedor/entidad en una categoría gráfica
+            let categoria = t.categoria || t.category || "Sin Categorizar";
+            if (t.tipo === 'Pago Proveedor' || t.tipo === 'Amortización Deuda a Proveedor') {
+                categoria = t.proveedor ? `Proveedor: ${t.proveedor}` : 'Pago a Proveedores';
+            } else if (t.tipo === 'Pago Préstamo') {
+                categoria = t.entidad ? `Préstamo: ${t.entidad}` : 'Amortización de Préstamo';
+            }
 
             if (monto > 0) {
                 if (!distribucion[categoria]) distribucion[categoria] = 0;

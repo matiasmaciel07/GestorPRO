@@ -282,7 +282,7 @@ input:focus, select:focus, textarea:focus { border-color: var(--color-primary); 
 .bg-rendimiento { background: rgba(26, 167, 236, 0.15); color: #1AA7EC; } 
 .bg-retiro { background: rgba(247, 23, 53, 0.1); color: var(--color-down); border: 1px dashed var(--color-down); }
 .bg-prestamo-alta { background: rgba(96, 69, 244, 0.1); color: var(--color-primary); border: 1px dashed var(--color-primary); }
-.bg-prestamo-pago { background: rgba(0, 255, 149, 0.1); color: var(--color-up); border: 1px dotted var(--color-up); }
+.bg-prestamo-pago { background: rgba(0, 245, 255, 0.1); color: #00F5FF; border: 1px dotted #00F5FF; }
 
 .tag--usd { background-color: rgba(0, 255, 149, 0.15); color: var(--color-up); padding: 0.3rem 0.6rem; border-radius: 6px; font-size: 0.8rem; font-weight: 900; }
 .tag--ars { background-color: rgba(96, 69, 244, 0.15); color: var(--color-primary); padding: 0.3rem 0.6rem; border-radius: 6px; font-size: 0.8rem; font-weight: 900; }

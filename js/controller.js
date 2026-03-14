@@ -474,9 +474,16 @@ const controller = {
     },
 
     actualizarEstadoMercado() {
-        let now = new Date();
-        let estHours = now.getUTCHours() - 5; 
-        let isOpen = (now.getDay() >= 1 && now.getDay() <= 5 && estHours >= 9 && estHours < 16);
+        // CORRECCIÓN MATEMÁTICA: Anclaje estricto al meridiano de Nueva York ignorando husos locales
+        let nyTime = new Date(new Date().toLocaleString("en-US", { timeZone: "America/New_York" }));
+        let day = nyTime.getDay();
+        let hours = nyTime.getHours();
+        let minutes = nyTime.getMinutes();
+        
+        // Apertura 09:30 AM / Cierre 16:00 PM estricto
+        let isOpen = (day >= 1 && day <= 5) && 
+                     ((hours === 9 && minutes >= 30) || (hours > 9 && hours < 16));
+        
         events.emit('app:marketStatus', isOpen);
     },
 
