@@ -17,10 +17,13 @@ let st = {
 
 // Mapa de pesos pre-calculado para evitar asignación constante de objetos durante el sort
 const PESOS_TIPO = { 
-    'Ingreso Local': 1, 'Aporte Capital': 1.5, 'Alta Préstamo': 2, 'Ajuste Stock Inicial': 2.5, 'Correccion Stock': 2.6, 'Ahorro': 3, 'Transferencia Ahorro': 4, 'Rescate a Caja': 4.5,
-    'Compra': 5, 'Rendimiento': 6, 'Dividendo': 7, 
-    'Gasto Local': 8, 'Gasto Familiar': 9, 'Pago Proveedor': 10, 'Amortización Deuda a Proveedor': 10.1, 'Reparto Sociedad': 10.5, 'Pago Préstamo': 11, 
-    'Venta': 12, 'Retiro': 13 
+    'Aporte Capital': 1, 'Alta Préstamo': 2, 'Ajuste Stock Inicial': 3, 'Correccion Stock': 4,
+    'Ingreso Local': 5, 'Rescate a Caja': 6,
+    'Amortización Deuda a Proveedor': 7, 'Pago Proveedor': 8, 
+    'Gasto Local': 9, 'Gasto Familiar': 10, 'Pago Préstamo': 11, 'Reparto Sociedad': 12, 
+    'Retiro': 13,
+    'Transferencia Ahorro': 14, 'Ahorro': 15, 
+    'Venta': 16, 'Rendimiento': 17, 'Dividendo': 18, 'Compra': 19
 };
 
 function safeFloat(num) {
@@ -116,8 +119,7 @@ function processSingle(m) {
         st.stats.billetera = safeFloat(st.stats.billetera + montoNum);
         st.stats.totalAhorradoFisico = safeFloat(st.stats.totalAhorradoFisico + montoNum);
         st.stats.ahorroArsPuro = safeFloat(st.stats.ahorroArsPuro + montoNum);
-        st.stats.ahorroHaciaBursatil = safeFloat(st.stats.ahorroHaciaBursatil + montoNum); 
-        st.stats.flowAhorro = safeFloat(st.stats.flowAhorro + montoNum);
+        
         flujoExternoHoy = montoNum; 
         flujoBursatilHoy += montoNum;
         
@@ -188,7 +190,6 @@ function processSingle(m) {
     } 
     else if (m.tipo === 'Venta') {
         st.stats.billetera = safeFloat(st.stats.billetera + montoNum); 
-        st.stats.flujoMensual[mesStr].ingresos = safeFloat(st.stats.flujoMensual[mesStr].ingresos + montoNum);
         let p = st.portafolio[m.activo];
         
         if (p && p.cant > 0.000001) {
@@ -252,9 +253,11 @@ function processSingle(m) {
         let costoVendidoEstimado = montoNum; 
         
         if (st.stats.stockValorVentaHistorico > 0 && st.stats.stockCostoHistorico > 0) {
+            st.stats.markupPromedio = safeFloat(st.stats.stockValorVentaHistorico / st.stats.stockCostoHistorico);
             let ratioCostoHistorico = safeFloat(st.stats.stockCostoHistorico / st.stats.stockValorVentaHistorico);
             costoVendidoEstimado = safeFloat(montoNum * ratioCostoHistorico);
-            st.stats.markupPromedio = safeFloat(st.stats.stockValorVentaHistorico / st.stats.stockCostoHistorico);
+        } else if (st.stats.markupPromedio > 1) {
+            costoVendidoEstimado = safeFloat(montoNum / st.stats.markupPromedio);
         }
         
         costoVendidoEstimado = Math.min(costoVendidoEstimado, st.stats.stockCosto);
@@ -285,13 +288,23 @@ function processSingle(m) {
     } 
     else if (m.tipo === 'Pago Proveedor') {
         let prov = m.proveedor || 'Desconocido';
-        let valorVentaInput = m.valorVentaEstimado ? safeFloat(m.valorVentaEstimado) : montoNum;
+        let valorVentaInput = m.valorVentaEstimado ? safeFloat(m.valorVentaEstimado) : 0;
+        
+        if (valorVentaInput === 0 && st.stats.markupPromedio > 1) {
+            valorVentaInput = montoNum * st.stats.markupPromedio;
+        } else if (valorVentaInput === 0) {
+            valorVentaInput = montoNum * 1.5;
+        }
         
         st.stats.stockCosto = safeFloat(st.stats.stockCosto + montoNum);
         st.stats.stockValorVenta = safeFloat(st.stats.stockValorVenta + valorVentaInput);
         
         st.stats.stockCostoHistorico = safeFloat((st.stats.stockCostoHistorico || 0) + montoNum);
         st.stats.stockValorVentaHistorico = safeFloat((st.stats.stockValorVentaHistorico || 0) + valorVentaInput);
+        
+        if (st.stats.stockCostoHistorico > 0) {
+            st.stats.markupPromedio = safeFloat(st.stats.stockValorVentaHistorico / st.stats.stockCostoHistorico);
+        }
         
         if (!st.stats.proveedoresDetalle[prov]) st.stats.proveedoresDetalle[prov] = { total: 0, meses: {} };
         st.stats.proveedoresDetalle[prov].total = safeFloat(st.stats.proveedoresDetalle[prov].total + montoNum);
@@ -339,25 +352,36 @@ function processSingle(m) {
         }
     }
     else if (m.tipo === 'Ajuste Stock Inicial') {
-        let valorVentaInput = m.valorVentaEstimado ? safeFloat(m.valorVentaEstimado) : montoNum;
+        let valorVentaInput = m.valorVentaEstimado ? safeFloat(m.valorVentaEstimado) : 0;
+        
+        if (valorVentaInput === 0 && st.stats.markupPromedio > 1) {
+            valorVentaInput = montoNum * st.stats.markupPromedio;
+        } else if (valorVentaInput === 0) {
+            valorVentaInput = montoNum * 1.5;
+        }
         
         st.stats.stockCosto = safeFloat(st.stats.stockCosto + montoNum);
         st.stats.stockValorVenta = safeFloat(st.stats.stockValorVenta + valorVentaInput);
 
         st.stats.stockCostoHistorico = safeFloat((st.stats.stockCostoHistorico || 0) + montoNum);
         st.stats.stockValorVentaHistorico = safeFloat((st.stats.stockValorVentaHistorico || 0) + valorVentaInput);
+        
+        if (st.stats.stockCostoHistorico > 0) {
+            st.stats.markupPromedio = safeFloat(st.stats.stockValorVentaHistorico / st.stats.stockCostoHistorico);
+        }
     }
     else if (m.tipo === 'Correccion Stock') {
-        let valorVentaInput = m.valorVentaEstimado ? safeFloat(m.valorVentaEstimado) : montoNum;
+        let valorVentaInput = m.valorVentaEstimado ? safeFloat(m.valorVentaEstimado) : 0;
         
-        let deltaCosto = montoNum - st.stats.stockCosto;
-        let deltaVenta = valorVentaInput - st.stats.stockValorVenta;
+        if (valorVentaInput === 0 && st.stats.markupPromedio > 1) {
+            valorVentaInput = montoNum * st.stats.markupPromedio;
+        } else if (valorVentaInput === 0) {
+            valorVentaInput = montoNum * 1.5;
+        }
 
         st.stats.stockCosto = safeFloat(montoNum);
         st.stats.stockValorVenta = safeFloat(valorVentaInput);
-
-        st.stats.stockCostoHistorico = safeFloat(Math.max(0, (st.stats.stockCostoHistorico || 0) + deltaCosto));
-        st.stats.stockValorVentaHistorico = safeFloat(Math.max(0, (st.stats.stockValorVentaHistorico || 0) + deltaVenta));
+        // Corrección Estructural Crítica: Ya no alteramos stockCostoHistorico para no corromper el Markup de ventas.
     }
     else if (m.tipo === 'Reparto Sociedad') {
         st.stats.cajaLocal = safeFloat(st.stats.cajaLocal - montoNum);
