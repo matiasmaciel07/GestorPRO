@@ -1329,6 +1329,7 @@ export const view = {
                 </div>
             `);
             
+            // REDISEÑO LOGÍSTICO PROVEEDORES + LIMPIEZA DE DUPLICIDAD
             if (this.DOM.tbodyProveedores) {
                 let statsProvs = s.proveedoresDetalle || {};
                 let provArray = [];
@@ -1346,24 +1347,162 @@ export const view = {
                 } else {
                     provArray.forEach((p, index) => {
                         let pct = maxProvTotal > 0 ? (p.total / maxProvTotal) * 100 : 0;
-                        let pColor = index === 0 ? 'var(--color-accent)' : 'var(--color-primary)';
+                        let pColor = this.getCategoryColor(p.nombre); // Asignación dinámica de tu paleta vibrante
+                        let rank = index + 1;
+                        let rankTpl = index < 3 
+                            ? `<span style="display:inline-flex; justify-content:center; align-items:center; width:26px; height:26px; border-radius:8px; background:${pColor}22; color:${pColor}; border: 1px solid ${pColor}50; font-size:0.85rem; margin-right:12px; font-weight:900;">${rank}</span>` 
+                            : `<span style="display:inline-flex; justify-content:center; align-items:center; width:26px; font-size:0.85rem; color:var(--text-muted); margin-right:12px; font-weight:700;">${rank}</span>`;
+                        
                         provHtml.push(
                             `<tr style="border-bottom: 1px solid var(--border-color); background: var(--bg-input); transition: transform 0.2s; cursor: default;">
-                                <td style="padding: 18px 25px;">
-                                    <strong style="font-size: 1.15rem; font-weight: 900; color: ${pColor}; text-shadow: 0 0 10px ${pColor}40; letter-spacing: 0.5px;">${DOMPurify.sanitize(p.nombre)}</strong>
-                                    <div style="margin-top: 10px; height: 6px; width: 100%; background: var(--bg-base); border-radius: 4px; overflow: hidden; border: 1px solid var(--border-color);">
-                                        <div style="height: 100%; width: ${pct}%; background: ${pColor}; box-shadow: 0 0 10px ${pColor}; border-radius: 4px; transition: width 0.5s ease-in-out;"></div>
+                                <td style="padding: 18px 25px; display:flex; align-items:center;">
+                                    ${rankTpl}
+                                    <div style="flex:1;">
+                                        <strong style="font-size: 1.15rem; font-weight: 900; color: var(--text-main); letter-spacing: 0.5px;">${DOMPurify.sanitize(p.nombre)}</strong>
+                                        <div style="margin-top: 10px; height: 6px; width: 100%; background: var(--bg-base); border-radius: 4px; overflow: hidden; border: 1px solid var(--border-color);">
+                                            <div style="height: 100%; width: ${pct}%; background: ${pColor}; box-shadow: 0 0 10px ${pColor}; border-radius: 4px; transition: width 0.5s ease-in-out;"></div>
+                                        </div>
                                     </div>
                                 </td>
                                 <td class="data-font" style="text-align:right; padding: 18px 25px; vertical-align: bottom;">
                                     <div style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; font-weight: 800; margin-bottom: 4px;">Volumen Histórico</div>
-                                    <strong class="privacy-mask" style="font-size: 1.35rem; font-weight: 900; color: var(--color-up); text-shadow: var(--shadow-neon-up);">${this.zenMode ? '---' : '$' + this.fmtStr(p.total, 1, false)}</strong>
+                                    <strong class="privacy-mask" style="font-size: 1.35rem; font-weight: 900; color: ${pColor}; text-shadow: 0 0 15px ${pColor}40;">${this.zenMode ? '---' : '$' + this.fmtStr(p.total, 1, false)}</strong>
                                 </td>
                             </tr>`
                         );
                     });
                 }
                 this.DOM.tbodyProveedores.innerHTML = provHtml.join('');
+            }
+
+            if (this.DOM.tbodyPrestamos) {
+                let prestamos = s.prestamosDetalle || {};
+                let prestamosHtml = [];
+                let pArray = Object.values(prestamos).sort((a,b) => b.fecha.localeCompare(a.fecha));
+                
+                let headerElement = this.DOM.tbodyPrestamos.closest('.card').querySelector('h2');
+                if (headerElement) {
+                    headerElement.innerHTML = `Auditoría de Pasivos Activos (Bancarios/Préstamos)`;
+                    
+                    let oldSubDash = headerElement.nextElementSibling;
+                    if(oldSubDash && oldSubDash.classList.contains('pasivos-subdash')) {
+                        oldSubDash.remove();
+                    }
+
+                    let subDash = document.createElement('div');
+                    subDash.className = 'pasivos-subdash grid-4';
+                    subDash.style.gap = '15px';
+                    subDash.style.marginBottom = '25px';
+                    subDash.innerHTML = `
+                        <div style="background:var(--bg-input); padding:15px; border-radius:12px; text-align:center; border: 1px solid var(--border-color); box-shadow: var(--shadow-card);">
+                            <div style="font-size:11px; color:var(--text-muted); text-transform:uppercase; font-weight: 900; letter-spacing: 1px;">Total Pedido (Capital)</div>
+                            <div class="data-font privacy-mask" style="font-size:1.4rem; color:var(--text-main); font-weight:900; margin-top: 5px;">${this.zenMode ? '---' : '$' + this.fmtStr(s.totalPedidoPrestamos || 0, 1, false)}</div>
+                        </div>
+                        <div style="background:var(--bg-input); padding:15px; border-radius:12px; text-align:center; border: 2px solid var(--color-down); box-shadow: var(--shadow-neon-down);">
+                            <div style="font-size:11px; color:var(--text-muted); text-transform:uppercase; font-weight: 900; letter-spacing: 1px;">Total Exigible (Deuda)</div>
+                            <div class="data-font texto-rojo privacy-mask" style="font-size:1.4rem; font-weight:900; margin-top: 5px;">${this.zenMode ? '---' : '$' + this.fmtStr(s.totalDevolverPrestamos || 0, 1, false)}</div>
+                        </div>
+                        <div style="background:var(--bg-input); padding:15px; border-radius:12px; text-align:center; border: 1px solid var(--color-warning); box-shadow: var(--shadow-neon-warning);">
+                            <div style="font-size:11px; color:var(--text-muted); text-transform:uppercase; font-weight: 900; letter-spacing: 1px;">Cuota Mensual Global</div>
+                            <div class="data-font texto-warning privacy-mask" style="font-size:1.4rem; font-weight:900; margin-top: 5px;">${this.zenMode ? '---' : '$' + this.fmtStr(s.totalCuotaMensualPrestamos || 0, 1, false)}</div>
+                        </div>
+                        <div style="background:var(--bg-input); padding:15px; border-radius:12px; text-align:center; border: 1px solid var(--color-primary); box-shadow: var(--shadow-neon-primary);">
+                            <div style="font-size:11px; color:var(--text-muted); text-transform:uppercase; font-weight: 900; letter-spacing: 1px;">Tasa de Interés (Prom)</div>
+                            <div class="data-font texto-primario privacy-mask" style="font-size:1.4rem; font-weight:900; margin-top: 5px;">${(s.tasaPromedioPrestamos || 0).toFixed(1)}%</div>
+                        </div>
+                    `;
+                    headerElement.parentNode.insertBefore(subDash, headerElement.nextSibling);
+                }
+
+                if (pArray.length === 0) {
+                    prestamosHtml.push('<tr><td colspan="7" style="text-align:center; padding: 60px; color:var(--text-muted); font-size: 1.1rem; font-weight: 800;"><svg width="64" height="64" style="margin-bottom:15px; opacity:0.5;"><use href="#icon-empty"></use></svg><br>No se registran pasivos ni deudas financieras activas</td></tr>');
+                } else {
+                    pArray.forEach(p => {
+                        let pct = Math.min(100, (p.pagado / p.totalDevolver) * 100);
+                        let statusColor = p.activo ? 'var(--color-primary)' : 'var(--color-up)';
+                        let statusLabel = p.activo ? 'Deuda Activa' : 'Saldado ✔️';
+                        let cuotaActual = Math.min((p.cuotasPagadas || 0) + 1, p.cuotasTotales || 1);
+                        let cuotaStr = p.activo ? `Cuota ${cuotaActual} de ${p.cuotasTotales || 1}` : `Liquidado en ${p.cuotasTotales || 1} pagos`;
+                        let tasaInteres = p.tasaInteres || 0;
+                        let cuotaMesCalculada = p.totalDevolver / (p.cuotasTotales || 1);
+                        
+                        prestamosHtml.push(
+                            `<tr style="border-bottom: 1px solid var(--border-color); opacity: ${p.activo ? '1' : '0.4'}; background: var(--bg-input); transition: all 0.3s ease;">
+                                <td style="padding: 16px 20px;">
+                                    <strong style="font-size: 1.15rem; color: var(--text-main); font-weight: 900; letter-spacing: 0.5px;">${DOMPurify.sanitize(p.entidad)}</strong><br>
+                                    <span style="font-size:0.85rem; color:var(--text-muted); font-weight: 700;">${p.fecha} | ${statusLabel}</span><br>
+                                    <span style="font-size:0.85rem; color:var(--color-accent); font-weight:900; text-transform: uppercase;">${cuotaStr}</span>
+                                </td>
+                                <td class="data-font privacy-mask" style="text-align:right; padding: 16px 20px; font-size: 1.1rem; color:var(--text-muted); font-weight: 800;">${this.zenMode ? '---' : '$' + this.fmtStr(p.capital, 1, false)}</td>
+                                <td class="data-font texto-warning" style="text-align:right; padding: 16px 20px; font-size: 1.1rem; font-weight: 900;">${tasaInteres.toFixed(1)}%</td>
+                                <td class="data-font texto-primario privacy-mask" style="text-align:right; padding: 16px 20px; font-size: 1.1rem; font-weight: 900;">${this.zenMode ? '---' : '$' + this.fmtStr(cuotaMesCalculada, 1, false)}</td>
+                                <td class="data-font texto-verde privacy-mask" style="text-align:right; padding: 16px 20px; font-size: 1.1rem; font-weight: 900;">${this.zenMode ? '---' : '$' + this.fmtStr(p.pagado, 1, false)}</td>
+                                <td class="data-font privacy-mask" style="text-align:right; padding: 16px 20px; font-size: 1.15rem; font-weight: 900; color: var(--text-main);">${this.zenMode ? '---' : '$' + this.fmtStr(p.totalDevolver, 1, false)}</td>
+                                <td style="vertical-align:middle; padding: 16px 20px;">
+                                    <div style="display:flex; align-items:center; gap:12px;">
+                                        <div style="flex:1; height:8px; background:var(--bg-base); border-radius:4px; overflow:hidden; border: 1px solid var(--border-color);">
+                                            <div style="height:100%; width:${pct}%; background:${statusColor}; box-shadow: 0 0 10px ${statusColor}; border-radius:4px;"></div>
+                                        </div>
+                                        <span style="font-size:0.9rem; font-weight: 900; width: 40px; text-align:right; color: ${statusColor};" class="data-font">${pct.toFixed(0)}%</span>
+                                    </div>
+                                </td>
+                            </tr>`
+                        );
+                    });
+                }
+                this.DOM.tbodyPrestamos.innerHTML = prestamosHtml.join('');
+            }
+            
+            if (this.DOM.tbodyDeudasProveedores) {
+                let deudas = s.deudaProveedoresDetalle || {};
+                let deudasHtml = [];
+                let dArray = Object.values(deudas).sort((a,b) => b.fecha.localeCompare(a.fecha));
+                let totalDeudaProveedores = 0;
+
+                dArray.forEach(d => {
+                    if (d.activo) {
+                        totalDeudaProveedores += (d.capitalExigibleTotal - d.capitalServido);
+                    }
+                });
+
+                let headerElement = this.DOM.tbodyDeudasProveedores.closest('.card').querySelector('h2');
+                if (headerElement) {
+                    headerElement.innerHTML = `Auditoría de Cuentas Corrientes (Proveedores) 
+                        <span class="data-font texto-warning privacy-mask" style="float:right; font-size:1.2rem; background: rgba(252, 163, 17, 0.1); padding: 5px 15px; border-radius: 8px; border: 1px solid var(--color-warning);">
+                            Total Pendiente: ${this.zenMode ? '---' : '$' + this.fmtStr(totalDeudaProveedores, 1, false)}
+                        </span>`;
+                }
+
+                if (dArray.length === 0) {
+                    deudasHtml.push('<tr><td colspan="4" style="text-align:center; padding: 60px; color:var(--text-muted); font-size: 1.1rem; font-weight: 800;"><svg width="64" height="64" style="margin-bottom:15px; opacity:0.5;"><use href="#icon-empty"></use></svg><br>No hay cuentas corrientes pendientes con proveedores</td></tr>');
+                } else {
+                    dArray.forEach(d => {
+                        let pct = Math.min(100, d.amortizacionPct || 0);
+                        let statusColor = d.activo ? 'var(--color-orange)' : 'var(--color-up)';
+                        let statusLabel = d.activo ? 'Saldo Pendiente' : 'Cuenta Liquidada ✔️';
+
+                        deudasHtml.push(
+                            `<tr style="border-bottom: 1px solid var(--border-color); opacity: ${d.activo ? '1' : '0.4'}; background: var(--bg-input); transition: all 0.3s ease;">
+                                <td style="padding: 16px 20px;">
+                                    <strong style="font-size: 1.15rem; color: var(--text-main); font-weight: 900; letter-spacing: 0.5px;">${DOMPurify.sanitize(d.proveedor)}</strong><br>
+                                    <span style="font-size:0.85rem; color:var(--text-muted); font-weight: 700;">${d.fecha} | ${statusLabel}</span><br>
+                                    <span style="font-size:0.8rem; color:var(--color-purple); font-weight: 900;">ID REF: ${d.id}</span>
+                                </td>
+                                <td class="data-font texto-verde privacy-mask" style="text-align:right; padding: 16px 20px; font-size: 1.15rem; font-weight: 900;">${this.zenMode ? '---' : '$' + this.fmtStr(d.capitalServido, 1, false)}</td>
+                                <td class="data-font privacy-mask" style="text-align:right; padding: 16px 20px; font-size: 1.2rem; font-weight: 900; color: var(--text-main);">${this.zenMode ? '---' : '$' + this.fmtStr(d.capitalExigibleTotal, 1, false)}</td>
+                                <td style="vertical-align:middle; padding: 16px 20px;">
+                                    <div style="display:flex; align-items:center; gap:12px;">
+                                        <div style="flex:1; height:8px; background:var(--bg-base); border-radius:4px; overflow:hidden; border: 1px solid var(--border-color);">
+                                            <div style="height:100%; width:${pct}%; background:${statusColor}; box-shadow: 0 0 10px ${statusColor}; border-radius:4px;"></div>
+                                        </div>
+                                        <span style="font-size:0.9rem; font-weight: 900; width: 40px; text-align:right; color: ${statusColor};" class="data-font">${pct.toFixed(0)}%</span>
+                                    </div>
+                                </td>
+                            </tr>`
+                        );
+                    });
+                }
+                this.DOM.tbodyDeudasProveedores.innerHTML = deudasHtml.join('');
             }
         });
     },

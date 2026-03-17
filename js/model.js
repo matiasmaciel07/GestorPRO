@@ -251,7 +251,11 @@ export const model = {
             let mov = { ...item };
             
             if (!mov.id) mov.id = crypto.randomUUID();
-            if (!mov.fecha) mov.fecha = new Date().toISOString().split('T')[0];
+            if (!mov.fecha) {
+                // SOLUCIÓN ARQUITECTÓNICA: Compensación de Offset UTC para precisión de Zona Horaria Local
+                const tzOffset = (new Date()).getTimezoneOffset() * 60000;
+                mov.fecha = new Date(Date.now() - tzOffset).toISOString().split('T')[0];
+            }
             if (!mov.tipo) mov.tipo = 'Revisión Pendiente';
             
             if (isNaN(mov.monto)) mov.monto = 0;
