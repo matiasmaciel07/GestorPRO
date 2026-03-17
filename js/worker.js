@@ -335,12 +335,14 @@ function processSingle(m) {
         st.stats.deudaActiva = Math.max(0, safeFloat(st.stats.deudaActiva - montoNum));
         st.stats.deudaProveedoresActiva = Math.max(0, safeFloat((st.stats.deudaProveedoresActiva || 0) - montoNum));
         
+        // CORRECCIÓN ARQUITECTÓNICA: Inyección de la deuda logística como Carga Financiera Mensual
+        st.stats.flujoMensual[mesStr].cuotas = safeFloat((st.stats.flujoMensual[mesStr].cuotas || 0) + montoNum);
+        
         let prov = m.proveedor || 'Desconocido';
         st.stats.gastosPorProveedor[prov] = safeFloat((st.stats.gastosPorProveedor[prov] || 0) + montoNum);
         if (!st.stats.proveedoresMensual[prov]) st.stats.proveedoresMensual[prov] = {};
         st.stats.proveedoresMensual[prov][mesStr] = safeFloat((st.stats.proveedoresMensual[prov][mesStr] || 0) + montoNum);
         
-        // REFACTORIZACIÓN: Seguro de vinculación nominal como fallback de ID
         let deudaTarget = null;
         if (m.deudaAsociadaId && st.stats.deudaProveedoresDetalle[m.deudaAsociadaId]) {
             deudaTarget = st.stats.deudaProveedoresDetalle[m.deudaAsociadaId];
@@ -395,7 +397,6 @@ function processSingle(m) {
 
         st.stats.stockCosto = safeFloat(montoNum);
         st.stats.stockValorVenta = safeFloat(valorVentaInput);
-        // Corrección Estructural Crítica: Ya no alteramos stockCostoHistorico para no corromper el Markup de ventas.
     }
     else if (m.tipo === 'Reparto Sociedad') {
         st.stats.cajaLocal = safeFloat(st.stats.cajaLocal - montoNum);
@@ -420,7 +421,7 @@ function processSingle(m) {
     else if (m.tipo === 'Pago Préstamo') {
         st.stats.cajaLocal = safeFloat(st.stats.cajaLocal - montoNum);
         st.stats.deudaActiva = Math.max(0, safeFloat(st.stats.deudaActiva - montoNum));
-        st.stats.flujoMensual[mesStr].cuotas = safeFloat(st.stats.flujoMensual[mesStr].cuotas + montoNum);
+        st.stats.flujoMensual[mesStr].cuotas = safeFloat((st.stats.flujoMensual[mesStr].cuotas || 0) + montoNum);
         
         if (m.prestamoAsociado && st.stats.prestamosDetalle[m.prestamoAsociado]) {
             let prestamo = st.stats.prestamosDetalle[m.prestamoAsociado];
@@ -524,7 +525,6 @@ function finalizeMetrics() {
     
     st.stats.maxDrawdownBursatil = st.stats.historyDrawdown.length > 0 ? safeFloat(Math.min(...st.stats.historyDrawdown)) : 0;
 
-    // CORRECCIÓN: CAGR Sincronizado estrictamente al comportamiento TWR.
     if (st.stats.historyFechas.length > 1 && st.firstDateMs) {
         let lastDateMs = new Date(st.lastDate).getTime();
         let daysDiff = Math.max(1, (lastDateMs - st.firstDateMs) / 86400000);
@@ -587,8 +587,12 @@ function finalizeMetrics() {
     
     st.stats.cargaFinancieraPct = 0;
     let totalCuotasPagadas = 0;
-    for (let mes in st.stats.flujoMensual) totalCuotasPagadas += st.stats.flujoMensual[mes].cuotas;
-    if (st.stats.ingresosLocal > 0) st.stats.cargaFinancieraPct = (totalCuotasPagadas / st.stats.ingresosLocal) * 100;
+    for (let mes in st.stats.flujoMensual) {
+        totalCuotasPagadas += st.stats.flujoMensual[mes].cuotas || 0;
+    }
+    if (st.stats.ingresosLocal > 0) {
+        st.stats.cargaFinancieraPct = (totalCuotasPagadas / st.stats.ingresosLocal) * 100;
+    }
 
     st.stats.gananciaNetaTotal = safeFloat(st.stats.ingresosLocal - egresoComercialPuro - st.stats.sociedadRetiros);
     let gananciaNetaMensualPromedio = safeFloat(st.stats.gananciaNetaTotal / numMeses);
@@ -644,12 +648,19 @@ function finalizeMetrics() {
     }
     st.stats.ventasMensuales = { labels: labelsVentas, data: dataVentas, dataCostoVida: dataCostoVida };
 
+    // CORRECCIÓN ARQUITECTÓNICA: Ponderación de Health Score sanitizada contra NaN / Infinity
     let score = 0;
-    score += Math.min(300, (st.stats.fondoSupervivenciaMeses / 6) * 300);
-    score += Math.max(0, 300 - (st.stats.cargaFinancieraPct / 50) * 300);
-    score += Math.min(200, (st.stats.tasaAhorroReal / 20) * 200);
-    score += st.stats.riesgoConcentracion.hhi === 0 ? 0 : Math.max(0, 200 - ((Math.max(0, st.stats.riesgoConcentracion.hhi - 1000)) / 2500) * 200);
-    st.stats.healthScore = Math.round(score);
+    let superv = isFinite(st.stats.fondoSupervivenciaMeses) ? st.stats.fondoSupervivenciaMeses : 0;
+    let carga = isFinite(st.stats.cargaFinancieraPct) ? st.stats.cargaFinancieraPct : 0;
+    let ahorro = isFinite(st.stats.tasaAhorroReal) ? st.stats.tasaAhorroReal : 0;
+    let hhi = (st.stats.riesgoConcentracion && isFinite(st.stats.riesgoConcentracion.hhi)) ? st.stats.riesgoConcentracion.hhi : 0;
+
+    score += Math.min(300, (superv / 6) * 300);
+    score += Math.max(0, 300 - (carga / 50) * 300);
+    score += Math.min(200, (Math.max(0, ahorro) / 20) * 200);
+    score += hhi === 0 ? 0 : Math.max(0, 200 - ((Math.max(0, hhi - 1000)) / 2500) * 200);
+
+    st.stats.healthScore = Math.max(0, Math.min(1000, Math.round(score)));
 }
 
 function runFullProcess(movimientosArray, inflacionINDEC = {}) {

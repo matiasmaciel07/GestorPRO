@@ -65,9 +65,12 @@ export const model = {
 
     generarBackup() {
         return {
-            version: 9,
+            version: 10,
             movimientos: this._rawData.movimientos,
-            inflacionINDEC: this.inflacionINDEC
+            inflacionINDEC: this.inflacionINDEC,
+            categorias: this._rawData.categorias,
+            proveedores: this._rawData.proveedores,
+            watchlist: this._rawData.watchlist
         };
     },
 
@@ -98,39 +101,51 @@ export const model = {
             const idx = migratedCats.Local.indexOf('Proveedores');
             if (idx !== -1) migratedCats.Local[idx] = 'Insumos Menores';
 
-            const nuevasCatsPersonal = ["Tarjetas de Crédito", "Alquiler de Inmueble", "Servicios Básicos", "Mantenimiento y Reparaciones"];
+            const nuevasCatsPersonal = ["Tarjetas de Crédito", "Alquiler de Inmueble", "Servicios Básicos", "Mantenimiento y Reparaciones", "Mascotas y Veterinaria"];
             nuevasCatsPersonal.forEach(c => {
                 if (!migratedCats.Personal.includes(c)) migratedCats.Personal.push(c);
             });
 
+            migratedCats.Local.sort((a,b) => a.localeCompare(b));
+            migratedCats.Personal.sort((a,b) => a.localeCompare(b));
+
             this._data.categorias = migratedCats;
         } else {
-            this._data.categorias = {
+            let defCats = {
                 'Local': [
                     "Alquiler de Inmueble", 
-                    "Impuestos y Tasas", 
-                    "Servicios Básicos (Luz, Agua, Internet)",
-                    "Mantenimiento y Reparaciones", 
-                    "Suministros Operativos", 
-                    "Marketing y Publicidad",
                     "Gastos y Comisiones Financieras", 
+                    "Impuestos y Tasas", 
                     "Logística y Distribución", 
+                    "Mantenimiento y Reparaciones", 
+                    "Marketing y Publicidad",
+                    "Otros Gastos Operativos",
                     "Seguros Corporativos",
-                    "Otros Gastos Operativos"
+                    "Servicios Básicos (Luz, Agua, Internet)",
+                    "Suministros Operativos"
                 ],
                 'Personal': [
-                    "Vivienda y Servicios Habitacionales", 
                     "Alimentación y Supermercado", 
-                    "Transporte y Movilidad",
-                    "Salud y Bienestar", 
+                    "Alquiler de Inmueble",
                     "Educación y Capacitación", 
                     "Entretenimiento y Ocio",
                     "Indumentaria y Calzado", 
+                    "Mantenimiento y Reparaciones",
+                    "Mascotas y Veterinaria",
+                    "Otros Gastos Personales",
+                    "Salud y Bienestar", 
                     "Seguros Personales", 
+                    "Servicios Básicos",
                     "Suscripciones y Membresías",
-                    "Otros Gastos Personales"
+                    "Tarjetas de Crédito",
+                    "Transporte y Movilidad",
+                    "Vivienda y Servicios Habitacionales"
                 ]
             };
+            defCats.Local.sort((a,b) => a.localeCompare(b));
+            defCats.Personal.sort((a,b) => a.localeCompare(b));
+            
+            this._data.categorias = defCats;
             await storage.set('gfp_categorias', this._rawData.categorias);
         }
 
@@ -193,24 +208,50 @@ export const model = {
     curarDatos(datosCrudos) {
         let arrayMovimientos = Array.isArray(datosCrudos) ? datosCrudos : (datosCrudos.movimientos || []);
         
-        if (datosCrudos && !Array.isArray(datosCrudos) && datosCrudos.inflacionINDEC) {
-            this.inflacionINDEC = datosCrudos.inflacionINDEC;
-            storage.set('gfp_inflacion', this.inflacionINDEC).then(() => {
-                events.emit('model:inflacionUpdated', this.inflacionINDEC);
-            });
+        // CORRECCIÓN ARQUITECTÓNICA: Inyección de integridad de contexto completo (Categorías y Preferencias)
+        if (datosCrudos && !Array.isArray(datosCrudos)) {
+            if (datosCrudos.inflacionINDEC) {
+                this.inflacionINDEC = datosCrudos.inflacionINDEC;
+                storage.set('gfp_inflacion', this.inflacionINDEC).then(() => {
+                    events.emit('model:inflacionUpdated', this.inflacionINDEC);
+                });
+            }
+            if (datosCrudos.categorias) {
+                this._rawData.categorias = datosCrudos.categorias;
+                storage.set('gfp_categorias', this._rawData.categorias);
+            } else {
+                // Reconstrucción inteligente por Inferencia O(N) si el backup era viejo
+                let dynamicCatsLocal = new Set(this._rawData.categorias?.Local || []);
+                let dynamicCatsPersonal = new Set(this._rawData.categorias?.Personal || []);
+                
+                arrayMovimientos.forEach(m => {
+                    if (m.tipo === 'Gasto Local' && m.categoria) dynamicCatsLocal.add(m.categoria);
+                    if ((m.tipo === 'Gasto Familiar' || m.tipo === 'Gasto Personal') && m.categoria) dynamicCatsPersonal.add(m.categoria);
+                });
+                
+                this._rawData.categorias = {
+                    Local: Array.from(dynamicCatsLocal).sort((a,b) => a.localeCompare(b)),
+                    Personal: Array.from(dynamicCatsPersonal).sort((a,b) => a.localeCompare(b))
+                };
+                storage.set('gfp_categorias', this._rawData.categorias);
+            }
+            
+            if (datosCrudos.proveedores) {
+                this._rawData.proveedores = datosCrudos.proveedores;
+                storage.set('gfp_proveedores', this._rawData.proveedores);
+            }
+            if (datosCrudos.watchlist) {
+                this._rawData.watchlist = datosCrudos.watchlist;
+                storage.set('gfp_watchlist', this._rawData.watchlist);
+            }
         }
 
         if (!Array.isArray(arrayMovimientos)) return [];
         return arrayMovimientos.map(item => {
             let mov = { ...item };
             
-            // CORRECCIÓN: Prevención absoluta de colisiones mediante criptografía nativa (UUIDv4)
             if (!mov.id) mov.id = crypto.randomUUID();
-            
             if (!mov.fecha) mov.fecha = new Date().toISOString().split('T')[0];
-            
-            // CORRECCIÓN ESTRUCTURAL: Prevención de corrupción silenciosa de datos.
-            // En lugar de inyectar 'Ahorro', se marca para alertar al usuario y no inflar patrimonio.
             if (!mov.tipo) mov.tipo = 'Revisión Pendiente';
             
             if (isNaN(mov.monto)) mov.monto = 0;

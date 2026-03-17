@@ -121,6 +121,21 @@ export const view = {
             default: return 'bg-rendimiento';
         }
     },
+
+    getCategoryColor(catName) {
+        if (!catName) return 'var(--color-primary)';
+        const palette = [
+            '#00FF95', '#FF4D8A', '#2CE6D6', '#FCA311', '#6045F4', 
+            '#FF871A', '#7C13A4', '#1AA7EC', '#F71735', '#00F5FF', 
+            '#FFD500', '#B800FF', '#FF007B', '#E0245E', '#17BF63'
+        ];
+        let hash = 0;
+        for (let i = 0; i < catName.length; i++) {
+            hash = catName.charCodeAt(i) + ((hash << 5) - hash);
+        }
+        hash = Math.abs(hash);
+        return palette[hash % palette.length];
+    },
     
     initUI() {
         // CORRECCIÓN ESTRUCTURAL: Limpieza del Hack del DOM. Delegación al contenedor global.
@@ -1157,11 +1172,9 @@ export const view = {
             const s = modelData?.stats;
             if (!s || typeof s !== 'object' || Object.keys(s).length === 0) return;
 
-            // 1. Helpers de Inyección Segura (Previenen Null Pointer Exceptions si el HTML muta)
             const safeSetHTML = (el, html) => { if (el) el.innerHTML = html; };
             const safeSetText = (el, text) => { if (el) el.innerText = text; };
 
-            // 2. Coerción Estricta de Datos (Inmutabilidad Matemática)
             const healthScore = Number(s.healthScore) || 0;
             const ganRealizada = Number(s.ganRealizada) || 0;
             const billetera = Number(s.billetera) || 0;
@@ -1179,7 +1192,6 @@ export const view = {
             
             const ingresosCapital = s.ingresosCapital !== undefined ? Number(s.ingresosCapital) : Number(s.entradasCajaNoOperativas || 0);
 
-            // 3. Renderizado Dinámico Principal
             if (this.DOM.dashHealthScore && this.DOM.dashHealthLabel) {
                 this.DOM.dashHealthScore.innerText = healthScore;
                 
@@ -1226,7 +1238,6 @@ export const view = {
                 if (this.DOM.dashInvertido) UIMetrics.animateValue(this.DOM.dashInvertido, capInvertido, (val) => this.fmt(val, modelData.dolarBlue, modelData.vistaUSD));
             }
 
-            // 4. Sandboxing Gráfico (Prevención de caída por contextos de Canvas huérfanos)
             try {
                 let histLength = 30;
                 const safeArray = (arr) => Array.isArray(arr) ? arr : [];
@@ -1241,12 +1252,11 @@ export const view = {
                     if (document.getElementById('spark-dash-invertido')) ChartRenderer.drawDashboardSparkline('spark-dash-invertido', arrInvertido, '#FF4D8A'); 
                 }
             } catch (e) {
-                console.warn("[Motor Gráfico] Ignorando renderizado de Sparklines (Elementos ausentes o corruptos).", e);
+                console.warn("[Motor Gráfico] Ignorando renderizado de Sparklines.", e);
             }
 
             safeSetHTML(this.DOM.valPatInyecciones, this.zenMode ? `<strong>-</strong>` : `<strong>${modelData.vistaUSD?'USD':'$'} <span class="privacy-mask">${this.fmtStr(ingresosCapital, modelData.dolarBlue, modelData.vistaUSD)}</span></strong>`);
 
-            // 5. Desacoplamiento de Inyección de Sub-Métricas (Escudo Total Anti Null-Pointer DOM)
             let cagrStr = `<span class="${cagr >= 0 ? 'texto-verde' : 'texto-rojo'} privacy-mask" style="font-weight:900;">${cagr.toFixed(2)}%</span>`;
             let tagHtml = modelData.vistaUSD ? 'USD' : '$';
             let supStr = `<strong style="color: var(--color-primary); text-shadow: var(--shadow-neon-primary);">${fondoSupervivenciaMeses.toFixed(1)} Meses</strong>`;
@@ -1318,6 +1328,43 @@ export const view = {
                     <span class="data-font" style="font-size:1.8rem; font-weight:900; color:var(--color-purple); text-shadow: var(--shadow-neon-purple); white-space:nowrap; text-overflow:ellipsis; overflow:hidden;">${DOMPurify.sanitize(topAct !== '-' ? topAct : '-')}</span>
                 </div>
             `);
+            
+            if (this.DOM.tbodyProveedores) {
+                let statsProvs = s.proveedoresDetalle || {};
+                let provArray = [];
+                
+                for (let pNombre in statsProvs) {
+                    provArray.push({ nombre: pNombre, total: statsProvs[pNombre].total });
+                }
+                
+                provArray.sort((a,b) => b.total - a.total);
+                let maxProvTotal = provArray.length > 0 ? Math.max(...provArray.map(p => p.total)) : 0;
+                
+                let provHtml = [];
+                if (provArray.length === 0) {
+                    provHtml.push('<tr><td colspan="2" style="text-align:center; padding: 60px; color:var(--text-muted); font-size: 1.1rem; font-weight: 800;"><svg width="64" height="64" style="margin-bottom:15px; opacity:0.5;"><use href="#icon-empty"></use></svg><br>Sin registros u obligaciones logísticas recientes</td></tr>');
+                } else {
+                    provArray.forEach((p, index) => {
+                        let pct = maxProvTotal > 0 ? (p.total / maxProvTotal) * 100 : 0;
+                        let pColor = index === 0 ? 'var(--color-accent)' : 'var(--color-primary)';
+                        provHtml.push(
+                            `<tr style="border-bottom: 1px solid var(--border-color); background: var(--bg-input); transition: transform 0.2s; cursor: default;">
+                                <td style="padding: 18px 25px;">
+                                    <strong style="font-size: 1.15rem; font-weight: 900; color: ${pColor}; text-shadow: 0 0 10px ${pColor}40; letter-spacing: 0.5px;">${DOMPurify.sanitize(p.nombre)}</strong>
+                                    <div style="margin-top: 10px; height: 6px; width: 100%; background: var(--bg-base); border-radius: 4px; overflow: hidden; border: 1px solid var(--border-color);">
+                                        <div style="height: 100%; width: ${pct}%; background: ${pColor}; box-shadow: 0 0 10px ${pColor}; border-radius: 4px; transition: width 0.5s ease-in-out;"></div>
+                                    </div>
+                                </td>
+                                <td class="data-font" style="text-align:right; padding: 18px 25px; vertical-align: bottom;">
+                                    <div style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; font-weight: 800; margin-bottom: 4px;">Volumen Histórico</div>
+                                    <strong class="privacy-mask" style="font-size: 1.35rem; font-weight: 900; color: var(--color-up); text-shadow: var(--shadow-neon-up);">${this.zenMode ? '---' : '$' + this.fmtStr(p.total, 1, false)}</strong>
+                                </td>
+                            </tr>`
+                        );
+                    });
+                }
+                this.DOM.tbodyProveedores.innerHTML = provHtml.join('');
+            }
         });
     },
 
@@ -2039,7 +2086,6 @@ export const view = {
     },
 
     renderVirtualScroll(resetScroll = false) {
-        // Eliminación de la fuga de memoria: uso de la caché estática O(1)
         let datosAmostrar = this.historialDataFiltrada || this.historialData;
 
         if(resetScroll) {
@@ -2055,7 +2101,6 @@ export const view = {
             return;
         }
 
-        // FASE 1: LECTURA EN LOTE (Batch Reading) - No se toca el DOM aquí
         const scrollTop = this.DOM.vsViewport.scrollTop;
         const viewportHeight = this.DOM.vsViewport.clientHeight || 500;
         
@@ -2073,7 +2118,6 @@ export const view = {
         const spacerHeight = `${datosAmostrar.length * this.vsRowHeight}px`;
         const tableTransform = `translateY(${startIndex * this.vsRowHeight}px)`;
 
-        // FASE 2: ESCRITURA DIFERIDA (Deferred Mutating) - Delegación al Frame de Pintado
         requestAnimationFrame(() => {
             this.DOM.vsSpacer.style.height = spacerHeight;
             
@@ -2089,8 +2133,10 @@ export const view = {
                     tr.dataset.zen = this.zenMode;
                     
                     let badgeClass = this.getBadgeClass(m.tipo);
-                    let descStr = m.activo ? `${m.cantidad||''}x ${m.activo}` : (m.categoria ? m.categoria : (m.proveedor ? m.proveedor : (m.socio ? m.socio : (m.entidad ? m.entidad : (m.tipo === 'Ajuste Stock Inicial' ? 'Inventario Base' : (m.tipo === 'Rescate a Caja' ? 'Inyección Liquidez a Caja' : (m.tipo === 'Transferencia Ahorro' ? 'Fuga hacia Billetera Bursátil' : (m.usd?`u$s ${m.usd}`:'-'))))))));
-                    let desc = DOMPurify.sanitize(descStr);
+                    
+                    let descHtml = m.categoria 
+                        ? `<span style="display:inline-flex; align-items:center; gap:8px;"><div style="width:10px; height:10px; border-radius:50%; background:${this.getCategoryColor(m.categoria)}; box-shadow: 0 0 8px ${this.getCategoryColor(m.categoria)};"></div>${DOMPurify.sanitize(m.categoria)}</span>`
+                        : DOMPurify.sanitize(m.activo ? `${m.cantidad||''}x ${m.activo}` : (m.proveedor ? m.proveedor : (m.socio ? m.socio : (m.entidad ? m.entidad : (m.tipo === 'Ajuste Stock Inicial' ? 'Inventario Base' : (m.tipo === 'Rescate a Caja' ? 'Inyección Liquidez a Caja' : (m.tipo === 'Transferencia Ahorro' ? 'Fuga hacia Billetera Bursátil' : (m.usd?`u$s ${m.usd}`:'-'))))))));
                     
                     if (m.notas) {
                         let markdownHtml;
@@ -2100,7 +2146,7 @@ export const view = {
                             markdownHtml = DOMPurify.sanitize(marked.parse(m.notas));
                             this._mdCache.set(m.notas, markdownHtml);
                         }
-                        desc += `<div style="margin-top: 8px; font-size: 0.8rem; color: var(--text-muted); background: var(--bg-base); padding: 8px 12px; border-radius: 6px; border-left: 3px solid var(--color-primary); line-height:1.5;">${markdownHtml}</div>`;
+                        descHtml += `<div style="margin-top: 8px; font-size: 0.8rem; color: var(--text-muted); background: var(--bg-base); padding: 8px 12px; border-radius: 6px; border-left: 3px solid var(--color-primary); line-height:1.5;">${markdownHtml}</div>`;
                     }
 
                     let res = '-';
@@ -2114,7 +2160,7 @@ export const view = {
 
                     row.querySelector('.td-fecha').innerHTML = `<span style="font-weight: 800; color: var(--text-muted); font-size: 0.95rem;">${m.fecha}</span>`;
                     row.querySelector('.td-tipo').innerHTML = `<span class="badge ${badgeClass}" style="box-shadow: none;">${m.tipo}</span>`;
-                    row.querySelector('.td-desc').innerHTML = desc;
+                    row.querySelector('.td-desc').innerHTML = descHtml;
                     row.querySelector('.td-flujo').innerHTML = `<strong style="font-size: 1.15rem; color: var(--text-main);">${this.zenMode ? '---' : this.fmt(m.monto, this.currentModelData.dolarBlue, this.currentModelData.vistaUSD)}</strong>`;
                     row.querySelector('.td-res').innerHTML = res;
                     row.querySelector('.td-acc').innerHTML = `
@@ -2139,7 +2185,6 @@ export const view = {
                         tr.dataset.diffId = m.id;
                         tr.dataset.zen = this.zenMode;
 
-                        // OPTIMIZACIÓN: Caché de nodos nativos para evitar recorridos de árbol innecesarios
                         const tdFecha = tr.children[0];
                         const tdTipo = tr.children[1];
                         const tdDesc = tr.children[2];
@@ -2148,8 +2193,10 @@ export const view = {
                         const tdAcc = tr.children[5];
 
                         let badgeClass = this.getBadgeClass(m.tipo);
-                        let descStr = m.activo ? `${m.cantidad||''}x ${m.activo}` : (m.categoria ? m.categoria : (m.proveedor ? m.proveedor : (m.socio ? m.socio : (m.entidad ? m.entidad : (m.tipo === 'Ajuste Stock Inicial' ? 'Inventario Base' : (m.tipo === 'Rescate a Caja' ? 'Inyección Liquidez a Caja' : (m.tipo === 'Transferencia Ahorro' ? 'Fuga hacia Billetera Bursátil' : (m.usd?`u$s ${m.usd}`:'-'))))))));
-                        let desc = DOMPurify.sanitize(descStr);
+                        
+                        let descHtml = m.categoria 
+                            ? `<span style="display:inline-flex; align-items:center; gap:8px;"><div style="width:10px; height:10px; border-radius:50%; background:${this.getCategoryColor(m.categoria)}; box-shadow: 0 0 8px ${this.getCategoryColor(m.categoria)};"></div>${DOMPurify.sanitize(m.categoria)}</span>`
+                            : DOMPurify.sanitize(m.activo ? `${m.cantidad||''}x ${m.activo}` : (m.proveedor ? m.proveedor : (m.socio ? m.socio : (m.entidad ? m.entidad : (m.tipo === 'Ajuste Stock Inicial' ? 'Inventario Base' : (m.tipo === 'Rescate a Caja' ? 'Inyección Liquidez a Caja' : (m.tipo === 'Transferencia Ahorro' ? 'Fuga hacia Billetera Bursátil' : (m.usd?`u$s ${m.usd}`:'-'))))))));
                         
                         if (m.notas) {
                             let markdownHtml;
@@ -2159,7 +2206,7 @@ export const view = {
                                 markdownHtml = DOMPurify.sanitize(marked.parse(m.notas));
                                 this._mdCache.set(m.notas, markdownHtml);
                             }
-                            desc += `<div style="margin-top: 8px; font-size: 0.8rem; color: var(--text-muted); background: var(--bg-base); padding: 8px 12px; border-radius: 6px; border-left: 3px solid var(--color-primary); line-height:1.5;">${markdownHtml}</div>`;
+                            descHtml += `<div style="margin-top: 8px; font-size: 0.8rem; color: var(--text-muted); background: var(--bg-base); padding: 8px 12px; border-radius: 6px; border-left: 3px solid var(--color-primary); line-height:1.5;">${markdownHtml}</div>`;
                         }
 
                         let res = '-';
@@ -2173,11 +2220,10 @@ export const view = {
 
                         tdFecha.innerHTML = `<span style="font-weight: 800; color: var(--text-muted); font-size: 0.95rem;">${m.fecha}</span>`;
                         tdTipo.innerHTML = `<span class="badge ${badgeClass}" style="box-shadow: none;">${m.tipo}</span>`;
-                        tdDesc.innerHTML = desc;
+                        tdDesc.innerHTML = descHtml;
                         tdFlujo.innerHTML = `<strong style="font-size: 1.15rem; color: var(--text-main);">${this.zenMode ? '---' : this.fmt(m.monto, this.currentModelData.dolarBlue, this.currentModelData.vistaUSD)}</strong>`;
                         tdRes.innerHTML = res;
                         
-                        // Solo actualizamos las acciones si cambia el ID para no destruir listeners/foco
                         if (tdAcc.firstElementChild.dataset.id !== String(m.id)) {
                             tdAcc.innerHTML = `
                                 <button class="btn--icon" style="display:inline-flex; padding:10px; margin-right:4px;" data-action="editar-operacion" data-id="${m.id}" title="Editar Transacción">
@@ -2203,7 +2249,6 @@ export const view = {
             let grid = this.DOM.calDias;
             grid.innerHTML = '';
             
-            // CORRECCIÓN: Event Delegation único. Evita Memory Leak por Closures huérfanos.
             grid.onclick = (e) => {
                 const dayNode = e.target.closest('.cal-day');
                 if (!dayNode || !dayNode.dataset.date) return;
@@ -2244,7 +2289,6 @@ export const view = {
             const fragment = document.createDocumentFragment();
             const tpl = this.DOM.tplCalDay.content;
 
-            // FASE DE CORRECCIÓN: Referencia estricta a la hora local para el resaltado del "Today"
             const tzOffset = (new Date()).getTimezoneOffset() * 60000;
             const fechaLocalHoy = new Date(Date.now() - tzOffset).toISOString().split('T')[0];
 
@@ -2267,30 +2311,32 @@ export const view = {
                 const cellNode = document.importNode(tpl, true);
                 const wrapper = cellNode.querySelector('.cal-day');
                 wrapper.className = `cal-day ${cssClass}`;
-                wrapper.dataset.date = fStr; // Asignación de Data para Event Delegation
+                wrapper.dataset.date = fStr; 
                 wrapper.querySelector('.cal-date').textContent = d;
                 
                 let dotsContainer = wrapper.querySelector('.cal-dots');
                 movs.forEach(m => {
-                    let c = this.getBadgeClass(m.tipo);
-                    
                     let dotColor = 'var(--color-primary)';
-                    // Ajuste de intensidad de colores al extremo para evitar tonos apagados
-                    if (c.includes('bg-retiro') || c.includes('bg-gasto-local')) dotColor = '#FF003C'; // Rojo neón vibrante
-                    else if (c.includes('bg-ingreso-local')) dotColor = '#00FF95'; // Verde láser
-                    else if (c.includes('bg-prestamo-pago')) dotColor = '#00F5FF'; // Cyan Eléctrico (Corregido)
-                    else if (c.includes('bg-gasto-vida')) dotColor = '#FF871A'; // Naranja puro
-                    else if (c.includes('bg-proveedor')) dotColor = '#FFD500'; // Amarillo advertencia
-                    else if (c.includes('bg-sociedad')) dotColor = '#B800FF'; // Púrpura eléctrico
-                    else if (c.includes('bg-ahorro-transf') || c.includes('bg-prestamo-alta')) dotColor = '#6045F4'; // Índigo corporativo
-                    else if (c.includes('bg-compra')) dotColor = '#FF007B'; // Magenta
-                    else if (c.includes('bg-venta')) dotColor = '#00F0FF'; // Cyan
-                    else if (c.includes('bg-rendimiento')) dotColor = '#1AA7EC'; // Azul agua
+                    
+                    if (m.categoria) {
+                        dotColor = this.getCategoryColor(m.categoria);
+                    } else {
+                        let c = this.getBadgeClass(m.tipo);
+                        if (c.includes('bg-retiro') || c.includes('bg-gasto-local')) dotColor = '#FF003C'; 
+                        else if (c.includes('bg-ingreso-local')) dotColor = '#00FF95'; 
+                        else if (c.includes('bg-prestamo-pago')) dotColor = '#00F5FF'; 
+                        else if (c.includes('bg-gasto-vida')) dotColor = '#FF871A'; 
+                        else if (c.includes('bg-proveedor')) dotColor = '#FFD500'; 
+                        else if (c.includes('bg-sociedad')) dotColor = '#B800FF'; 
+                        else if (c.includes('bg-ahorro-transf') || c.includes('bg-prestamo-alta')) dotColor = '#6045F4'; 
+                        else if (c.includes('bg-compra')) dotColor = '#FF007B'; 
+                        else if (c.includes('bg-venta')) dotColor = '#00F0FF'; 
+                        else if (c.includes('bg-rendimiento')) dotColor = '#1AA7EC'; 
+                    }
                     
                     let dot = document.createElement('div');
                     dot.className = `cal-dot`;
                     dot.style.backgroundColor = dotColor;
-                    // FIX: Doble capa de Glow en línea que anula el currentColor del modo claro
                     dot.style.boxShadow = `0 0 6px ${dotColor}, 0 0 12px ${dotColor}80`;
                     dotsContainer.appendChild(dot);
                 });
