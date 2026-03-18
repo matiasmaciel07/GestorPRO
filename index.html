@@ -928,14 +928,25 @@
                             <div class="form__group" style="margin-bottom:0;"><label class="form__label">Filtro de Clase Operativa</label>
                                 <select id="filtro-tipo" style="padding: 1.2rem; font-size: 1.1rem; border-radius: 12px;">
                                     <option value="Todos">Todas las Operaciones</option>
-                                    <option value="Ingreso Local">Ingreso Comercial Fijo</option>
-                                    <option value="Gasto Local">Egreso Comercial</option>
-                                    <option value="Gasto Familiar">Gastos Personales (Vida)</option>
+                                    <option value="Ingreso Local">Ingreso Comercial Operativo</option>
+                                    <option value="Gasto Local">Egreso Comercial Fijo/Variable</option>
+                                    <option value="Gasto Familiar">Gastos Personales (Fuga)</option>
                                     <option value="Pago Proveedor">Transacciones con Proveedores</option>
-                                    <option value="Amortización Deuda a Proveedor">Pagos de Deudas</option>
+                                    <option value="Amortización Deuda a Proveedor">Pagos de Deuda a Proveedores</option>
+                                    <option value="Aporte Capital">Aporte de Capital Externo / Propio</option>
+                                    <option value="Ajuste Stock Inicial">Ajuste de Stock Inicial (+)</option>
+                                    <option value="Correccion Stock">Corrección de Inventario (=)</option>
                                     <option value="Reparto Sociedad">Retiros de Utilidad (Sociedad)</option>
-                                    <option value="Compra">Inyección de Capital a Mercado</option>
-                                    <option value="Venta">Liquidaciones de Mercado</option>
+                                    <option value="Alta Préstamo">Adquisición de Pasivo (Préstamo)</option>
+                                    <option value="Pago Préstamo">Amortización de Préstamo Bancario</option>
+                                    <option value="Transferencia Ahorro">Fondeo a Bursátil (Transferencia Ahorro)</option>
+                                    <option value="Ahorro">Ingreso Externo a Bursátil</option>
+                                    <option value="Rescate a Caja">Rescate a Caja Operativa</option>
+                                    <option value="Compra">Toma de Posición (Compra Bursátil)</option>
+                                    <option value="Venta">Liquidación de Posición (Venta Bursátil)</option>
+                                    <option value="Rendimiento">Liquidación de Intereses (Rendimiento)</option>
+                                    <option value="Dividendo">Distribución de Dividendos</option>
+                                    <option value="Retiro">Retiro Definitivo (Fuera del Sistema)</option>
                                  </select>
                             </div>
                             <div class="form__group" style="margin-bottom:0; flex-grow:0;"><button class="btn" data-action="filtrar-historial" style="padding: 1.2rem 1.8rem; font-size: 1.1rem; border-radius: 12px;">Ejecutar Filtro</button></div>
@@ -1031,7 +1042,8 @@
                                     <option value="Todos">Asientos Contables (Completos)</option>
                                     <option value="Ingreso Local">Asientos de Ingreso Comercial</option>
                                     <option value="Gasto Local">Estructura de Gasto Comercial</option>
-                                    <option value="Gasto Personal">Egresos de Economía Personal</option>
+                                    <option value="Gasto Familiar">Egresos de Economía Personal</option>
+                                    <option value="Transferencia Ahorro">Transferencias de Ahorro / Fondeos</option>
                                     <option value="Compra">Inyecciones y Compras de Mercado</option>
                                     <option value="Deuda Proveedores">Estado de Deuda con Proveedores</option>
                                 </select>

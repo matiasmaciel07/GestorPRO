@@ -1329,7 +1329,6 @@ export const view = {
                 </div>
             `);
             
-            // REDISEÑO LOGÍSTICO PROVEEDORES + LIMPIEZA DE DUPLICIDAD
             if (this.DOM.tbodyProveedores) {
                 let statsProvs = s.proveedoresDetalle || {};
                 let provArray = [];
@@ -1347,7 +1346,7 @@ export const view = {
                 } else {
                     provArray.forEach((p, index) => {
                         let pct = maxProvTotal > 0 ? (p.total / maxProvTotal) * 100 : 0;
-                        let pColor = this.getCategoryColor(p.nombre); // Asignación dinámica de tu paleta vibrante
+                        let pColor = this.getCategoryColor(p.nombre); 
                         let rank = index + 1;
                         let rankTpl = index < 3 
                             ? `<span style="display:inline-flex; justify-content:center; align-items:center; width:26px; height:26px; border-radius:8px; background:${pColor}22; color:${pColor}; border: 1px solid ${pColor}50; font-size:0.85rem; margin-right:12px; font-weight:900;">${rank}</span>` 
@@ -1456,21 +1455,35 @@ export const view = {
             if (this.DOM.tbodyDeudasProveedores) {
                 let deudas = s.deudaProveedoresDetalle || {};
                 let deudasHtml = [];
-                let dArray = Object.values(deudas).sort((a,b) => b.fecha.localeCompare(a.fecha));
+                let dArray = Object.values(deudas);
                 let totalDeudaProveedores = 0;
+                let totalPagadoProveedores = 0;
 
                 dArray.forEach(d => {
                     if (d.activo) {
                         totalDeudaProveedores += (d.capitalExigibleTotal - d.capitalServido);
                     }
+                    totalPagadoProveedores += (d.capitalServido || 0);
+                });
+
+                // Algoritmo de Ordenamiento: Activos primero (descendentes), Saldados después (descendentes)
+                dArray.sort((a,b) => {
+                    if (a.activo && !b.activo) return -1;
+                    if (!a.activo && b.activo) return 1;
+                    return b.fecha.localeCompare(a.fecha);
                 });
 
                 let headerElement = this.DOM.tbodyDeudasProveedores.closest('.card').querySelector('h2');
                 if (headerElement) {
                     headerElement.innerHTML = `Auditoría de Cuentas Corrientes (Proveedores) 
-                        <span class="data-font texto-warning privacy-mask" style="float:right; font-size:1.2rem; background: rgba(252, 163, 17, 0.1); padding: 5px 15px; border-radius: 8px; border: 1px solid var(--color-warning);">
-                            Total Pendiente: ${this.zenMode ? '---' : '$' + this.fmtStr(totalDeudaProveedores, 1, false)}
-                        </span>`;
+                        <div style="float:right; display:flex; gap: 10px; margin-top: -5px;">
+                            <span class="data-font texto-verde privacy-mask" style="font-size:1.15rem; background: rgba(0, 255, 149, 0.1); padding: 5px 15px; border-radius: 8px; border: 1px solid var(--color-up);">
+                                Abonado: ${this.zenMode ? '---' : '$' + this.fmtStr(totalPagadoProveedores, 1, false)}
+                            </span>
+                            <span class="data-font texto-warning privacy-mask" style="font-size:1.15rem; background: rgba(252, 163, 17, 0.1); padding: 5px 15px; border-radius: 8px; border: 1px solid var(--color-warning);">
+                                Pendiente: ${this.zenMode ? '---' : '$' + this.fmtStr(totalDeudaProveedores, 1, false)}
+                            </span>
+                        </div>`;
                 }
 
                 if (dArray.length === 0) {
@@ -1904,21 +1917,35 @@ export const view = {
             if (this.DOM.tbodyDeudasProveedores) {
                 let deudas = s.deudaProveedoresDetalle || {};
                 let deudasHtml = [];
-                let dArray = Object.values(deudas).sort((a,b) => b.fecha.localeCompare(a.fecha));
+                let dArray = Object.values(deudas);
                 let totalDeudaProveedores = 0;
+                let totalPagadoProveedores = 0;
 
                 dArray.forEach(d => {
                     if (d.activo) {
                         totalDeudaProveedores += (d.capitalExigibleTotal - d.capitalServido);
                     }
+                    totalPagadoProveedores += (d.capitalServido || 0);
+                });
+
+                // Algoritmo de Ordenamiento: Activos primero (descendentes), Saldados después (descendentes)
+                dArray.sort((a,b) => {
+                    if (a.activo && !b.activo) return -1;
+                    if (!a.activo && b.activo) return 1;
+                    return b.fecha.localeCompare(a.fecha);
                 });
 
                 let headerElement = this.DOM.tbodyDeudasProveedores.closest('.card').querySelector('h2');
                 if (headerElement) {
                     headerElement.innerHTML = `Auditoría de Cuentas Corrientes (Proveedores) 
-                        <span class="data-font texto-warning privacy-mask" style="float:right; font-size:1.2rem; background: rgba(252, 163, 17, 0.1); padding: 5px 15px; border-radius: 8px; border: 1px solid var(--color-warning);">
-                            Total Pendiente: ${this.zenMode ? '---' : '$' + this.fmtStr(totalDeudaProveedores, 1, false)}
-                        </span>`;
+                        <div style="float:right; display:flex; gap: 10px; margin-top: -5px;">
+                            <span class="data-font texto-verde privacy-mask" style="font-size:1.15rem; background: rgba(0, 255, 149, 0.1); padding: 5px 15px; border-radius: 8px; border: 1px solid var(--color-up);">
+                                Abonado: ${this.zenMode ? '---' : '$' + this.fmtStr(totalPagadoProveedores, 1, false)}
+                            </span>
+                            <span class="data-font texto-warning privacy-mask" style="font-size:1.15rem; background: rgba(252, 163, 17, 0.1); padding: 5px 15px; border-radius: 8px; border: 1px solid var(--color-warning);">
+                                Pendiente: ${this.zenMode ? '---' : '$' + this.fmtStr(totalDeudaProveedores, 1, false)}
+                            </span>
+                        </div>`;
                 }
 
                 if (dArray.length === 0) {

@@ -47,19 +47,29 @@ export const PDFGenerator = {
         // BIFURCACIÓN LÓGICA: REPORTE DE DEUDAS A PROVEEDORES
         // =========================================================================
         if (filtros.tipo === "Deuda Proveedores") {
-            const tableColumn = ["Proveedor", "Capital Servido", "Total Exigible", "Deuda Pendiente Neta"];
+            const tableColumn = ["Proveedor", "Estado", "Capital Servido", "Total Exigible", "Deuda Pendiente Neta"];
             const tableRows = [];
             let totalDeuda = 0;
+            let totalPagado = 0;
 
             const deudas = statsGlobales?.deudaProveedoresDetalle || {};
-            for (let key in deudas) {
-                let d = deudas[key];
+            
+            // Ordenamiento: Deudas activas arriba (más recientes primero), luego Saldadas (más recientes primero)
+            const dArray = Object.values(deudas).sort((a, b) => {
+                if (a.activo && !b.activo) return -1;
+                if (!a.activo && b.activo) return 1;
+                return b.fecha.localeCompare(a.fecha);
+            });
+
+            dArray.forEach(d => {
+                let pendiente = Math.max(0, d.capitalExigibleTotal - d.capitalServido);
                 if (d.activo) {
-                    let pendiente = d.capitalExigibleTotal - d.capitalServido;
                     totalDeuda += pendiente;
-                    tableRows.push([d.proveedor, formatCurrency(d.capitalServido), formatCurrency(d.capitalExigibleTotal), formatCurrency(pendiente)]);
                 }
-            }
+                totalPagado += d.capitalServido;
+                let estadoStr = d.activo ? "Pendiente" : "Saldado";
+                tableRows.push([d.proveedor, estadoStr, formatCurrency(d.capitalServido), formatCurrency(d.capitalExigibleTotal), formatCurrency(pendiente)]);
+            });
 
             doc.autoTable({
                 head: [tableColumn],
@@ -68,7 +78,11 @@ export const PDFGenerator = {
                 styles: { font: 'helvetica', fontSize: 9, cellPadding: 4, textColor: [15, 23, 42] },
                 headStyles: { fillColor: [51, 65, 85], textColor: [255, 255, 255], fontStyle: 'bold' },
                 alternateRowStyles: { fillColor: [248, 250, 252] },
-                columnStyles: { 3: { halign: 'right', fontStyle: 'bold' } }, // Alinear última columna derecha
+                columnStyles: { 
+                    2: { halign: 'right' },
+                    3: { halign: 'right' },
+                    4: { halign: 'right', fontStyle: 'bold' } 
+                }, 
                 didDrawPage: function (data) {
                     const pageCount = doc.internal.getNumberOfPages();
                     doc.setFontSize(8);
@@ -80,14 +94,16 @@ export const PDFGenerator = {
             const finalY = doc.lastAutoTable.finalY || 56;
             doc.setFontSize(11);
             doc.setFont("helvetica", "bold");
-            doc.text(`TOTAL DEUDA EXIGIBLE (PENDIENTE): ${formatCurrency(totalDeuda)}`, 14, finalY + 15);
+            doc.setTextColor(51, 65, 85);
+            doc.text(`TOTAL HISTÓRICO ABONADO / SALDADO: ${formatCurrency(totalPagado)}`, 14, finalY + 15);
+            doc.setTextColor(220, 38, 38); // Rojo oscuro para deuda activa
+            doc.text(`TOTAL DEUDA EXIGIBLE (PENDIENTE): ${formatCurrency(totalDeuda)}`, 14, finalY + 22);
 
             const sufijo = filtros.tipo.replace(/\s+/g, '_');
             doc.save(`Reporte_Auditoria_${sufijo}.pdf`);
             
-            return; // Detiene la ejecución para no imprimir la tabla de movimientos normal
+            return; 
         }
-
 
         // =========================================================================
         // LÓGICA ORIGINAL: REPORTE DE MOVIMIENTOS / LIBRO MAYOR
