@@ -575,8 +575,9 @@ export const view = {
     initFiltrosTemporales() {
         const attachGastos = (containerId, contexto, targetDomId) => {
             const container = document.getElementById(containerId);
-            if (!container) return;
-
+            if (!container || container.dataset.listenerAttached) return;
+            
+            container.dataset.listenerAttached = 'true';
             container.addEventListener('click', (e) => {
                 const btn = e.target.closest('.btn--filter');
                 if (!btn) return;
@@ -599,7 +600,8 @@ export const view = {
         attachGastos('filtros-gastos-personal', 'Personal', 'wrap-gastos-personal');
 
         const containerSankey = document.getElementById('filtros-sankey');
-        if (containerSankey) {
+        if (containerSankey && !containerSankey.dataset.listenerAttached) {
+            containerSankey.dataset.listenerAttached = 'true';
             containerSankey.addEventListener('click', (e) => {
                 const btn = e.target.closest('.btn--filter');
                 if (!btn) return;
@@ -1329,24 +1331,39 @@ export const view = {
                 </div>
             `);
             
-            if (this.DOM.tbodyProveedores) {
-                let statsProvs = s.proveedoresDetalle || {};
-                let provArray = [];
-                
-                for (let pNombre in statsProvs) {
-                    provArray.push({ nombre: pNombre, total: statsProvs[pNombre].total });
-                }
-                
-                provArray.sort((a,b) => b.total - a.total);
-                let maxProvTotal = provArray.length > 0 ? Math.max(...provArray.map(p => p.total)) : 0;
-                
-                let provHtml = [];
-                if (provArray.length === 0) {
-                    provHtml.push('<tr><td colspan="2" style="text-align:center; padding: 60px; color:var(--text-muted); font-size: 1.1rem; font-weight: 800;"><svg width="64" height="64" style="margin-bottom:15px; opacity:0.5;"><use href="#icon-empty"></use></svg><br>Sin registros u obligaciones logísticas recientes</td></tr>');
-                } else {
-                    provArray.forEach((p, index) => {
+            // Delegación de renderizado DRY para Tablas Transaccionales de Auditoría
+            this._renderTablasAuditoria(s, true);
+        });
+    },
+
+    renderEvolucion() {
+        ErrorHandler.catchBoundary('Gráfico de Evolución', 'wrap-evolucion', () => {
+            if(!this.currentModelData) return;
+            ChartRenderer.renderEvolucion(this.currentModelData, this.activeFilter);
+        });
+    },
+
+_renderTablasAuditoria(s, isDashboard = true) {
+        if (this.DOM.tbodyProveedores) {
+            let statsProvs = s.proveedoresDetalle || {};
+            let provArray = [];
+            
+            for (let pNombre in statsProvs) {
+                provArray.push({ nombre: pNombre, total: statsProvs[pNombre].total });
+            }
+            
+            provArray.sort((a,b) => b.total - a.total);
+            let maxProvTotal = provArray.length > 0 ? Math.max(...provArray.map(p => p.total)) : 0;
+            
+            let provHtml = [];
+            if (provArray.length === 0) {
+                provHtml.push('<tr><td colspan="2" style="text-align:center; padding: 60px; color:var(--text-muted); font-size: 1.1rem; font-weight: 800;"><svg width="64" height="64" style="margin-bottom:15px; opacity:0.5;"><use href="#icon-empty"></use></svg><br>Sin registros u obligaciones logísticas recientes</td></tr>');
+            } else {
+                provArray.forEach((p, index) => {
+                    let pColor = isDashboard ? this.getCategoryColor(p.nombre) : (index === 0 ? 'var(--color-accent)' : 'var(--color-primary)');
+                    
+                    if (isDashboard) {
                         let pct = maxProvTotal > 0 ? (p.total / maxProvTotal) * 100 : 0;
-                        let pColor = this.getCategoryColor(p.nombre); 
                         let rank = index + 1;
                         let rankTpl = index < 3 
                             ? `<span style="display:inline-flex; justify-content:center; align-items:center; width:26px; height:26px; border-radius:8px; background:${pColor}22; color:${pColor}; border: 1px solid ${pColor}50; font-size:0.85rem; margin-right:12px; font-weight:900;">${rank}</span>` 
@@ -1369,162 +1386,165 @@ export const view = {
                                 </td>
                             </tr>`
                         );
-                    });
-                }
-                this.DOM.tbodyProveedores.innerHTML = provHtml.join('');
-            }
-
-            if (this.DOM.tbodyPrestamos) {
-                let prestamos = s.prestamosDetalle || {};
-                let prestamosHtml = [];
-                let pArray = Object.values(prestamos).sort((a,b) => b.fecha.localeCompare(a.fecha));
-                
-                let headerElement = this.DOM.tbodyPrestamos.closest('.card').querySelector('h2');
-                if (headerElement) {
-                    headerElement.innerHTML = `Auditoría de Pasivos Activos (Bancarios/Préstamos)`;
-                    
-                    let oldSubDash = headerElement.nextElementSibling;
-                    if(oldSubDash && oldSubDash.classList.contains('pasivos-subdash')) {
-                        oldSubDash.remove();
-                    }
-
-                    let subDash = document.createElement('div');
-                    subDash.className = 'pasivos-subdash grid-4';
-                    subDash.style.gap = '15px';
-                    subDash.style.marginBottom = '25px';
-                    subDash.innerHTML = `
-                        <div style="background:var(--bg-input); padding:15px; border-radius:12px; text-align:center; border: 1px solid var(--border-color); box-shadow: var(--shadow-card);">
-                            <div style="font-size:11px; color:var(--text-muted); text-transform:uppercase; font-weight: 900; letter-spacing: 1px;">Total Pedido (Capital)</div>
-                            <div class="data-font privacy-mask" style="font-size:1.4rem; color:var(--text-main); font-weight:900; margin-top: 5px;">${this.zenMode ? '---' : '$' + this.fmtStr(s.totalPedidoPrestamos || 0, 1, false)}</div>
-                        </div>
-                        <div style="background:var(--bg-input); padding:15px; border-radius:12px; text-align:center; border: 2px solid var(--color-down); box-shadow: var(--shadow-neon-down);">
-                            <div style="font-size:11px; color:var(--text-muted); text-transform:uppercase; font-weight: 900; letter-spacing: 1px;">Total Exigible (Deuda)</div>
-                            <div class="data-font texto-rojo privacy-mask" style="font-size:1.4rem; font-weight:900; margin-top: 5px;">${this.zenMode ? '---' : '$' + this.fmtStr(s.totalDevolverPrestamos || 0, 1, false)}</div>
-                        </div>
-                        <div style="background:var(--bg-input); padding:15px; border-radius:12px; text-align:center; border: 1px solid var(--color-warning); box-shadow: var(--shadow-neon-warning);">
-                            <div style="font-size:11px; color:var(--text-muted); text-transform:uppercase; font-weight: 900; letter-spacing: 1px;">Cuota Mensual Global</div>
-                            <div class="data-font texto-warning privacy-mask" style="font-size:1.4rem; font-weight:900; margin-top: 5px;">${this.zenMode ? '---' : '$' + this.fmtStr(s.totalCuotaMensualPrestamos || 0, 1, false)}</div>
-                        </div>
-                        <div style="background:var(--bg-input); padding:15px; border-radius:12px; text-align:center; border: 1px solid var(--color-primary); box-shadow: var(--shadow-neon-primary);">
-                            <div style="font-size:11px; color:var(--text-muted); text-transform:uppercase; font-weight: 900; letter-spacing: 1px;">Tasa de Interés (Prom)</div>
-                            <div class="data-font texto-primario privacy-mask" style="font-size:1.4rem; font-weight:900; margin-top: 5px;">${(s.tasaPromedioPrestamos || 0).toFixed(1)}%</div>
-                        </div>
-                    `;
-                    headerElement.parentNode.insertBefore(subDash, headerElement.nextSibling);
-                }
-
-                if (pArray.length === 0) {
-                    prestamosHtml.push('<tr><td colspan="7" style="text-align:center; padding: 60px; color:var(--text-muted); font-size: 1.1rem; font-weight: 800;"><svg width="64" height="64" style="margin-bottom:15px; opacity:0.5;"><use href="#icon-empty"></use></svg><br>No se registran pasivos ni deudas financieras activas</td></tr>');
-                } else {
-                    pArray.forEach(p => {
-                        let pct = Math.min(100, (p.pagado / p.totalDevolver) * 100);
-                        let statusColor = p.activo ? 'var(--color-primary)' : 'var(--color-up)';
-                        let statusLabel = p.activo ? 'Deuda Activa' : 'Saldado ✔️';
-                        let cuotaActual = Math.min((p.cuotasPagadas || 0) + 1, p.cuotasTotales || 1);
-                        let cuotaStr = p.activo ? `Cuota ${cuotaActual} de ${p.cuotasTotales || 1}` : `Liquidado en ${p.cuotasTotales || 1} pagos`;
-                        let tasaInteres = p.tasaInteres || 0;
-                        let cuotaMesCalculada = p.totalDevolver / (p.cuotasTotales || 1);
-                        
-                        prestamosHtml.push(
-                            `<tr style="border-bottom: 1px solid var(--border-color); opacity: ${p.activo ? '1' : '0.4'}; background: var(--bg-input); transition: all 0.3s ease;">
-                                <td style="padding: 16px 20px;">
-                                    <strong style="font-size: 1.15rem; color: var(--text-main); font-weight: 900; letter-spacing: 0.5px;">${DOMPurify.sanitize(p.entidad)}</strong><br>
-                                    <span style="font-size:0.85rem; color:var(--text-muted); font-weight: 700;">${p.fecha} | ${statusLabel}</span><br>
-                                    <span style="font-size:0.85rem; color:var(--color-accent); font-weight:900; text-transform: uppercase;">${cuotaStr}</span>
+                    } else {
+                        provHtml.push(
+                            `<tr style="border-bottom: 1px solid var(--border-color); background: var(--bg-input); transition: transform 0.2s; cursor: default;">
+                                <td style="padding: 18px 25px; font-size: 1.15rem; font-weight: 900; color: ${pColor}; text-shadow: 0 0 10px ${pColor}40;">
+                                    ${DOMPurify.sanitize(p.nombre)}
                                 </td>
-                                <td class="data-font privacy-mask" style="text-align:right; padding: 16px 20px; font-size: 1.1rem; color:var(--text-muted); font-weight: 800;">${this.zenMode ? '---' : '$' + this.fmtStr(p.capital, 1, false)}</td>
-                                <td class="data-font texto-warning" style="text-align:right; padding: 16px 20px; font-size: 1.1rem; font-weight: 900;">${tasaInteres.toFixed(1)}%</td>
-                                <td class="data-font texto-primario privacy-mask" style="text-align:right; padding: 16px 20px; font-size: 1.1rem; font-weight: 900;">${this.zenMode ? '---' : '$' + this.fmtStr(cuotaMesCalculada, 1, false)}</td>
-                                <td class="data-font texto-verde privacy-mask" style="text-align:right; padding: 16px 20px; font-size: 1.1rem; font-weight: 900;">${this.zenMode ? '---' : '$' + this.fmtStr(p.pagado, 1, false)}</td>
-                                <td class="data-font privacy-mask" style="text-align:right; padding: 16px 20px; font-size: 1.15rem; font-weight: 900; color: var(--text-main);">${this.zenMode ? '---' : '$' + this.fmtStr(p.totalDevolver, 1, false)}</td>
-                                <td style="vertical-align:middle; padding: 16px 20px;">
-                                    <div style="display:flex; align-items:center; gap:12px;">
-                                        <div style="flex:1; height:8px; background:var(--bg-base); border-radius:4px; overflow:hidden; border: 1px solid var(--border-color);">
-                                            <div style="height:100%; width:${pct}%; background:${statusColor}; box-shadow: 0 0 10px ${statusColor}; border-radius:4px;"></div>
-                                        </div>
-                                        <span style="font-size:0.9rem; font-weight: 900; width: 40px; text-align:right; color: ${statusColor};" class="data-font">${pct.toFixed(0)}%</span>
-                                    </div>
+                                <td class="data-font" style="text-align:right; padding: 18px 25px; font-size: 1.25rem; font-weight: 900; color: var(--color-up); text-shadow: var(--shadow-neon-up);">
+                                    <strong class="privacy-mask">${this.zenMode ? '---' : '$' + this.fmtStr(p.total, 1, false)}</strong>
                                 </td>
                             </tr>`
                         );
-                    });
-                }
-                this.DOM.tbodyPrestamos.innerHTML = prestamosHtml.join('');
+                    }
+                });
             }
+            this.DOM.tbodyProveedores.innerHTML = provHtml.join('');
+        }
+
+        if (this.DOM.tbodyPrestamos) {
+            let prestamos = s.prestamosDetalle || {};
+            let prestamosHtml = [];
+            let pArray = Object.values(prestamos).sort((a,b) => b.fecha.localeCompare(a.fecha));
             
-            if (this.DOM.tbodyDeudasProveedores) {
-                let deudas = s.deudaProveedoresDetalle || {};
-                let deudasHtml = [];
-                let dArray = Object.values(deudas);
-                let totalDeudaProveedores = 0;
-                let totalPagadoProveedores = 0;
-
-                dArray.forEach(d => {
-                    if (d.activo) {
-                        totalDeudaProveedores += (d.capitalExigibleTotal - d.capitalServido);
-                    }
-                    totalPagadoProveedores += (d.capitalServido || 0);
-                });
-
-                // Algoritmo de Ordenamiento: Activos primero (descendentes), Saldados después (descendentes)
-                dArray.sort((a,b) => {
-                    if (a.activo && !b.activo) return -1;
-                    if (!a.activo && b.activo) return 1;
-                    return b.fecha.localeCompare(a.fecha);
-                });
-
-                let headerElement = this.DOM.tbodyDeudasProveedores.closest('.card').querySelector('h2');
-                if (headerElement) {
-                    headerElement.innerHTML = `Auditoría de Cuentas Corrientes (Proveedores) 
-                        <div style="float:right; display:flex; gap: 10px; margin-top: -5px;">
-                            <span class="data-font texto-verde privacy-mask" style="font-size:1.15rem; background: rgba(0, 255, 149, 0.1); padding: 5px 15px; border-radius: 8px; border: 1px solid var(--color-up);">
-                                Abonado: ${this.zenMode ? '---' : '$' + this.fmtStr(totalPagadoProveedores, 1, false)}
-                            </span>
-                            <span class="data-font texto-warning privacy-mask" style="font-size:1.15rem; background: rgba(252, 163, 17, 0.1); padding: 5px 15px; border-radius: 8px; border: 1px solid var(--color-warning);">
-                                Pendiente: ${this.zenMode ? '---' : '$' + this.fmtStr(totalDeudaProveedores, 1, false)}
-                            </span>
-                        </div>`;
+            let headerElement = this.DOM.tbodyPrestamos.closest('.card').querySelector('h2');
+            if (headerElement) {
+                headerElement.innerHTML = `Auditoría de Pasivos Activos (Bancarios/Préstamos)`;
+                
+                let oldSubDash = headerElement.nextElementSibling;
+                if(oldSubDash && oldSubDash.classList.contains('pasivos-subdash')) {
+                    oldSubDash.remove();
                 }
 
-                if (dArray.length === 0) {
-                    deudasHtml.push('<tr><td colspan="4" style="text-align:center; padding: 60px; color:var(--text-muted); font-size: 1.1rem; font-weight: 800;"><svg width="64" height="64" style="margin-bottom:15px; opacity:0.5;"><use href="#icon-empty"></use></svg><br>No hay cuentas corrientes pendientes con proveedores</td></tr>');
-                } else {
-                    dArray.forEach(d => {
-                        let pct = Math.min(100, d.amortizacionPct || 0);
-                        let statusColor = d.activo ? 'var(--color-orange)' : 'var(--color-up)';
-                        let statusLabel = d.activo ? 'Saldo Pendiente' : 'Cuenta Liquidada ✔️';
-
-                        deudasHtml.push(
-                            `<tr style="border-bottom: 1px solid var(--border-color); opacity: ${d.activo ? '1' : '0.4'}; background: var(--bg-input); transition: all 0.3s ease;">
-                                <td style="padding: 16px 20px;">
-                                    <strong style="font-size: 1.15rem; color: var(--text-main); font-weight: 900; letter-spacing: 0.5px;">${DOMPurify.sanitize(d.proveedor)}</strong><br>
-                                    <span style="font-size:0.85rem; color:var(--text-muted); font-weight: 700;">${d.fecha} | ${statusLabel}</span><br>
-                                    <span style="font-size:0.8rem; color:var(--color-purple); font-weight: 900;">ID REF: ${d.id}</span>
-                                </td>
-                                <td class="data-font texto-verde privacy-mask" style="text-align:right; padding: 16px 20px; font-size: 1.15rem; font-weight: 900;">${this.zenMode ? '---' : '$' + this.fmtStr(d.capitalServido, 1, false)}</td>
-                                <td class="data-font privacy-mask" style="text-align:right; padding: 16px 20px; font-size: 1.2rem; font-weight: 900; color: var(--text-main);">${this.zenMode ? '---' : '$' + this.fmtStr(d.capitalExigibleTotal, 1, false)}</td>
-                                <td style="vertical-align:middle; padding: 16px 20px;">
-                                    <div style="display:flex; align-items:center; gap:12px;">
-                                        <div style="flex:1; height:8px; background:var(--bg-base); border-radius:4px; overflow:hidden; border: 1px solid var(--border-color);">
-                                            <div style="height:100%; width:${pct}%; background:${statusColor}; box-shadow: 0 0 10px ${statusColor}; border-radius:4px;"></div>
-                                        </div>
-                                        <span style="font-size:0.9rem; font-weight: 900; width: 40px; text-align:right; color: ${statusColor};" class="data-font">${pct.toFixed(0)}%</span>
-                                    </div>
-                                </td>
-                            </tr>`
-                        );
-                    });
-                }
-                this.DOM.tbodyDeudasProveedores.innerHTML = deudasHtml.join('');
+                let subDash = document.createElement('div');
+                subDash.className = 'pasivos-subdash grid-4';
+                subDash.style.gap = '15px';
+                subDash.style.marginBottom = '25px';
+                subDash.innerHTML = `
+                    <div style="background:var(--bg-input); padding:15px; border-radius:12px; text-align:center; border: 1px solid var(--border-color); box-shadow: var(--shadow-card);">
+                        <div style="font-size:11px; color:var(--text-muted); text-transform:uppercase; font-weight: 900; letter-spacing: 1px;">Total Pedido (Capital)</div>
+                        <div class="data-font privacy-mask" style="font-size:1.4rem; color:var(--text-main); font-weight:900; margin-top: 5px;">${this.zenMode ? '---' : '$' + this.fmtStr(s.totalPedidoPrestamos || 0, 1, false)}</div>
+                    </div>
+                    <div style="background:var(--bg-input); padding:15px; border-radius:12px; text-align:center; border: 2px solid var(--color-down); box-shadow: var(--shadow-neon-down);">
+                        <div style="font-size:11px; color:var(--text-muted); text-transform:uppercase; font-weight: 900; letter-spacing: 1px;">Total Exigible (Deuda)</div>
+                        <div class="data-font texto-rojo privacy-mask" style="font-size:1.4rem; font-weight:900; margin-top: 5px;">${this.zenMode ? '---' : '$' + this.fmtStr(s.totalDevolverPrestamos || 0, 1, false)}</div>
+                    </div>
+                    <div style="background:var(--bg-input); padding:15px; border-radius:12px; text-align:center; border: 1px solid var(--color-warning); box-shadow: var(--shadow-neon-warning);">
+                        <div style="font-size:11px; color:var(--text-muted); text-transform:uppercase; font-weight: 900; letter-spacing: 1px;">Cuota Mensual Global</div>
+                        <div class="data-font texto-warning privacy-mask" style="font-size:1.4rem; font-weight:900; margin-top: 5px;">${this.zenMode ? '---' : '$' + this.fmtStr(s.totalCuotaMensualPrestamos || 0, 1, false)}</div>
+                    </div>
+                    <div style="background:var(--bg-input); padding:15px; border-radius:12px; text-align:center; border: 1px solid var(--color-primary); box-shadow: var(--shadow-neon-primary);">
+                        <div style="font-size:11px; color:var(--text-muted); text-transform:uppercase; font-weight: 900; letter-spacing: 1px;">Tasa de Interés (Prom)</div>
+                        <div class="data-font texto-primario privacy-mask" style="font-size:1.4rem; font-weight:900; margin-top: 5px;">${(s.tasaPromedioPrestamos || 0).toFixed(1)}%</div>
+                    </div>
+                `;
+                headerElement.parentNode.insertBefore(subDash, headerElement.nextSibling);
             }
-        });
-    },
 
-    renderEvolucion() {
-        ErrorHandler.catchBoundary('Gráfico de Evolución', 'wrap-evolucion', () => {
-            if(!this.currentModelData) return;
-            ChartRenderer.renderEvolucion(this.currentModelData, this.activeFilter);
-        });
+            if (pArray.length === 0) {
+                prestamosHtml.push('<tr><td colspan="7" style="text-align:center; padding: 60px; color:var(--text-muted); font-size: 1.1rem; font-weight: 800;"><svg width="64" height="64" style="margin-bottom:15px; opacity:0.5;"><use href="#icon-empty"></use></svg><br>No se registran pasivos ni deudas financieras activas</td></tr>');
+            } else {
+                pArray.forEach(p => {
+                    let pct = Math.min(100, (p.pagado / p.totalDevolver) * 100);
+                    let statusColor = p.activo ? 'var(--color-primary)' : 'var(--color-up)';
+                    let statusLabel = p.activo ? 'Deuda Activa' : 'Saldado ✔️';
+                    let cuotaActual = Math.min((p.cuotasPagadas || 0) + 1, p.cuotasTotales || 1);
+                    let cuotaStr = p.activo ? `Cuota ${cuotaActual} de ${p.cuotasTotales || 1}` : `Liquidado en ${p.cuotasTotales || 1} pagos`;
+                    let tasaInteres = p.tasaInteres || 0;
+                    let cuotaMesCalculada = p.totalDevolver / (p.cuotasTotales || 1);
+                    
+                    prestamosHtml.push(
+                        `<tr style="border-bottom: 1px solid var(--border-color); opacity: ${p.activo ? '1' : '0.4'}; background: var(--bg-input); transition: all 0.3s ease;">
+                            <td style="padding: 16px 20px;">
+                                <strong style="font-size: 1.15rem; color: var(--text-main); font-weight: 900; letter-spacing: 0.5px;">${DOMPurify.sanitize(p.entidad)}</strong><br>
+                                <span style="font-size:0.85rem; color:var(--text-muted); font-weight: 700;">${p.fecha} | ${statusLabel}</span><br>
+                                <span style="font-size:0.85rem; color:var(--color-accent); font-weight:900; text-transform: uppercase;">${cuotaStr}</span>
+                            </td>
+                            <td class="data-font privacy-mask" style="text-align:right; padding: 16px 20px; font-size: 1.1rem; color:var(--text-muted); font-weight: 800;">${this.zenMode ? '---' : '$' + this.fmtStr(p.capital, 1, false)}</td>
+                            <td class="data-font texto-warning" style="text-align:right; padding: 16px 20px; font-size: 1.1rem; font-weight: 900;">${tasaInteres.toFixed(1)}%</td>
+                            <td class="data-font texto-primario privacy-mask" style="text-align:right; padding: 16px 20px; font-size: 1.1rem; font-weight: 900;">${this.zenMode ? '---' : '$' + this.fmtStr(cuotaMesCalculada, 1, false)}</td>
+                            <td class="data-font texto-verde privacy-mask" style="text-align:right; padding: 16px 20px; font-size: 1.1rem; font-weight: 900;">${this.zenMode ? '---' : '$' + this.fmtStr(p.pagado, 1, false)}</td>
+                            <td class="data-font privacy-mask" style="text-align:right; padding: 16px 20px; font-size: 1.15rem; font-weight: 900; color: var(--text-main);">${this.zenMode ? '---' : '$' + this.fmtStr(p.totalDevolver, 1, false)}</td>
+                            <td style="vertical-align:middle; padding: 16px 20px;">
+                                <div style="display:flex; align-items:center; gap:12px;">
+                                    <div style="flex:1; height:8px; background:var(--bg-base); border-radius:4px; overflow:hidden; border: 1px solid var(--border-color);">
+                                        <div style="height:100%; width:${pct}%; background:${statusColor}; box-shadow: 0 0 10px ${statusColor}; border-radius:4px;"></div>
+                                    </div>
+                                    <span style="font-size:0.9rem; font-weight: 900; width: 40px; text-align:right; color: ${statusColor};" class="data-font">${pct.toFixed(0)}%</span>
+                                </div>
+                            </td>
+                        </tr>`
+                    );
+                });
+            }
+            this.DOM.tbodyPrestamos.innerHTML = prestamosHtml.join('');
+        }
+        
+        if (this.DOM.tbodyDeudasProveedores) {
+            let deudas = s.deudaProveedoresDetalle || {};
+            let deudasHtml = [];
+            let dArray = Object.values(deudas);
+            let totalDeudaProveedores = 0;
+            let totalPagadoProveedores = 0;
+
+            dArray.forEach(d => {
+                if (d.activo) {
+                    totalDeudaProveedores += (d.capitalExigibleTotal - d.capitalServido);
+                }
+                totalPagadoProveedores += (d.capitalServido || 0);
+            });
+
+            dArray.sort((a,b) => {
+                if (a.activo && !b.activo) return -1;
+                if (!a.activo && b.activo) return 1;
+                return b.fecha.localeCompare(a.fecha);
+            });
+
+            let headerElement = this.DOM.tbodyDeudasProveedores.closest('.card').querySelector('h2');
+            if (headerElement) {
+                headerElement.innerHTML = `Auditoría de Cuentas Corrientes (Proveedores) 
+                    <div style="float:right; display:flex; gap: 10px; margin-top: -5px;">
+                        <span class="data-font texto-verde privacy-mask" style="font-size:1.15rem; background: rgba(0, 255, 149, 0.1); padding: 5px 15px; border-radius: 8px; border: 1px solid var(--color-up);">
+                            Abonado: ${this.zenMode ? '---' : '$' + this.fmtStr(totalPagadoProveedores, 1, false)}
+                        </span>
+                        <span class="data-font texto-warning privacy-mask" style="font-size:1.15rem; background: rgba(252, 163, 17, 0.1); padding: 5px 15px; border-radius: 8px; border: 1px solid var(--color-warning);">
+                            Pendiente: ${this.zenMode ? '---' : '$' + this.fmtStr(totalDeudaProveedores, 1, false)}
+                        </span>
+                    </div>`;
+            }
+
+            if (dArray.length === 0) {
+                deudasHtml.push('<tr><td colspan="4" style="text-align:center; padding: 60px; color:var(--text-muted); font-size: 1.1rem; font-weight: 800;"><svg width="64" height="64" style="margin-bottom:15px; opacity:0.5;"><use href="#icon-empty"></use></svg><br>No hay cuentas corrientes pendientes con proveedores</td></tr>');
+            } else {
+                dArray.forEach(d => {
+                    let pct = Math.min(100, d.amortizacionPct || 0);
+                    let statusColor = d.activo ? 'var(--color-orange)' : 'var(--color-up)';
+                    let statusLabel = d.activo ? 'Saldo Pendiente' : 'Cuenta Liquidada ✔️';
+
+                    deudasHtml.push(
+                        `<tr style="border-bottom: 1px solid var(--border-color); opacity: ${d.activo ? '1' : '0.4'}; background: var(--bg-input); transition: all 0.3s ease;">
+                            <td style="padding: 16px 20px;">
+                                <strong style="font-size: 1.15rem; color: var(--text-main); font-weight: 900; letter-spacing: 0.5px;">${DOMPurify.sanitize(d.proveedor)}</strong><br>
+                                <span style="font-size:0.85rem; color:var(--text-muted); font-weight: 700;">${d.fecha} | ${statusLabel}</span><br>
+                                <span style="font-size:0.8rem; color:var(--color-purple); font-weight: 900;">ID REF: ${d.id}</span>
+                            </td>
+                            <td class="data-font texto-verde privacy-mask" style="text-align:right; padding: 16px 20px; font-size: 1.15rem; font-weight: 900;">${this.zenMode ? '---' : '$' + this.fmtStr(d.capitalServido, 1, false)}</td>
+                            <td class="data-font privacy-mask" style="text-align:right; padding: 16px 20px; font-size: 1.2rem; font-weight: 900; color: var(--text-main);">${this.zenMode ? '---' : '$' + this.fmtStr(d.capitalExigibleTotal, 1, false)}</td>
+                            <td style="vertical-align:middle; padding: 16px 20px;">
+                                <div style="display:flex; align-items:center; gap:12px;">
+                                    <div style="flex:1; height:8px; background:var(--bg-base); border-radius:4px; overflow:hidden; border: 1px solid var(--border-color);">
+                                        <div style="height:100%; width:${pct}%; background:${statusColor}; box-shadow: 0 0 10px ${statusColor}; border-radius:4px;"></div>
+                                    </div>
+                                    <span style="font-size:0.9rem; font-weight: 900; width: 40px; text-align:right; color: ${statusColor};" class="data-font">${pct.toFixed(0)}%</span>
+                                </div>
+                            </td>
+                        </tr>`
+                    );
+                });
+            }
+            this.DOM.tbodyDeudasProveedores.innerHTML = deudasHtml.join('');
+        }
     },
 
     actualizarRentabilidadFisica(stats, esBruta = false) {
@@ -1599,7 +1619,6 @@ export const view = {
         this.DOM.flowPctAhorro.innerText = ((ah / iRef) * 100).toFixed(1) + "%";
     },
 
-    // FASE 3: Tablas y Rendimiento Físico adaptados al DOM Neon-Tech (Esqueletos Tonalizados)
     renderFinanzaGeneral(modelData) {
         ErrorHandler.catchBoundary('Finanzas Generales', 'finanza-general', () => {
             let s = modelData.stats;
@@ -1673,7 +1692,6 @@ export const view = {
                 }
             }
 
-            // NUEVA INTEGRACIÓN FASE 4: Matriz Operativa Mensual
             const hmOpGrid = document.getElementById('heatmap-operativo-grid');
             if (hmOpGrid) {
                 let hmOpBuffer = [
@@ -1805,180 +1823,8 @@ export const view = {
                 }
             }
 
-            if (this.DOM.tbodyProveedores) {
-                let statsProvs = s.proveedoresDetalle || {};
-                let provArray = [];
-                
-                for (let pNombre in statsProvs) {
-                    provArray.push({ nombre: pNombre, total: statsProvs[pNombre].total });
-                }
-                
-                provArray.sort((a,b) => b.total - a.total);
-                
-                let provHtml = [];
-                if (provArray.length === 0) {
-                    provHtml.push('<tr><td colspan="2" style="text-align:center; padding: 60px; color:var(--text-muted); font-size: 1.1rem; font-weight: 800;"><svg width="64" height="64" style="margin-bottom:15px; opacity:0.5;"><use href="#icon-empty"></use></svg><br>Sin registros u obligaciones logísticas recientes</td></tr>');
-                } else {
-                    provArray.forEach((p, index) => {
-                        let pColor = index === 0 ? 'var(--color-accent)' : 'var(--color-primary)';
-                        provHtml.push(
-                            `<tr style="border-bottom: 1px solid var(--border-color); background: var(--bg-input); transition: transform 0.2s; cursor: default;">
-                                <td style="padding: 18px 25px; font-size: 1.15rem; font-weight: 900; color: ${pColor}; text-shadow: 0 0 10px ${pColor}40;">
-                                    ${DOMPurify.sanitize(p.nombre)}
-                                </td>
-                                <td class="data-font" style="text-align:right; padding: 18px 25px; font-size: 1.25rem; font-weight: 900; color: var(--color-up); text-shadow: var(--shadow-neon-up);">
-                                    <strong class="privacy-mask">${this.zenMode ? '---' : '$' + this.fmtStr(p.total, 1, false)}</strong>
-                                </td>
-                            </tr>`
-                        );
-                    });
-                }
-                this.DOM.tbodyProveedores.innerHTML = provHtml.join('');
-            }
-
-            if (this.DOM.tbodyPrestamos) {
-                let prestamos = s.prestamosDetalle || {};
-                let prestamosHtml = [];
-                let pArray = Object.values(prestamos).sort((a,b) => b.fecha.localeCompare(a.fecha));
-                
-                let headerElement = this.DOM.tbodyPrestamos.closest('.card').querySelector('h2');
-                if (headerElement) {
-                    headerElement.innerHTML = `Auditoría de Pasivos Activos (Bancarios/Préstamos)`;
-                    
-                    let oldSubDash = headerElement.nextElementSibling;
-                    if(oldSubDash && oldSubDash.classList.contains('pasivos-subdash')) {
-                        oldSubDash.remove();
-                    }
-
-                    let subDash = document.createElement('div');
-                    subDash.className = 'pasivos-subdash grid-4';
-                    subDash.style.gap = '15px';
-                    subDash.style.marginBottom = '25px';
-                    subDash.innerHTML = `
-                        <div style="background:var(--bg-input); padding:15px; border-radius:12px; text-align:center; border: 1px solid var(--border-color); box-shadow: var(--shadow-card);">
-                            <div style="font-size:11px; color:var(--text-muted); text-transform:uppercase; font-weight: 900; letter-spacing: 1px;">Total Pedido (Capital)</div>
-                            <div class="data-font privacy-mask" style="font-size:1.4rem; color:var(--text-main); font-weight:900; margin-top: 5px;">${this.zenMode ? '---' : '$' + this.fmtStr(s.totalPedidoPrestamos || 0, 1, false)}</div>
-                        </div>
-                        <div style="background:var(--bg-input); padding:15px; border-radius:12px; text-align:center; border: 2px solid var(--color-down); box-shadow: var(--shadow-neon-down);">
-                            <div style="font-size:11px; color:var(--text-muted); text-transform:uppercase; font-weight: 900; letter-spacing: 1px;">Total Exigible (Deuda)</div>
-                            <div class="data-font texto-rojo privacy-mask" style="font-size:1.4rem; font-weight:900; margin-top: 5px;">${this.zenMode ? '---' : '$' + this.fmtStr(s.totalDevolverPrestamos || 0, 1, false)}</div>
-                        </div>
-                        <div style="background:var(--bg-input); padding:15px; border-radius:12px; text-align:center; border: 1px solid var(--color-warning); box-shadow: var(--shadow-neon-warning);">
-                            <div style="font-size:11px; color:var(--text-muted); text-transform:uppercase; font-weight: 900; letter-spacing: 1px;">Cuota Mensual Global</div>
-                            <div class="data-font texto-warning privacy-mask" style="font-size:1.4rem; font-weight:900; margin-top: 5px;">${this.zenMode ? '---' : '$' + this.fmtStr(s.totalCuotaMensualPrestamos || 0, 1, false)}</div>
-                        </div>
-                        <div style="background:var(--bg-input); padding:15px; border-radius:12px; text-align:center; border: 1px solid var(--color-primary); box-shadow: var(--shadow-neon-primary);">
-                            <div style="font-size:11px; color:var(--text-muted); text-transform:uppercase; font-weight: 900; letter-spacing: 1px;">Tasa de Interés (Prom)</div>
-                            <div class="data-font texto-primario privacy-mask" style="font-size:1.4rem; font-weight:900; margin-top: 5px;">${(s.tasaPromedioPrestamos || 0).toFixed(1)}%</div>
-                        </div>
-                    `;
-                    headerElement.parentNode.insertBefore(subDash, headerElement.nextSibling);
-                }
-
-                if (pArray.length === 0) {
-                    prestamosHtml.push('<tr><td colspan="7" style="text-align:center; padding: 60px; color:var(--text-muted); font-size: 1.1rem; font-weight: 800;"><svg width="64" height="64" style="margin-bottom:15px; opacity:0.5;"><use href="#icon-empty"></use></svg><br>No se registran pasivos ni deudas financieras activas</td></tr>');
-                } else {
-                    pArray.forEach(p => {
-                        let pct = Math.min(100, (p.pagado / p.totalDevolver) * 100);
-                        let statusColor = p.activo ? 'var(--color-primary)' : 'var(--color-up)';
-                        let statusLabel = p.activo ? 'Deuda Activa' : 'Saldado ✔️';
-                        let cuotaActual = Math.min((p.cuotasPagadas || 0) + 1, p.cuotasTotales || 1);
-                        let cuotaStr = p.activo ? `Cuota ${cuotaActual} de ${p.cuotasTotales || 1}` : `Liquidado en ${p.cuotasTotales || 1} pagos`;
-                        let tasaInteres = p.tasaInteres || 0;
-                        let cuotaMesCalculada = p.totalDevolver / (p.cuotasTotales || 1);
-                        
-                        prestamosHtml.push(
-                            `<tr style="border-bottom: 1px solid var(--border-color); opacity: ${p.activo ? '1' : '0.4'}; background: var(--bg-input); transition: all 0.3s ease;">
-                                <td style="padding: 16px 20px;">
-                                    <strong style="font-size: 1.15rem; color: var(--text-main); font-weight: 900; letter-spacing: 0.5px;">${DOMPurify.sanitize(p.entidad)}</strong><br>
-                                    <span style="font-size:0.85rem; color:var(--text-muted); font-weight: 700;">${p.fecha} | ${statusLabel}</span><br>
-                                    <span style="font-size:0.85rem; color:var(--color-accent); font-weight:900; text-transform: uppercase;">${cuotaStr}</span>
-                                </td>
-                                <td class="data-font privacy-mask" style="text-align:right; padding: 16px 20px; font-size: 1.1rem; color:var(--text-muted); font-weight: 800;">${this.zenMode ? '---' : '$' + this.fmtStr(p.capital, 1, false)}</td>
-                                <td class="data-font texto-warning" style="text-align:right; padding: 16px 20px; font-size: 1.1rem; font-weight: 900;">${tasaInteres.toFixed(1)}%</td>
-                                <td class="data-font texto-primario privacy-mask" style="text-align:right; padding: 16px 20px; font-size: 1.1rem; font-weight: 900;">${this.zenMode ? '---' : '$' + this.fmtStr(cuotaMesCalculada, 1, false)}</td>
-                                <td class="data-font texto-verde privacy-mask" style="text-align:right; padding: 16px 20px; font-size: 1.1rem; font-weight: 900;">${this.zenMode ? '---' : '$' + this.fmtStr(p.pagado, 1, false)}</td>
-                                <td class="data-font privacy-mask" style="text-align:right; padding: 16px 20px; font-size: 1.15rem; font-weight: 900; color: var(--text-main);">${this.zenMode ? '---' : '$' + this.fmtStr(p.totalDevolver, 1, false)}</td>
-                                <td style="vertical-align:middle; padding: 16px 20px;">
-                                    <div style="display:flex; align-items:center; gap:12px;">
-                                        <div style="flex:1; height:8px; background:var(--bg-base); border-radius:4px; overflow:hidden; border: 1px solid var(--border-color);">
-                                            <div style="height:100%; width:${pct}%; background:${statusColor}; box-shadow: 0 0 10px ${statusColor}; border-radius:4px;"></div>
-                                        </div>
-                                        <span style="font-size:0.9rem; font-weight: 900; width: 40px; text-align:right; color: ${statusColor};" class="data-font">${pct.toFixed(0)}%</span>
-                                    </div>
-                                </td>
-                            </tr>`
-                        );
-                    });
-                }
-                this.DOM.tbodyPrestamos.innerHTML = prestamosHtml.join('');
-            }
-            
-            if (this.DOM.tbodyDeudasProveedores) {
-                let deudas = s.deudaProveedoresDetalle || {};
-                let deudasHtml = [];
-                let dArray = Object.values(deudas);
-                let totalDeudaProveedores = 0;
-                let totalPagadoProveedores = 0;
-
-                dArray.forEach(d => {
-                    if (d.activo) {
-                        totalDeudaProveedores += (d.capitalExigibleTotal - d.capitalServido);
-                    }
-                    totalPagadoProveedores += (d.capitalServido || 0);
-                });
-
-                // Algoritmo de Ordenamiento: Activos primero (descendentes), Saldados después (descendentes)
-                dArray.sort((a,b) => {
-                    if (a.activo && !b.activo) return -1;
-                    if (!a.activo && b.activo) return 1;
-                    return b.fecha.localeCompare(a.fecha);
-                });
-
-                let headerElement = this.DOM.tbodyDeudasProveedores.closest('.card').querySelector('h2');
-                if (headerElement) {
-                    headerElement.innerHTML = `Auditoría de Cuentas Corrientes (Proveedores) 
-                        <div style="float:right; display:flex; gap: 10px; margin-top: -5px;">
-                            <span class="data-font texto-verde privacy-mask" style="font-size:1.15rem; background: rgba(0, 255, 149, 0.1); padding: 5px 15px; border-radius: 8px; border: 1px solid var(--color-up);">
-                                Abonado: ${this.zenMode ? '---' : '$' + this.fmtStr(totalPagadoProveedores, 1, false)}
-                            </span>
-                            <span class="data-font texto-warning privacy-mask" style="font-size:1.15rem; background: rgba(252, 163, 17, 0.1); padding: 5px 15px; border-radius: 8px; border: 1px solid var(--color-warning);">
-                                Pendiente: ${this.zenMode ? '---' : '$' + this.fmtStr(totalDeudaProveedores, 1, false)}
-                            </span>
-                        </div>`;
-                }
-
-                if (dArray.length === 0) {
-                    deudasHtml.push('<tr><td colspan="4" style="text-align:center; padding: 60px; color:var(--text-muted); font-size: 1.1rem; font-weight: 800;"><svg width="64" height="64" style="margin-bottom:15px; opacity:0.5;"><use href="#icon-empty"></use></svg><br>No hay cuentas corrientes pendientes con proveedores</td></tr>');
-                } else {
-                    dArray.forEach(d => {
-                        let pct = Math.min(100, d.amortizacionPct || 0);
-                        let statusColor = d.activo ? 'var(--color-orange)' : 'var(--color-up)';
-                        let statusLabel = d.activo ? 'Saldo Pendiente' : 'Cuenta Liquidada ✔️';
-
-                        deudasHtml.push(
-                            `<tr style="border-bottom: 1px solid var(--border-color); opacity: ${d.activo ? '1' : '0.4'}; background: var(--bg-input); transition: all 0.3s ease;">
-                                <td style="padding: 16px 20px;">
-                                    <strong style="font-size: 1.15rem; color: var(--text-main); font-weight: 900; letter-spacing: 0.5px;">${DOMPurify.sanitize(d.proveedor)}</strong><br>
-                                    <span style="font-size:0.85rem; color:var(--text-muted); font-weight: 700;">${d.fecha} | ${statusLabel}</span><br>
-                                    <span style="font-size:0.8rem; color:var(--color-purple); font-weight: 900;">ID REF: ${d.id}</span>
-                                </td>
-                                <td class="data-font texto-verde privacy-mask" style="text-align:right; padding: 16px 20px; font-size: 1.15rem; font-weight: 900;">${this.zenMode ? '---' : '$' + this.fmtStr(d.capitalServido, 1, false)}</td>
-                                <td class="data-font privacy-mask" style="text-align:right; padding: 16px 20px; font-size: 1.2rem; font-weight: 900; color: var(--text-main);">${this.zenMode ? '---' : '$' + this.fmtStr(d.capitalExigibleTotal, 1, false)}</td>
-                                <td style="vertical-align:middle; padding: 16px 20px;">
-                                    <div style="display:flex; align-items:center; gap:12px;">
-                                        <div style="flex:1; height:8px; background:var(--bg-base); border-radius:4px; overflow:hidden; border: 1px solid var(--border-color);">
-                                            <div style="height:100%; width:${pct}%; background:${statusColor}; box-shadow: 0 0 10px ${statusColor}; border-radius:4px;"></div>
-                                        </div>
-                                        <span style="font-size:0.9rem; font-weight: 900; width: 40px; text-align:right; color: ${statusColor};" class="data-font">${pct.toFixed(0)}%</span>
-                                    </div>
-                                </td>
-                            </tr>`
-                        );
-                    });
-                }
-                this.DOM.tbodyDeudasProveedores.innerHTML = deudasHtml.join('');
-            }
+            // Delegación de renderizado DRY para Tablas Transaccionales de Auditoría
+            this._renderTablasAuditoria(s, false);
         });
     },
 
@@ -2778,20 +2624,31 @@ export const view = {
             const cagrRealPct = cagrNominal - inflacionFija; 
             const swrPct = parseFloat(document.getElementById('fire-swr').value) || 4;
             
-            // CORRECCIÓN: Prevención de División por cero e Infinity
+            // CORRECCIÓN MATEMÁTICA: Guard Clause contra ciclos infinitos y matemáticas negativas sin sentido.
+            if (cagrRealPct <= 0) {
+                document.getElementById('fire-res-gasto').innerHTML = this.zenMode ? '---' : `<span class="privacy-mask" style="font-size: 2.5rem; font-weight: 900; color: var(--color-down); text-shadow: var(--shadow-neon-down);">$ ${this.fmtStr(gastoBase + gastoExtra, 1, false)}</span>`;
+                document.getElementById('fire-res-objetivo').innerHTML = this.zenMode ? '---' : `<span class="privacy-mask" style="font-size: 2.5rem; font-weight: 900; color: var(--color-purple); text-shadow: var(--shadow-neon-purple);">-</span>`;
+                
+                let elAnos = document.getElementById('fire-res-anos');
+                elAnos.innerText = "Inviable (Rendimiento Real Negativo)";
+                elAnos.className = "data-font texto-rojo";
+                elAnos.style.fontSize = "3rem";
+                
+                if (window.fireChartInstance) window.fireChartInstance.destroy();
+                return; 
+            }
+
             const swrSeguro = Math.max(0.01, swrPct); 
 
             const gastoTotal = gastoBase + gastoExtra;
             const gastoAnual = gastoTotal * 12;
             
-            // CORRECCIÓN: Evitar Infinite Math. Evalúa a 0 si es inmanejable.
             let targetFIRE = gastoAnual / (swrSeguro / 100);
             if (!isFinite(targetFIRE)) targetFIRE = 0;
 
             document.getElementById('fire-res-gasto').innerHTML = this.zenMode ? '---' : `<span class="privacy-mask" style="font-size: 2.5rem; font-weight: 900; color: var(--color-down); text-shadow: var(--shadow-neon-down);">$ ${this.fmtStr(gastoTotal, 1, false)}</span>`;
             document.getElementById('fire-res-objetivo').innerHTML = this.zenMode ? '---' : `<span class="privacy-mask" style="font-size: 2.5rem; font-weight: 900; color: var(--color-purple); text-shadow: var(--shadow-neon-purple);">$ ${this.fmtStr(targetFIRE, 1, false)}</span>`;
 
-            // Refactorización a Tasa Efectiva Mensual para soportar DCA (Dollar Cost Averaging) Real
             let rMensual = Math.pow(1 + (cagrRealPct / 100), 1/12) - 1;
             let capitalAcumulado = capIni;
             let anos = 0;
@@ -2806,7 +2663,6 @@ export const view = {
                     anos++;
                     for (let m = 0; m < 12; m++) {
                         capitalAcumulado = (capitalAcumulado + ahorroMes) * (1 + rMensual);
-                        // PREVENCIÓN DE DESBORDAMIENTO: Límite arquitectónico V8 Engine
                         if (capitalAcumulado > Number.MAX_SAFE_INTEGER) capitalAcumulado = Number.MAX_SAFE_INTEGER;
                     }
                     lbl.push(`Año ${anos}`);
@@ -2830,13 +2686,11 @@ export const view = {
                 elAnos.style.fontSize = "5rem";
             }
 
-            // SIMULACIÓN DE MONTECARLO (Sequence of Returns Risk Mitigation)
             const elProbabilidad = document.getElementById('fire-res-probabilidad');
             if (elProbabilidad) {
                 const inVol = document.getElementById('info-volatilidad');
                 let volTxt = inVol ? inVol.innerText.replace('%', '').trim() : '15';
                 
-                // CORRECCIÓN: Filtrado para predecir colapsos de cálculo si Vol = 0
                 let volatilidad = parseFloat(volTxt);
                 if (isNaN(volatilidad) || volatilidad <= 0) volatilidad = 15; 
                 
@@ -2853,7 +2707,6 @@ export const view = {
                     let fracaso = false;
 
                     for(let y = 1; y <= horizonteSimulacion; y++) {
-                        // Transformación Box-Muller para distribución normal aleatoria
                         let u1 = Math.random(), u2 = Math.random();
                         if(u1 === 0) u1 = 0.00001;
                         let z0 = Math.sqrt(-2.0 * Math.log(u1)) * Math.cos(2.0 * Math.PI * u2);
@@ -2861,13 +2714,11 @@ export const view = {
 
                         if (!esRetiro) {
                             capMC = (capMC + (ahorroMes * 12)) * (1 + rSim);
-                            // Límite de control superior asintótico Montecarlo
                             if (capMC > Number.MAX_SAFE_INTEGER) capMC = Number.MAX_SAFE_INTEGER;
                             
                             if (capMC >= targetFIRE) esRetiro = true;
                         } else {
                             let currentSwr = swrSeguro / 100;
-                            // Algoritmo dinámico: Caída del mercado reduce SWR un 20% temporalmente
                             if (rSim < 0) {
                                 currentSwr = currentSwr * 0.8;
                             }

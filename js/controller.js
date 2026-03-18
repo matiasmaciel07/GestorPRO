@@ -134,16 +134,9 @@ const controller = {
         });
 
         events.on('ui:borrar-categoria', async (data) => {
-            let ctx = data.tipo === 'Gasto Local' ? 'Local' : 'Personal';
-            const categoriasActuales = model.data.categorias[ctx] || [];
-            
-            const index = categoriasActuales.findIndex(c => c.toLowerCase() === data.categoria.toLowerCase());
-            if(index > -1) {
-                const nuevasCategorias = categoriasActuales.filter((_, i) => i !== index);
-                
-                model._data.categorias = { ...model.data.categorias, [ctx]: nuevasCategorias }; 
-                await storage.set('gfp_categorias', model.data.categorias);
-                
+            // CORRECCIÓN: Delegamos la responsabilidad estructural al modelo para asegurar inmutabilidad
+            const success = await model.borrarCategoria(data.tipo, data.categoria);
+            if(success) {
                 events.emit('app:toast', { msg: `Categoría "${data.categoria}" eliminada`, type: "success" });
                 view.adaptarFormularioEconomia(); 
             }
@@ -221,7 +214,6 @@ const controller = {
 
         events.on('ui:deshacer-operacion', () => { model.deshacer(); events.emit('app:toast', { msg: "Operación deshecha", type: "success" }); });
         
-        // CORRECCIÓN: Prevención de NaN al borrar registros. Se inyecta el ID puro (string o int)
         events.on('ui:borrar-operacion', (id) => { 
             model.borrarMovimiento(id); 
             events.emit('app:toast', { msg: "Registro eliminado", type: "success" }); 
@@ -264,7 +256,7 @@ const controller = {
             );
         });
 
-        events.on('ui:exportar', () => backup.exportar(model.generarBackup())); // CORREGIDO: Exporta todo el backup unificado
+        events.on('ui:exportar', () => backup.exportar(model.generarBackup())); 
         events.on('ui:borrar-todo', async () => { 
             await storage.clearAll(); 
             localStorage.clear(); 

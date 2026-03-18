@@ -101,7 +101,11 @@ export const model = {
             const idx = migratedCats.Local.indexOf('Proveedores');
             if (idx !== -1) migratedCats.Local[idx] = 'Insumos Menores';
 
-            const nuevasCatsPersonal = ["Tarjetas de Crédito", "Alquiler de Inmueble", "Servicios Básicos", "Mantenimiento y Reparaciones", "Mascotas y Veterinaria"];
+            // CORRECCIÓN: Normalización en el vuelo. Aseguramos que la preferencia sea singular.
+            const idxTarjeta = migratedCats.Personal.indexOf('Tarjetas de Crédito');
+            if (idxTarjeta !== -1) migratedCats.Personal[idxTarjeta] = 'Tarjeta de Crédito';
+
+            const nuevasCatsPersonal = ["Tarjeta de Crédito", "Alquiler de Inmueble", "Servicios Básicos", "Mantenimiento y Reparaciones", "Mascotas y Veterinaria"];
             nuevasCatsPersonal.forEach(c => {
                 if (!migratedCats.Personal.includes(c)) migratedCats.Personal.push(c);
             });
@@ -137,7 +141,7 @@ export const model = {
                     "Seguros Personales", 
                     "Servicios Básicos",
                     "Suscripciones y Membresías",
-                    "Tarjetas de Crédito",
+                    "Tarjeta de Crédito",
                     "Transporte y Movilidad",
                     "Vivienda y Servicios Habitacionales"
                 ]
@@ -158,6 +162,25 @@ export const model = {
         
         this.initWorker();
         await this.procesarMotor(false);
+    },
+
+    async borrarCategoria(contexto, nombreCategoria) {
+        if (!nombreCategoria || typeof nombreCategoria !== 'string') return false;
+        
+        let ctx = contexto;
+        if (contexto === 'Gasto Local') ctx = 'Local';
+        if (contexto === 'Gasto Familiar' || contexto === 'Gasto Personal') ctx = 'Personal';
+
+        const categoriasActuales = this._rawData.categorias[ctx] || [];
+        const index = categoriasActuales.findIndex(c => c.toLowerCase() === nombreCategoria.toLowerCase());
+        
+        if (index > -1) {
+            const nuevasCat = categoriasActuales.filter((_, i) => i !== index);
+            this._data.categorias = { ...this._rawData.categorias, [ctx]: nuevasCat };
+            await storage.set('gfp_categorias', this._rawData.categorias);
+            return true;
+        }
+        return false;
     },
 
     initWorker() {
