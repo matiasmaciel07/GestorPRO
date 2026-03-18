@@ -242,6 +242,11 @@ function processSingle(m) {
     else if (m.tipo === 'Rendimiento' || m.tipo === 'Dividendo') {
         st.stats.billetera = safeFloat(st.stats.billetera + montoNum);
         st.stats.rendExtra = safeFloat(st.stats.rendExtra + montoNum);
+        
+        // --- FIX MATEMÁTICO: Integración de flujos pasivos en Patrimonio Físico ---
+        st.stats.totalAhorradoFisico = safeFloat(st.stats.totalAhorradoFisico + montoNum);
+        st.stats.ahorroArsPuro = safeFloat(st.stats.ahorroArsPuro + montoNum);
+        flujoBursatilHoy += montoNum;
     }
     else if (m.tipo === 'Ingreso Local') {
         st.stats.cajaLocal = safeFloat(st.stats.cajaLocal + montoNum);
@@ -335,7 +340,6 @@ function processSingle(m) {
         st.stats.deudaActiva = Math.max(0, safeFloat(st.stats.deudaActiva - montoNum));
         st.stats.deudaProveedoresActiva = Math.max(0, safeFloat((st.stats.deudaProveedoresActiva || 0) - montoNum));
         
-        // CORRECCIÓN ARQUITECTÓNICA: Inyección de la deuda logística como Carga Financiera Mensual
         st.stats.flujoMensual[mesStr].cuotas = safeFloat((st.stats.flujoMensual[mesStr].cuotas || 0) + montoNum);
         
         let prov = m.proveedor || 'Desconocido';

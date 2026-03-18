@@ -139,12 +139,12 @@ export const view = {
     
     initUI() {
         // CORRECCIÓN ESTRUCTURAL: Limpieza del Hack del DOM. Delegación al contenedor global.
+        // Se elimina la mutación del z-index en hover que provocaba colisiones de Event Loop (Titileo)
         const styleFix = document.createElement('style');
         styleFix.innerHTML = `
-            #vs-tbody tr { content-visibility: visible !important; contain-intrinsic-size: auto !important; will-change: auto !important; }
+            #vs-tbody tr { content-visibility: visible !important; contain-intrinsic-size: auto !important; will-change: transform, opacity !important; }
             .card { overflow: visible !important; }
-            .dataTable-table > tbody > tr { position: relative; z-index: 1; }
-            .dataTable-table > tbody > tr:hover { z-index: 9999 !important; }
+            .dataTable-table > tbody > tr { position: relative; }
         `;
         document.head.appendChild(styleFix);
 
@@ -161,15 +161,13 @@ export const view = {
         document.body.appendChild(tooltipContainer);
 
         // --- SOLUCIÓN ARQUITECTÓNICA: ESCUDO MUTACIONAL (PREVENCIÓN DE TOOLTIPS NATIVOS) ---
-        // Extrae y destruye los atributos 'title' milisegundos antes de que el navegador los procese.
         const stripNativeTitles = (nodeList) => {
             nodeList.forEach(node => {
-                if (node.nodeType === 1) { // ELEMENT_NODE
+                if (node.nodeType === 1) { 
                     if (node.hasAttribute('title')) {
                         node.setAttribute('data-original-title', node.getAttribute('title'));
                         node.removeAttribute('title');
                     }
-                    // Búsqueda profunda en sub-nodos inyectados vía innerHTML
                     const children = node.querySelectorAll('[title]');
                     for (let i = 0; i < children.length; i++) {
                         children[i].setAttribute('data-original-title', children[i].getAttribute('title'));
@@ -179,10 +177,8 @@ export const view = {
             });
         };
 
-        // Escaneo de purga inicial
         stripNativeTitles([document.body]);
 
-        // Interceptor en tiempo real para inyecciones del Virtual Scroll y Reactividad
         const domObserver = new MutationObserver((mutations) => {
             for (let mutation of mutations) {
                 if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
@@ -192,7 +188,6 @@ export const view = {
         });
         domObserver.observe(document.body, { childList: true, subtree: true });
 
-        // --- MANEJADORES DE EVENTOS BLINDADOS ---
         document.body.addEventListener('mouseover', (e) => {
             const target = e.target.closest('[data-tooltip], [data-original-title]');
             if (target) {
@@ -213,8 +208,6 @@ export const view = {
         document.body.addEventListener('mouseout', (e) => {
             const target = e.target.closest('[data-tooltip], [data-original-title]');
             if (target) {
-                // CORRECCIÓN DE BUBBLING: Evita que el Tooltip parpadee (flicker) o se duplique 
-                // visualmente cuando el mouse transita entre elementos hijos dentro del mismo contenedor.
                 if (e.relatedTarget && target.contains(e.relatedTarget)) return;
 
                 tooltipContainer.style.opacity = '0';
@@ -231,7 +224,6 @@ export const view = {
         this.initFiltrosTemporales(); 
         this.initExportacionPDF(); 
         
-        // CORRECCIÓN MATEMÁTICA: Obtención de Fecha Local exacta evadiendo el offset UTC
         const getLocalISODate = () => {
             const tzOffset = (new Date()).getTimezoneOffset() * 60000;
             return new Date(Date.now() - tzOffset).toISOString().split('T')[0];
@@ -440,11 +432,9 @@ export const view = {
         if(this.DOM.simVentas) this.DOM.simVentas.addEventListener('input', () => this.renderSimuladorWhatIf());
         if(this.DOM.simBolsa) this.DOM.simBolsa.addEventListener('input', () => this.renderSimuladorWhatIf());
 
-        // CORRECCIÓN: Event Router Unificado. Un solo Listener maestro para toda la aplicación.
         document.body.addEventListener('click', async (e) => {
             const target = e.target;
             
-            // --- BLOQUE 1: Navegación y UI Base ---
             const btnNav = target.closest('.nav__item');
             if (btnNav) {
                 events.emit('ui:cambiar-pestana', btnNav.getAttribute('aria-controls'));
@@ -474,7 +464,6 @@ export const view = {
                 this.toast(`Tema ${newTheme === 'dark' ? 'Oscuro' : 'Claro'} Activado`, "info");
             }
 
-            // --- BLOQUE 2: Reglas de Negocio (Business Actions fusionadas) ---
             const actionBtn = target.closest('[data-action]');
             if (actionBtn) {
                 const action = actionBtn.dataset.action;
@@ -550,17 +539,6 @@ export const view = {
                     }
                 }
             }, { passive: true });
-        }
-        
-        if(this.DOM.vsTbody) {
-            this.DOM.vsTbody.addEventListener('mouseover', (e) => {
-                let tr = e.target.closest('tr');
-                if(tr) tr.style.zIndex = '10';
-            });
-            this.DOM.vsTbody.addEventListener('mouseout', (e) => {
-                let tr = e.target.closest('tr');
-                if(tr) tr.style.zIndex = '1';
-            });
         }
     },
 
@@ -1343,7 +1321,7 @@ export const view = {
         });
     },
 
-_renderTablasAuditoria(s, isDashboard = true) {
+    _renderTablasAuditoria(s, isDashboard = true) {
         if (this.DOM.tbodyProveedores) {
             let statsProvs = s.proveedoresDetalle || {};
             let provArray = [];
@@ -1360,7 +1338,8 @@ _renderTablasAuditoria(s, isDashboard = true) {
                 provHtml.push('<tr><td colspan="2" style="text-align:center; padding: 60px; color:var(--text-muted); font-size: 1.1rem; font-weight: 800;"><svg width="64" height="64" style="margin-bottom:15px; opacity:0.5;"><use href="#icon-empty"></use></svg><br>Sin registros u obligaciones logísticas recientes</td></tr>');
             } else {
                 provArray.forEach((p, index) => {
-                    let pColor = isDashboard ? this.getCategoryColor(p.nombre) : (index === 0 ? 'var(--color-accent)' : 'var(--color-primary)');
+                    // Refactor: Cambio de rojo agresivo a naranja de advertencia (warning)
+                    let pColor = isDashboard ? this.getCategoryColor(p.nombre) : (index === 0 ? 'var(--color-warning)' : 'var(--color-primary)');
                     
                     if (isDashboard) {
                         let pct = maxProvTotal > 0 ? (p.total / maxProvTotal) * 100 : 0;
@@ -1387,13 +1366,20 @@ _renderTablasAuditoria(s, isDashboard = true) {
                             </tr>`
                         );
                     } else {
+                        // Refactor: Rediseño Premium para listado en Flujo Operativo
                         provHtml.push(
                             `<tr style="border-bottom: 1px solid var(--border-color); background: var(--bg-input); transition: transform 0.2s; cursor: default;">
-                                <td style="padding: 18px 25px; font-size: 1.15rem; font-weight: 900; color: ${pColor}; text-shadow: 0 0 10px ${pColor}40;">
-                                    ${DOMPurify.sanitize(p.nombre)}
+                                <td style="padding: 18px 25px; display:flex; align-items:center; gap: 15px;">
+                                    <div style="width: 40px; height: 40px; border-radius: 10px; background: ${pColor}15; display: flex; align-items: center; justify-content: center; color: ${pColor}; font-weight: 900; font-size: 1.2rem; border: 1px solid ${pColor}40;">
+                                        ${index + 1}
+                                    </div>
+                                    <div>
+                                        <div style="font-size: 1.15rem; font-weight: 900; color: var(--text-main); text-shadow: 0 0 10px rgba(255,255,255,0.05);">${DOMPurify.sanitize(p.nombre)}</div>
+                                        <div style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700; margin-top: 4px;">Volumen Operativo Consolidado</div>
+                                    </div>
                                 </td>
-                                <td class="data-font" style="text-align:right; padding: 18px 25px; font-size: 1.25rem; font-weight: 900; color: var(--color-up); text-shadow: var(--shadow-neon-up);">
-                                    <strong class="privacy-mask">${this.zenMode ? '---' : '$' + this.fmtStr(p.total, 1, false)}</strong>
+                                <td class="data-font" style="text-align:right; padding: 18px 25px; vertical-align: middle;">
+                                    <strong class="privacy-mask" style="font-size: 1.35rem; font-weight: 900; color: var(--color-up); text-shadow: var(--shadow-neon-up);">${this.zenMode ? '---' : '$' + this.fmtStr(p.total, 1, false)}</strong>
                                 </td>
                             </tr>`
                         );
