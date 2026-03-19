@@ -1,4 +1,4 @@
-const APP_VERSION = 'v5-institucional-pwa';
+const APP_VERSION = 'v1.0.4-institucional-pwa';
 const CACHE_STATIC = `gestorpro-static-${APP_VERSION}`;
 const CACHE_DYNAMIC = `gestorpro-dynamic-${APP_VERSION}`;
 
