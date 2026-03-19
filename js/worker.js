@@ -720,43 +720,13 @@ function runFullProcess(movimientosArray, inflacionINDEC = {}, port) {
     port.postMessage({ type: 'ENGINE_RESULT', payload: { stats: st.stats, portafolio: st.portafolio, movimientosOrdenados: st.movimientos } });
 }
 
-function procesarDistribucionGastos(movimientos, contexto, temporalidad) {
-    let filtrados = FinancialMath && typeof FinancialMath.filtrarPorTemporalidad === 'function' 
-        ? FinancialMath.filtrarPorTemporalidad(movimientos, temporalidad) 
-        : movimientos;
-    
-    let agrupado = {};
-    let targetTipo = contexto === 'Local' ? 'Gasto Local' : 'Gasto Personal';
-    let targetFamiliar = contexto === 'Local' ? 'N/A' : 'Gasto Familiar';
-    
-    filtrados.forEach(m => {
-        if (m.tipo === targetTipo || m.tipo === targetFamiliar) {
-            const cat = m.categoria || 'Varios';
-            let monto = typeof m.monto === 'number' ? m.monto : (parseFloat(m.monto) || 0);
-            agrupado[cat] = (agrupado[cat] || 0) + monto;
-        }
-    });
-
-    let arrayResult = Object.keys(agrupado).map(k => ({ categoria: k, monto: agrupado[k] }));
-    arrayResult.sort((a, b) => b.monto - a.monto);
-    
-    if (arrayResult.length > 10) {
-        let top = arrayResult.slice(0, 9);
-        let otros = arrayResult.slice(9).reduce((acc, curr) => acc + curr.monto, 0);
-        top.push({ categoria: 'Otros', monto: otros });
-        arrayResult = top;
-    }
-    
-    return arrayResult;
-}
-
 self.onconnect = function(e) {
     const port = e.ports[0];
-    
+
     port.onmessage = function(event) {
         try {
             const { type, ...data } = event.data;
-            
+
             if (type === 'FULL_PROCESS') {
                 runFullProcess(data.movimientos, data.inflacionINDEC, port);
             } 
@@ -774,13 +744,13 @@ self.onconnect = function(e) {
                 port.postMessage({ type: 'WATCHLIST_RESULT', payload: result });
             }
             else if (type === 'PROCESS_DISTRIBUTION') {
-                const result = procesarDistribucionGastos(data.movimientos, data.contexto, data.temporalidad);
+                const result = FinancialMath.calcularDistribucionGastos(data.movimientos, data.contexto, data.temporalidad);
                 port.postMessage({ type: 'DISTRIBUTION_RESULT', payload: result, domId: data.domId });
             }
         } catch (err) {
             port.postMessage({ type: 'WORKER_ERROR', error: err.message });
         }
     };
-    
+
     port.start();
 };
