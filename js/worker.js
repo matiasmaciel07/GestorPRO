@@ -667,7 +667,7 @@ function finalizeMetrics() {
     st.stats.healthScore = Math.max(0, Math.min(1000, Math.round(score)));
 }
 
-function runFullProcess(movimientosArray, inflacionINDEC = {}) {
+function runFullProcess(movimientosArray, inflacionINDEC = {}, port) {
     st.stats = getEmptyStats();
     st.portafolio = {}; st.lotesCompra = {};
     st.lastDate = null; st.firstDateMs = 0; st.inflacionAcumuladaAbsoluta = 0;
@@ -717,27 +717,70 @@ function runFullProcess(movimientosArray, inflacionINDEC = {}) {
     }
 
     finalizeMetrics();
-    self.postMessage({ type: 'ENGINE_RESULT', payload: { stats: st.stats, portafolio: st.portafolio, movimientosOrdenados: st.movimientos } });
+    port.postMessage({ type: 'ENGINE_RESULT', payload: { stats: st.stats, portafolio: st.portafolio, movimientosOrdenados: st.movimientos } });
 }
 
-self.onmessage = function(e) {
-    const { type, ...data } = e.data;
+function procesarDistribucionGastos(movimientos, contexto, temporalidad) {
+    let filtrados = FinancialMath && typeof FinancialMath.filtrarPorTemporalidad === 'function' 
+        ? FinancialMath.filtrarPorTemporalidad(movimientos, temporalidad) 
+        : movimientos;
     
-    if (type === 'FULL_PROCESS') {
-        runFullProcess(data.movimientos, data.inflacionINDEC);
-    } 
-    else if (type === 'ADD_DELTA') {
-        const mov = data.movimiento;
-        st.movimientos.push(mov);
-        
-        runFullProcess(st.movimientos, data.inflacionINDEC);
-    } 
-    else if (type === 'PROCESS_WATCHLIST') {
-        let result = data.watchlist.map(w => {
-            let apiDataObj = data.precios[w.activo];
-            let pActual = apiDataObj && apiDataObj.data ? apiDataObj.data.price : null;
-            return { activo: w.activo, precioObjetivo: w.precioObjetivo, precioActual: pActual, distancia: pActual ? ((w.precioObjetivo - pActual) / pActual) * 100 : null };
-        });
-        self.postMessage({ type: 'WATCHLIST_RESULT', payload: result });
+    let agrupado = {};
+    let targetTipo = contexto === 'Local' ? 'Gasto Local' : 'Gasto Personal';
+    let targetFamiliar = contexto === 'Local' ? 'N/A' : 'Gasto Familiar';
+    
+    filtrados.forEach(m => {
+        if (m.tipo === targetTipo || m.tipo === targetFamiliar) {
+            const cat = m.categoria || 'Varios';
+            let monto = typeof m.monto === 'number' ? m.monto : (parseFloat(m.monto) || 0);
+            agrupado[cat] = (agrupado[cat] || 0) + monto;
+        }
+    });
+
+    let arrayResult = Object.keys(agrupado).map(k => ({ categoria: k, monto: agrupado[k] }));
+    arrayResult.sort((a, b) => b.monto - a.monto);
+    
+    if (arrayResult.length > 10) {
+        let top = arrayResult.slice(0, 9);
+        let otros = arrayResult.slice(9).reduce((acc, curr) => acc + curr.monto, 0);
+        top.push({ categoria: 'Otros', monto: otros });
+        arrayResult = top;
     }
+    
+    return arrayResult;
+}
+
+self.onconnect = function(e) {
+    const port = e.ports[0];
+    
+    port.onmessage = function(event) {
+        try {
+            const { type, ...data } = event.data;
+            
+            if (type === 'FULL_PROCESS') {
+                runFullProcess(data.movimientos, data.inflacionINDEC, port);
+            } 
+            else if (type === 'ADD_DELTA') {
+                const mov = data.movimiento;
+                st.movimientos.push(mov);
+                runFullProcess(st.movimientos, data.inflacionINDEC, port);
+            } 
+            else if (type === 'PROCESS_WATCHLIST') {
+                let result = data.watchlist.map(w => {
+                    let apiDataObj = data.precios[w.activo];
+                    let pActual = apiDataObj && apiDataObj.data ? apiDataObj.data.price : null;
+                    return { activo: w.activo, precioObjetivo: w.precioObjetivo, precioActual: pActual, distancia: pActual ? ((w.precioObjetivo - pActual) / pActual) * 100 : null };
+                });
+                port.postMessage({ type: 'WATCHLIST_RESULT', payload: result });
+            }
+            else if (type === 'PROCESS_DISTRIBUTION') {
+                const result = procesarDistribucionGastos(data.movimientos, data.contexto, data.temporalidad);
+                port.postMessage({ type: 'DISTRIBUTION_RESULT', payload: result, domId: data.domId });
+            }
+        } catch (err) {
+            port.postMessage({ type: 'WORKER_ERROR', error: err.message });
+        }
+    };
+    
+    port.start();
 };

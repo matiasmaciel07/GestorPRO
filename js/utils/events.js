@@ -1,10 +1,7 @@
-"use strict";
-
 export const events = {
     _events: {},
-    _schemas: {}, // FASE 2: Almacén de esquemas para validación de tipado dinámico
+    _schemas: {},
 
-    // Permite registrar un esquema de validación para un evento específico
     registerSchema(eventName, schemaDefinition) {
         this._schemas[eventName] = schemaDefinition;
     },
@@ -16,8 +13,13 @@ export const events = {
         this._events[eventName].push(callback);
     },
 
+    off(eventName, callbackToRemove) {
+        if (this._events[eventName]) {
+            this._events[eventName] = this._events[eventName].filter(cb => cb !== callbackToRemove);
+        }
+    },
+
     emit(eventName, data) {
-        // FASE 2: Validación de esquemas (Tipado Dinámico)
         if (this._schemas[eventName] && data !== undefined && data !== null) {
             const schema = this._schemas[eventName];
             for (const key in schema) {
@@ -26,8 +28,8 @@ export const events = {
                     const actualType = Array.isArray(data[key]) ? 'array' : typeof data[key];
                     
                     if (actualType !== expectedType && expectedType !== 'any') {
-                        console.error(`[EventBus] 🛑 Evento bloqueado '${eventName}': Corrupción de datos. La propiedad '${key}' esperaba '${expectedType}' pero recibió '${actualType}'.`);
-                        return; // Aborta la emisión para proteger la inmutabilidad de la vista
+                        console.error(`[EventBus] Bloqueo de mutación '${eventName}': Corrupción de datos detectada. La propiedad '${key}' esperaba '${expectedType}' pero recibió '${actualType}'.`);
+                        return;
                     }
                 }
             }
@@ -45,7 +47,6 @@ export const events = {
     }
 };
 
-// --- Registro de esquemas críticos para el sistema ---
 events.registerSchema('ui:guardar-inflacion', { mes: 'string', val: 'number' });
 events.registerSchema('ui:add-watchlist', { activo: 'string', precio: 'number' });
 events.registerSchema('app:toast', { msg: 'string', type: 'string' });

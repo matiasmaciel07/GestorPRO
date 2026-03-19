@@ -183,24 +183,27 @@ export const model = {
         return false;
     },
 
+    _pendingProcessTimeout: null,
+
     initWorker() {
-        if(this.worker) this.worker.terminate();
+        if (this.worker) {
+            this.worker.port.close();
+        }
         
         try {
-            this.worker = new Worker('js/worker.js', { type: 'module' });
+            this.worker = new SharedWorker('js/worker.js', { type: 'module' });
             
-            this.worker.onmessage = (e) => {
-                const { type, payload } = e.data;
+            this.worker.port.onmessage = (e) => {
+                const { type, payload, domId, error } = e.data;
                 
                 if (type === 'ENGINE_RESULT') {
-                    // CORRECCIÓN: Evitar que un fallo matemático hunda la resolución del motor
                     try {
                         const auditoria = FinancialMath.calcularAuditoriaComercial(payload.movimientosOrdenados || []);
                         payload.stats.ingresosBrutosDeclaradosPuros = auditoria.ingresosBrutosDeclarados;
                         payload.stats.ingresosNetosAuditoria = auditoria.ingresosBrutosNetos;
                         payload.stats.inventarioBaseCorregido = auditoria.inventarioBaseCosto;
                     } catch (calcError) {
-                        console.warn("[Arquitectura] Fallo en auditoría comercial amortiguado.", calcError);
+                        console.warn("[Motor Cuantitativo] Fallo en auditoría amortiguado.", calcError);
                         payload.stats.ingresosBrutosDeclaradosPuros = 0;
                         payload.stats.ingresosNetosAuditoria = 0;
                         payload.stats.inventarioBaseCorregido = 0;
@@ -216,15 +219,48 @@ export const model = {
                     }
                 } else if (type === 'WATCHLIST_RESULT') {
                     events.emit('model:watchlistUpdated', payload);
+                } else if (type === 'DISTRIBUTION_RESULT') {
+                    events.emit('model:distributionCalculated', { payload, domId });
+                } else if (type === 'WORKER_ERROR') {
+                    console.error("[Arquitectura SharedWorker] Fallo lógico interno:", error);
+                    if (this._engineResolver) {
+                        this._engineResolver(new Error(error));
+                        this._engineResolver = null;
+                    }
+                }
+            };
+
+            this.worker.port.onmessageerror = (err) => {
+                console.error("[Arquitectura IPC] Error en deserialización de mensajes.", err);
+                if (this._engineResolver) {
+                    this._engineResolver(err);
+                    this._engineResolver = null;
                 }
             };
 
             this.worker.onerror = (err) => {
-                console.error("[Arquitectura] Error en Web Worker. Fallo de aislamiento de hilos:", err);
-                if(this._engineResolver) this._engineResolver(err);
+                console.error("[Arquitectura] Fallo fatal a nivel de instancia SharedWorker.", err);
+                if (this._engineResolver) {
+                    this._engineResolver(err);
+                    this._engineResolver = null;
+                }
             };
+
+            this.worker.port.start();
         } catch (e) {
-            console.warn("[Arquitectura] Entorno restringido detectado (posible file:// en Desktop). Web Workers module bloqueados por CORS. Se requiere empaquetado seguro.", e);
+            console.warn("[Arquitectura] Restricción CORS/Seguridad de navegador impidió instanciar SharedWorker.", e);
+        }
+    },
+
+    solicitarDistribucionGastos(config) {
+        if (this.worker) {
+            this.worker.port.postMessage({
+                type: 'PROCESS_DISTRIBUTION',
+                movimientos: structuredClone(this._rawData.movimientos),
+                contexto: config.contexto,
+                temporalidad: config.temporalidad,
+                domId: config.domId
+            });
         }
     },
 
@@ -399,55 +435,59 @@ export const model = {
     },
 
     async procesarMotor(isDelta = false, mov = null) {
+        if (this._pendingProcessTimeout) {
+            clearTimeout(this._pendingProcessTimeout);
+        }
+
         return new Promise((resolve) => {
-            this._engineResolver = resolve;
-            
-            // CORRECCIÓN ESTRUCTURAL: Watchdog Timer. Rompe el Deadlock si el Worker muere o es bloqueado por el navegador.
-            const timeout = setTimeout(() => {
-                console.error("[Arquitectura] Timeout del Web Worker. Forzando liberación del hilo principal.");
-                if (this._engineResolver) {
-                    this._engineResolver();
-                    this._engineResolver = null;
-                }
-            }, 5000);
+            this._pendingProcessTimeout = setTimeout(() => {
+                this._engineResolver = resolve;
+                
+                const timeout = setTimeout(() => {
+                    console.error("[Watchdog] Timeout del Motor Quant. Forzando liberación del Main Thread para prevenir Deadlock.");
+                    if (this._engineResolver) {
+                        this._engineResolver();
+                        this._engineResolver = null;
+                    }
+                }, 5000);
 
-            // Captura segura de la función resolve original para no perderla en la closure
-            const safeResolve = () => {
-                clearTimeout(timeout);
-                if (this._engineResolver) {
-                    const res = this._engineResolver;
-                    this._engineResolver = null;
-                    res();
-                } else {
-                    resolve(); // Fallback si ya fue limpiado
-                }
-            };
-            
-            this._engineResolver = safeResolve;
+                const safeResolve = (error) => {
+                    clearTimeout(timeout);
+                    if (this._engineResolver) {
+                        const res = this._engineResolver;
+                        this._engineResolver = null;
+                        res(); 
+                    } else {
+                        resolve(); 
+                    }
+                };
+                
+                this._engineResolver = safeResolve;
 
-            if (!this.worker) {
-                console.warn("[Arquitectura] Worker inactivo. Saltando fase de procesamiento paralelo.");
-                return safeResolve();
-            }
-            
-            try {
-                if (isDelta && mov) {
-                    this.worker.postMessage({ 
-                        type: 'ADD_DELTA', 
-                        movimiento: structuredClone(mov),
-                        inflacionINDEC: structuredClone(this.inflacionINDEC) 
-                    });
-                } else {
-                    this.worker.postMessage({ 
-                        type: 'FULL_PROCESS', 
-                        movimientos: structuredClone(this._rawData.movimientos),
-                        inflacionINDEC: structuredClone(this.inflacionINDEC) 
-                    });
+                if (!this.worker) {
+                    console.warn("[Motor Quant] SharedWorker inactivo. Omitiendo cómputo en segundo plano.");
+                    return safeResolve();
                 }
-            } catch (cloneError) {
-                console.error("[Arquitectura] Error clonando datos para el Worker:", cloneError);
-                safeResolve();
-            }
+                
+                try {
+                    if (isDelta && mov) {
+                        this.worker.port.postMessage({ 
+                            type: 'ADD_DELTA', 
+                            movimiento: structuredClone(mov),
+                            inflacionINDEC: structuredClone(this.inflacionINDEC) 
+                        });
+                    } else {
+                        this.worker.port.postMessage({ 
+                            type: 'FULL_PROCESS', 
+                            movimientos: structuredClone(this._rawData.movimientos),
+                            inflacionINDEC: structuredClone(this.inflacionINDEC) 
+                        });
+                    }
+                } catch (cloneError) {
+                    console.error("[Arquitectura IPC] Falla en la serialización estructurada:", cloneError);
+                    safeResolve();
+                }
+            }, 50); 
         });
     },
 
